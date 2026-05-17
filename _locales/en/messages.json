@@ -49,5 +49,6 @@
   "statUptimeLabel": { "message": "uptime" },
   "logLabel": { "message": "Recent" },
   "languageLabel": { "message": "Language" },
-  "languageAuto": { "message": "Auto (system)" }
+  "languageAuto": { "message": "Auto (system)" },
+  "rateLimitLabel": { "message": "Rate limit (calls/sec, 0 = unlimited)" }
 }

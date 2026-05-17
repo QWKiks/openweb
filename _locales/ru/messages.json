@@ -36,5 +36,6 @@
   "statUptimeLabel": { "message": "время" },
   "logLabel": { "message": "Последние" },
   "languageLabel": { "message": "Язык" },
-  "languageAuto": { "message": "Авто (системный)" }
+  "languageAuto": { "message": "Авто (системный)" },
+  "rateLimitLabel": { "message": "Лимит вызовов (в секунду, 0 = без лимита)" }
 }

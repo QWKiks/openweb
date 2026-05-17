@@ -36,5 +36,6 @@
   "statUptimeLabel": { "message": "运行时间" },
   "logLabel": { "message": "最近操作" },
   "languageLabel": { "message": "语言" },
-  "languageAuto": { "message": "自动（系统）" }
+  "languageAuto": { "message": "自动（系统）" },
+  "rateLimitLabel": { "message": "调用速率限制（次/秒，0 = 无限制）" }
 }

@@ -59,6 +59,12 @@ async function initUI() {
   // Language selector
   await initLanguageSelector(i18n);
 
+  // Rate limit
+  $("rate-limit-label").textContent = await _msg("rateLimitLabel");
+  const status = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
+  const currentLimit = status?.metrics?.rateLimitPerSec ?? 0;
+  $("rate-limit-input").value = currentLimit;
+
   // Attach event listeners only once
   if (!listenersAttached) {
     listenersAttached = true;
@@ -273,6 +279,14 @@ function attachEventListeners() {
       btn.innerHTML = COPY_SVG;
       btn.classList.remove("copied");
     }, 1500);
+  });
+
+  // Rate limit change
+  $("rate-limit-input").addEventListener("change", async () => {
+    const val = parseInt($("rate-limit-input").value, 10);
+    const perSec = isNaN(val) || val < 0 ? 0 : val;
+    $("rate-limit-input").value = perSec;
+    await chrome.runtime.sendMessage({ type: "SET_RATE_LIMIT", perSec });
   });
 }
 

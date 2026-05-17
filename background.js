@@ -72,6 +72,49 @@ register(new WaitTool());
 register(new DragDropTool());
 register(new ContentScriptFallback());
 
+// ── Rate Limiting ────────────────────────────────────────────────────────────
+const RATE_LIMIT_KEY = "webbridge_rate_limit";
+const DEFAULT_RATE_LIMIT = 0; // 0 = unlimited
+let rateLimitPerSec = DEFAULT_RATE_LIMIT;
+const callTimestamps = []; // sliding window of call timestamps
+
+/** Load rate limit setting from storage */
+async function loadRateLimit() {
+  try {
+    const result = await chrome.storage.local.get(RATE_LIMIT_KEY);
+    rateLimitPerSec = result[RATE_LIMIT_KEY] ?? DEFAULT_RATE_LIMIT;
+  } catch {
+    rateLimitPerSec = DEFAULT_RATE_LIMIT;
+  }
+}
+loadRateLimit();
+
+/** Set rate limit (0 = unlimited) */
+export async function setRateLimit(perSec) {
+  rateLimitPerSec = perSec;
+  await chrome.storage.local.set({ [RATE_LIMIT_KEY]: perSec });
+}
+
+/** Get current rate limit */
+export function getRateLimit() {
+  return rateLimitPerSec;
+}
+
+/** Check if a tool call is allowed under rate limit */
+export function checkRateLimit() {
+  if (rateLimitPerSec <= 0) return true; // unlimited
+  const now = Date.now();
+  // Remove timestamps older than 1 second
+  while (callTimestamps.length > 0 && now - callTimestamps[0] > 1000) {
+    callTimestamps.shift();
+  }
+  if (callTimestamps.length >= rateLimitPerSec) {
+    return false; // rate limited
+  }
+  callTimestamps.push(now);
+  return true;
+}
+
 // ── Metrics & Action Log ────────────────────────────────────────────────────
 const metrics = {
   toolCallCount: 0,
@@ -101,6 +144,7 @@ export function getMetrics() {
     uptime,
     actionLog,
     toolCount: getToolNames().length,
+    rateLimitPerSec,
   };
 }
 
@@ -173,6 +217,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
         case "TEST_CONNECTION":
           sendResponse(await wsClient.testConnection(message.url));
+          break;
+
+        case "SET_RATE_LIMIT":
+          await setRateLimit(message.perSec ?? 0);
+          sendResponse({ success: true, rateLimitPerSec: message.perSec ?? 0 });
           break;
 
         case "GENERATE_CONNECTION": {
