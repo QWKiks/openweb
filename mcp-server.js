@@ -371,6 +371,45 @@ const TOOLS = [
       required: ["source", "target"],
     },
   },
+  {
+    name: "save_as_pdf",
+    description: "Export the current page as a PDF document. Returns base64-encoded PDF data.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        paper_format: { type: "string", description: "Paper size: letter, legal, a4, a3, tabloid (default: letter)", enum: ["letter", "legal", "a4", "a3", "tabloid"] },
+        landscape: { type: "boolean", description: "Landscape orientation (default: false)" },
+        scale: { type: "number", description: "Scale factor 0.1-2.0 (default: 1)" },
+        print_background: { type: "boolean", description: "Include background graphics (default: true)" },
+        file_name: { type: "string", description: "Suggested file name for the PDF" },
+      },
+    },
+  },
+  {
+    name: "upload",
+    description: "Set files on a file input element (<input type=\"file\">) by CSS selector or @e ref.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref of the file input element" },
+        files: { type: "array", items: { type: "string" }, description: "Array of local file paths to set on the input" },
+      },
+      required: ["selector", "files"],
+    },
+  },
+  {
+    name: "content_script",
+    description: "Fallback automation for pages where CDP is unavailable (chrome://, PDF viewer). Executes JS via content script injection.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action: evaluate, click, fill, get_text", enum: ["evaluate", "click", "fill", "get_text"] },
+        code: { type: "string", description: "JavaScript code to execute (for action=evaluate)" },
+        selector: { type: "string", description: "CSS selector for click/fill/get_text" },
+        value: { type: "string", description: "Value to fill (for action=fill)" },
+      },
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────
@@ -406,7 +445,11 @@ function connectToDaemon() {
 
     ws.on("open", () => {
       resetReconnect();
-      ws.send(JSON.stringify({ type: "register" }));
+      const registerMsg = { type: "register" };
+      // Pass auth token if configured via env
+      const token = process.env.WEBBRIDGE_TOKEN;
+      if (token) registerMsg.token = token;
+      ws.send(JSON.stringify(registerMsg));
       resolve();
     });
 
@@ -428,6 +471,12 @@ function connectToDaemon() {
 
       if (msg.type === "ping") {
         ws.send(JSON.stringify({ type: "pong" }));
+        return;
+      }
+
+      if (msg.type === "register_nack") {
+        console.error(`[mcp] auth failed: ${msg.error}`);
+        reject(new Error(msg.error || "Auth failed"));
         return;
       }
 
@@ -531,6 +580,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           type: "image",
           data: data.data,
           mimeType,
+        },
+      ],
+    };
+  }
+
+  // For PDF exports, return as resource
+  if (name === "save_as_pdf" && data?.data) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `PDF exported successfully (${data.dataLength} bytes, page: "${data.pageTitle || "untitled"}"). Base64 data length: ${data.dataLength}`,
         },
       ],
     };

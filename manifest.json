@@ -11,7 +11,9 @@
     "storage",
     "alarms",
     "tabGroups",
-    "windows"
+    "windows",
+    "offscreen",
+    "scripting"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -26,5 +28,11 @@
     "32": "icon/32.png",
     "48": "icon/48.png",
     "128": "icon/128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["offscreen-worker.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

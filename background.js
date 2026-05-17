@@ -4,7 +4,7 @@
  * and message handlers for the popup.
  */
 
-import { register } from "./tools/registry.js";
+import { register, getToolNames } from "./tools/registry.js";
 import { wsClient } from "./lib/ws-client.js";
 
 import { NavigateTool } from "./tools/navigate.js";
@@ -37,6 +37,7 @@ import { SessionTool } from "./tools/session.js";
 import { ScrollTool } from "./tools/scroll.js";
 import { WaitTool } from "./tools/wait.js";
 import { DragDropTool } from "./tools/drag-drop.js";
+import { ContentScriptFallback } from "./tools/content-script.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -69,9 +70,70 @@ register(new SessionTool());
 register(new ScrollTool());
 register(new WaitTool());
 register(new DragDropTool());
+register(new ContentScriptFallback());
+
+// ── Metrics & Action Log ────────────────────────────────────────────────────
+const metrics = {
+  toolCallCount: 0,
+  totalDurationMs: 0,
+  connectedAt: null,
+};
+const actionLog = []; // { name, time, error? }
+const MAX_LOG_ENTRIES = 20;
+
+export function trackToolCall(name, durationMs, error) {
+  metrics.toolCallCount++;
+  metrics.totalDurationMs += durationMs;
+  actionLog.unshift({
+    name,
+    time: new Date().toLocaleTimeString(),
+    error: error || null,
+    durationMs,
+  });
+  if (actionLog.length > MAX_LOG_ENTRIES) actionLog.pop();
+}
+
+export function getMetrics() {
+  const uptime = metrics.connectedAt ? Date.now() - metrics.connectedAt : 0;
+  return {
+    toolCallCount: metrics.toolCallCount,
+    avgDurationMs: metrics.toolCallCount > 0 ? Math.round(metrics.totalDurationMs / metrics.toolCallCount) : 0,
+    uptime,
+    actionLog,
+    toolCount: getToolNames().length,
+  };
+}
 
 // ── Reconnect WebSocket on service worker wake-up ───────────────────────────
 wsClient.reconnectIfNeeded();
+
+// ── Offscreen keepalive for MV3 service worker ──────────────────────────────
+const OFFSCREEN_URL = chrome.runtime.getURL("offscreen.html");
+const KEEPALIVE_INTERVAL_MS = 25000; // Chrome kills SW after 30s idle
+
+async function ensureOffscreen() {
+  try {
+    const existing = await chrome.offscreen.hasDocument();
+    if (!existing) {
+      await chrome.offscreen.createDocument({
+        url: OFFSCREEN_URL,
+        reasons: "WORKERS",
+        justification: "Keep service worker alive for WebSocket connection",
+      });
+    }
+  } catch {
+    // offscreen API may not be available in all contexts
+  }
+}
+
+// Start keepalive when connected
+const origConnect = wsClient.connect.bind(wsClient);
+wsClient.connect = async function(url) {
+  await origConnect(url);
+  if (wsClient.isConnected()) {
+    ensureOffscreen();
+  }
+};
 
 // ── Alarm-based reconnection fallback ───────────────────────────────────────
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -89,11 +151,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({
             connected: wsClient.isConnected(),
             serverUrl: wsClient.getServerUrl(),
+            metrics: getMetrics(),
           });
           break;
 
         case "CONNECT":
           await wsClient.connect(message.url);
+          metrics.connectedAt = Date.now();
+          sendResponse({ success: true });
+          break;
+
+        case "HOT_RELOAD":
+          await wsClient.hotReload(message.url);
           sendResponse({ success: true });
           break;
 

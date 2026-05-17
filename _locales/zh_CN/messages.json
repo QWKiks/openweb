@@ -30,5 +30,9 @@
   "devTrustConfirm": { "message": "我信任 — 连接" },
   "mcpLabel": { "message": "MCP 服务器" },
   "mcpBadgeReady": { "message": "就绪" },
-  "mcpHint": { "message": "将此配置复制到你的 AI 客户端（Claude Desktop、Cursor、Windsurf），即可让 AI 控制浏览器。" }
+  "mcpHint": { "message": "将此配置复制到你的 AI 客户端（Claude Desktop、Cursor、Windsurf），即可让 AI 控制浏览器。" },
+  "statToolsLabel": { "message": "工具" },
+  "statActionsLabel": { "message": "操作" },
+  "statUptimeLabel": { "message": "运行时间" },
+  "logLabel": { "message": "最近操作" }
 }

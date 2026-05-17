@@ -43,5 +43,9 @@
   "devTrustConfirm": { "message": "I trust this — connect" },
   "mcpLabel": { "message": "MCP Server" },
   "mcpBadgeReady": { "message": "Ready" },
-  "mcpHint": { "message": "Copy this config into your AI client (Claude Desktop, Cursor, Windsurf) to let it control the browser." }
+  "mcpHint": { "message": "Copy this config into your AI client (Claude Desktop, Cursor, Windsurf) to let it control the browser." },
+  "statToolsLabel": { "message": "tools" },
+  "statActionsLabel": { "message": "actions" },
+  "statUptimeLabel": { "message": "uptime" },
+  "logLabel": { "message": "Recent" }
 }

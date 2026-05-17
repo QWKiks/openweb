@@ -40,6 +40,10 @@ function initUI() {
   // MCP section
   $("mcp-label").textContent = msg("mcpLabel");
   $("mcp-hint").textContent = msg("mcpHint");
+  $("stat-tools-label").textContent = msg("statToolsLabel");
+  $("stat-actions-label").textContent = msg("statActionsLabel");
+  $("stat-uptime-label").textContent = msg("statUptimeLabel");
+  $("log-label").textContent = msg("logLabel");
   updateMcpConfig();
 }
 
@@ -51,12 +55,38 @@ function updateStatus(status) {
     statusBadge.className = "status connected";
     statusLabel.textContent = msg("readyMessage");
     $("server-url").textContent = status.serverUrl || "";
+
+    // Update metrics
+    const m = status.metrics || {};
+    $("tool-count").textContent = m.toolCount || 0;
+    $("action-count").textContent = m.toolCallCount || 0;
+    $("uptime").textContent = formatUptime(m.uptime || 0);
+
+    // Update action log
+    const logEntries = m.actionLog || [];
+    const logEl = $("log-entries");
+    logEl.innerHTML = "";
+    for (const entry of logEntries.slice(0, 8)) {
+      const div = document.createElement("div");
+      div.className = "log-entry";
+      div.innerHTML = `<span class="log-entry-name${entry.error ? " log-entry-error" : ""}">${entry.name}</span><span class="log-entry-time">${entry.time}</span>`;
+      logEl.appendChild(div);
+    }
   } else {
     connectedView.classList.add("hidden");
     disconnectedView.classList.remove("hidden");
     statusBadge.className = "status disconnected";
     statusLabel.textContent = msg("notReadyMessage");
   }
+}
+
+function formatUptime(ms) {
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return `${h}h${m % 60}m`;
 }
 
 async function refreshStatus() {

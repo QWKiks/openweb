@@ -14,7 +14,16 @@ import { WebSocketServer } from "ws";
 const PORT = 10086;
 const PATH = "/ws";
 
-const wss = new WebSocketServer({ port: PORT, path: PATH });
+// Auth: Bearer token for controller connections (optional, set via WEBBRIDGE_TOKEN env)
+const AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
+
+const wss = new WebSocketServer({ port: PORT, path: PATH, perMessageDeflate: true });
+
+// Verify auth on upgrade for controller connections
+wss.on("headers", (headers, req) => {
+  // Auth is checked on the "register" message instead of upgrade
+  // so extensions can always connect without a token
+});
 
 /** @type {Set<WebSocket>} extension clients */
 const extensions = new Set();
@@ -26,6 +35,31 @@ const pendingResults = new Map();
 
 /** Route tool_calls to specific extension: requestId → WebSocket */
 const requestToExtension = new Map();
+
+/** Round-robin index for multi-extension routing */
+let rrIndex = 0;
+
+function pickExtension() {
+  const exts = [...extensions].filter(ws => ws.readyState === ws.OPEN);
+  if (exts.length === 0) return null;
+  const ext = exts[rrIndex % exts.length];
+  rrIndex = (rrIndex + 1) % exts.length;
+  return ext;
+}
+
+/** Heartbeat tracking: extension → last heartbeat timestamp */
+const extensionHeartbeats = new Map();
+const STALE_THRESHOLD_MS = 45000;
+
+// Periodically check for stale extensions
+setInterval(() => {
+  const now = Date.now();
+  for (const [ws, lastBeat] of extensionHeartbeats) {
+    if (now - lastBeat > STALE_THRESHOLD_MS) {
+      console.log("[heartbeat] extension is stale (no heartbeat for 45s)");
+    }
+  }
+}, 15000);
 
 wss.on("connection", (ws, req) => {
   const ip = req.socket.remoteAddress;
@@ -55,7 +89,16 @@ wss.on("connection", (ws, req) => {
       }
 
       case "register": {
-        // AI client registers itself
+        // AI client registers itself — check auth if token is configured
+        if (AUTH_TOKEN) {
+          const token = msg.token || null;
+          if (token !== AUTH_TOKEN) {
+            console.log("[register] auth failed — invalid token");
+            ws.send(JSON.stringify({ type: "register_nack", error: "Invalid or missing auth token" }));
+            ws.close(4001, "Unauthorized");
+            return;
+          }
+        }
         role = "controller";
         controllers.add(ws);
         console.log("[register] controller connected");
@@ -64,6 +107,12 @@ wss.on("connection", (ws, req) => {
       }
 
       case "pong":
+        break;
+
+      case "heartbeat":
+        if (role === "extension") {
+          extensionHeartbeats.set(ws, Date.now());
+        }
         break;
 
       case "tool_call": {
@@ -81,15 +130,13 @@ wss.on("connection", (ws, req) => {
             responseToRequestId: rid,
             payload: { error: "No extension connected. Open the extension first." },
           });
-          for (const ctrl of controllers) {
-            if (ctrl.readyState === ctrl.OPEN) ctrl.send(errorResult);
-          }
+          for (const ctrl of controllers) if (ctrl.readyState === ctrl.OPEN) ctrl.send(errorResult);
           break;
         }
 
-        // Route to first available extension
-        const targetExt = extensions.values().next().value;
-        if (targetExt?.readyState === targetExt.OPEN) {
+        // Route to extension via round-robin
+        const targetExt = pickExtension();
+        if (targetExt) {
           requestToExtension.set(rid, targetExt);
           targetExt.send(raw); // Transparent proxy: forward raw message
         }
@@ -140,6 +187,7 @@ wss.on("connection", (ws, req) => {
     console.log(`[-] ${role || "client"} disconnected`);
     extensions.delete(ws);
     controllers.delete(ws);
+    extensionHeartbeats.delete(ws);
     // Clean up routing entries for this extension
     for (const [rid, ext] of requestToExtension) {
       if (ext === ws) requestToExtension.delete(rid);

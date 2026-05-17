@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>WebBridge Keepalive</title></head>
+<body>
+<script>
+// Offscreen document to keep the service worker alive.
+// Chrome MV3 kills service workers after 30s of inactivity.
+// This document keeps a Web Worker running to prevent that.
+const worker = new Worker(chrome.runtime.getURL("offscreen-worker.js"));
+</script>
+</body>
+</html>
