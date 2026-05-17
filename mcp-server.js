@@ -39,6 +39,7 @@ const TOOLS = [
       properties: {
         url: { type: "string", description: "URL to navigate to" },
         newTab: { type: "boolean", description: "Open in a new tab (default: true)", default: true },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab). Use list_tabs to get IDs." },
       },
       required: ["url"],
     },
@@ -46,7 +47,9 @@ const TOOLS = [
   {
     name: "snapshot",
     description: "Capture the accessibility tree of the active page. Returns element refs (like @e1) for use with click/fill tools.",
-    inputSchema: { type: "object", properties: {} },
+    inputSchema: { type: "object", properties: {
+      tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+    } },
   },
   {
     name: "screenshot",
@@ -67,6 +70,7 @@ const TOOLS = [
           type: "number",
           description: "JPEG quality 0-100 (default: 60)",
         },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
@@ -77,6 +81,7 @@ const TOOLS = [
       type: "object",
       properties: {
         selector: { type: "string", description: "CSS selector or @e ref of the element to click" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
     },
@@ -89,6 +94,7 @@ const TOOLS = [
       properties: {
         selector: { type: "string", description: "CSS selector or @e ref of the form field" },
         value: { type: "string", description: "Value to fill in" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector", "value"],
     },
@@ -100,6 +106,7 @@ const TOOLS = [
       type: "object",
       properties: {
         text: { type: "string", description: "Text to type" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["text"],
     },
@@ -111,6 +118,7 @@ const TOOLS = [
       type: "object",
       properties: {
         keys: { type: "string", description: "Key combination, e.g. 'Enter', 'Ctrl+A', 'Tab'" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["keys"],
     },
@@ -122,6 +130,7 @@ const TOOLS = [
       type: "object",
       properties: {
         code: { type: "string", description: "JavaScript code to execute" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["code"],
     },
@@ -159,6 +168,7 @@ const TOOLS = [
       type: "object",
       properties: {
         selector: { type: "string", description: "CSS selector or @e ref" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
     },
@@ -170,6 +180,7 @@ const TOOLS = [
       type: "object",
       properties: {
         cmd: { type: "string", description: "Sub-command: list, capture, inspect", enum: ["list", "capture", "inspect"] },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
@@ -180,6 +191,7 @@ const TOOLS = [
       type: "object",
       properties: {
         selector: { type: "string", description: "CSS selector or @e ref of the element to hover over" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
     },
@@ -192,6 +204,7 @@ const TOOLS = [
       properties: {
         selector: { type: "string", description: "CSS selector or @e ref of the <select> element" },
         value: { type: "string", description: "Option value or text content to select. Use a number for index." },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector", "value"],
     },
@@ -205,6 +218,7 @@ const TOOLS = [
         selector: { type: "string", description: "CSS selector or @e ref (optional — returns full page text if omitted)" },
         maxLength: { type: "number", description: "Maximum text length to return (default: 50000)" },
         includeHidden: { type: "boolean", description: "Include hidden/invisible elements (default: false)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
@@ -223,6 +237,7 @@ const TOOLS = [
         httpOnly: { type: "boolean", description: "HttpOnly flag (for set)" },
         sameSite: { type: "string", description: "SameSite policy (for set): Strict, Lax, None" },
         expires: { type: "number", description: "Expiration timestamp in seconds since epoch (for set)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
     },
@@ -235,6 +250,7 @@ const TOOLS = [
       properties: {
         cmd: { type: "string", description: "Action: back, forward, or refresh", enum: ["back", "forward", "refresh"] },
         ignoreCache: { type: "boolean", description: "Bypass cache on refresh (default: false)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
     },
@@ -254,6 +270,7 @@ const TOOLS = [
         mockHeaders: { type: "object", description: "Response headers for mock action" },
         responseCode: { type: "number", description: "HTTP response code (for mock/redirect)" },
         ruleId: { type: "string", description: "Rule ID (for remove_rule)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
     },
@@ -270,6 +287,7 @@ const TOOLS = [
         deviceScaleFactor: { type: "number", description: "Device pixel ratio (default: 1)" },
         mobile: { type: "boolean", description: "Enable mobile mode (default: false)" },
         touch: { type: "boolean", description: "Enable touch emulation (default: same as mobile)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
@@ -283,6 +301,7 @@ const TOOLS = [
         type: { type: "string", description: "Filter by log type: log, warn, error, info, debug" },
         limit: { type: "number", description: "Max entries to return (default: 100)" },
         offset: { type: "number", description: "Offset for pagination (default: 0)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
     },
@@ -297,6 +316,7 @@ const TOOLS = [
         accept: { type: "boolean", description: "Accept (true) or dismiss (false) the dialog (default: true)" },
         promptText: { type: "string", description: "Text to enter in prompt dialogs" },
         disable: { type: "boolean", description: "Disable auto-handler (for auto cmd)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
     },
@@ -320,6 +340,7 @@ const TOOLS = [
         accuracy: { type: "number", description: "Geolocation accuracy in meters (default: 100)" },
         clear: { type: "boolean", description: "Clear geolocation override" },
         platform: { type: "string", description: "Platform to report (for user_agent)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
     },
@@ -344,6 +365,7 @@ const TOOLS = [
         direction: { type: "string", description: "Direction: down, up, left, right, top, bottom", enum: ["down", "up", "left", "right", "top", "bottom"] },
         amount: { type: "number", description: "Number of viewport heights to scroll (default: 3)" },
         selector: { type: "string", description: "CSS selector to scroll a specific element (optional — scrolls page if omitted)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
@@ -356,6 +378,7 @@ const TOOLS = [
         type: { type: "string", description: "Wait type: selector, navigation, or network_idle", enum: ["selector", "navigation", "network_idle"] },
         selector: { type: "string", description: "CSS selector to wait for (for type=selector)" },
         timeout: { type: "number", description: "Maximum wait time in ms (default: 10000)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
@@ -367,6 +390,7 @@ const TOOLS = [
       properties: {
         source: { type: "string", description: "CSS selector or @e ref of the element to drag" },
         target: { type: "string", description: "CSS selector or @e ref of the drop target" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["source", "target"],
     },
@@ -382,6 +406,7 @@ const TOOLS = [
         scale: { type: "number", description: "Scale factor 0.1-2.0 (default: 1)" },
         print_background: { type: "boolean", description: "Include background graphics (default: true)" },
         file_name: { type: "string", description: "Suggested file name for the PDF" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
@@ -393,6 +418,7 @@ const TOOLS = [
       properties: {
         selector: { type: "string", description: "CSS selector or @e ref of the file input element" },
         files: { type: "array", items: { type: "string" }, description: "Array of local file paths to set on the input" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector", "files"],
     },
@@ -407,6 +433,7 @@ const TOOLS = [
         code: { type: "string", description: "JavaScript code to execute (for action=evaluate)" },
         selector: { type: "string", description: "CSS selector for click/fill/get_text" },
         value: { type: "string", description: "Value to fill (for action=fill)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
