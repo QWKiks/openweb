@@ -1,0 +1,119 @@
+/* ── DevTools Panel Styles ──────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+  font-size: 11px;
+  color: #333;
+  background: #fff;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f8f8;
+}
+
+.panel-title {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.panel-stats {
+  color: #666;
+  font-size: 10px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.filter-row input {
+  flex: 1;
+  padding: 3px 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+}
+
+.filter-row input:focus {
+  border-color: #999;
+}
+
+.btn-tiny {
+  padding: 3px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.btn-tiny:hover {
+  background: #eee;
+}
+
+.call-list {
+  overflow-y: auto;
+  max-height: calc(100vh - 70px);
+}
+
+.call-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-bottom: 1px solid #f5f5f5;
+  font-family: monospace;
+}
+
+.call-entry:hover {
+  background: #f8f8f8;
+}
+
+.call-time {
+  color: #999;
+  font-size: 10px;
+  flex-shrink: 0;
+  width: 60px;
+}
+
+.call-name {
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.call-duration {
+  color: #666;
+  flex-shrink: 0;
+  width: 50px;
+  text-align: right;
+}
+
+.call-status {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.call-status.ok { background: #22c55e; }
+.call-status.error { background: #ef4444; }
+
+.call-error {
+  color: #dc2626;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}

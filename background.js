@@ -133,26 +133,54 @@ export function trackToolCall(name, durationMs, error) {
     metrics.errorCount++;
     metrics.lastError = { message: error, time: Date.now() };
   }
-  actionLog.unshift({
+  const entry = {
     name,
     time: new Date().toLocaleTimeString(),
     error: error || null,
     durationMs,
-  });
+  };
+  actionLog.unshift(entry);
   if (actionLog.length > MAX_LOG_ENTRIES) actionLog.pop();
+  // Broadcast to DevTools panels
+  broadcastToDevTools({ type: "TOOL_CALL_EVENT", data: entry });
 }
 
 export function trackError(message) {
   metrics.errorCount++;
   metrics.lastError = { message, time: Date.now() };
-  actionLog.unshift({
+  const entry = {
     name: "system",
     time: new Date().toLocaleTimeString(),
     error: message,
     durationMs: 0,
-  });
+  };
+  actionLog.unshift(entry);
   if (actionLog.length > MAX_LOG_ENTRIES) actionLog.pop();
+  broadcastToDevTools({ type: "TOOL_CALL_EVENT", data: entry });
 }
+
+// ── DevTools Panel Connections ──────────────────────────────────────────────
+const devtoolsPorts = new Set();
+
+function broadcastToDevTools(msg) {
+  for (const port of devtoolsPorts) {
+    try { port.postMessage(msg); } catch { devtoolsPorts.delete(port); }
+  }
+}
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "devtools-panel") {
+    devtoolsPorts.add(port);
+    port.onMessage.addListener((msg) => {
+      if (msg.type === "GET_METRICS") {
+        port.postMessage({ type: "METRICS_SNAPSHOT", data: getMetrics() });
+      }
+    });
+    port.onDisconnect.addListener(() => {
+      devtoolsPorts.delete(port);
+    });
+  }
+});
 
 export function getMetrics() {
   const uptime = metrics.connectedAt ? Date.now() - metrics.connectedAt : 0;

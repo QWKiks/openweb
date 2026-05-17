@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OpenWeb Panel</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div class="panel-header">
+    <span class="panel-title">OpenWeb</span>
+    <span class="panel-stats" id="stats">0 calls · 0 errors</span>
+  </div>
+  <div class="filter-row">
+    <input id="filter-input" type="text" placeholder="Filter by tool name..." spellcheck="false">
+    <button id="clear-btn" class="btn-tiny">Clear</button>
+  </div>
+  <div class="call-list" id="call-list"></div>
+  <script src="panel.js"></script>
+</body>
+</html>
