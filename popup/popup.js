@@ -26,6 +26,37 @@ let devMode = false;
 let clickCount = 0;
 const CLICKS_TO_ENABLE = 7;
 let listenersAttached = false;
+let currentTheme = "auto"; // "auto" | "light" | "dark"
+
+// ── Theme ────────────────────────────────────────────────────────────────────
+const THEME_KEY = "webbridge_theme";
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  const effective = theme === "auto"
+    ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    : theme;
+  document.documentElement.setAttribute("data-theme", effective);
+}
+
+async function loadTheme() {
+  try {
+    const result = await chrome.storage.local.get(THEME_KEY);
+    applyTheme(result[THEME_KEY] || "auto");
+  } catch {
+    applyTheme("auto");
+  }
+  // Listen for system theme changes when in auto mode
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (currentTheme === "auto") applyTheme("auto");
+  });
+}
+
+async function setTheme(theme) {
+  currentTheme = theme;
+  await chrome.storage.local.set({ [THEME_KEY]: theme });
+  applyTheme(theme);
+}
 
 // ── Init ────────────────────────────────────────────────────────────────────
 async function initUI() {
@@ -64,6 +95,10 @@ async function initUI() {
   const status = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
   const currentLimit = status?.metrics?.rateLimitPerSec ?? 0;
   $("rate-limit-input").value = currentLimit;
+
+  // Theme selector
+  $("theme-label").textContent = await _msg("themeLabel");
+  $("theme-select").value = currentTheme;
 
   // Attach event listeners only once
   if (!listenersAttached) {
@@ -288,6 +323,11 @@ function attachEventListeners() {
     $("rate-limit-input").value = perSec;
     await chrome.runtime.sendMessage({ type: "SET_RATE_LIMIT", perSec });
   });
+
+  // Theme change
+  $("theme-select").addEventListener("change", async () => {
+    await setTheme($("theme-select").value);
+  });
 }
 
 // ── Dev status ───────────────────────────────────────────────────────────────
@@ -322,4 +362,4 @@ async function updateMcpConfig() {
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
-initUI().then(() => refreshStatus());
+loadTheme().then(() => initUI().then(() => refreshStatus()));

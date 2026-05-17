@@ -50,5 +50,6 @@
   "logLabel": { "message": "Recent" },
   "languageLabel": { "message": "Language" },
   "languageAuto": { "message": "Auto (system)" },
-  "rateLimitLabel": { "message": "Rate limit (calls/sec, 0 = unlimited)" }
+  "rateLimitLabel": { "message": "Rate limit (calls/sec, 0 = unlimited)" },
+  "themeLabel": { "message": "Theme" }
 }

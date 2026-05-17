@@ -37,5 +37,6 @@
   "logLabel": { "message": "Последние" },
   "languageLabel": { "message": "Язык" },
   "languageAuto": { "message": "Авто (системный)" },
-  "rateLimitLabel": { "message": "Лимит вызовов (в секунду, 0 = без лимита)" }
+  "rateLimitLabel": { "message": "Лимит вызовов (в секунду, 0 = без лимита)" },
+  "themeLabel": { "message": "Тема" }
 }

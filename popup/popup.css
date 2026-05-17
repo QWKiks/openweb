@@ -580,3 +580,230 @@ body {
 .trust-actions .btn {
   flex: 1;
 }
+
+/* ── Dark Mode ─────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+}
+
+[data-theme="dark"], :root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] body,
+body[data-theme="dark"] {
+  color: #e5e5e5;
+  background: #1a1a1a;
+}
+
+[data-theme="dark"] .app-title {
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .status {
+  color: #a1a1a1;
+  border-color: #404040;
+  background: #262626;
+}
+
+[data-theme="dark"] .status.connected {
+  color: #4ade80;
+  background: linear-gradient(#262626, #262626) padding-box,
+              linear-gradient(135deg, #22c55e, #3b82f6, #a855f7, #22c55e) border-box;
+}
+
+[data-theme="dark"] .hint {
+  color: #a1a1a1;
+}
+
+[data-theme="dark"] .url-box,
+[data-theme="dark"] .url-row {
+  background: #262626;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .url-box:hover,
+[data-theme="dark"] .url-row:hover {
+  border-color: #525252;
+}
+
+[data-theme="dark"] .url-box code,
+[data-theme="dark"] .url-row code {
+  color: #a1a1a1;
+}
+
+[data-theme="dark"] .copy-btn {
+  color: #737373;
+}
+
+[data-theme="dark"] .copy-btn:hover {
+  background: #333;
+  color: #d4d4d4;
+}
+
+[data-theme="dark"] .copy-btn.copied {
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .stat-item {
+  background: #262626;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .stat-value {
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .stat-label {
+  color: #737373;
+}
+
+[data-theme="dark"] .log-entries {
+  background: #262626;
+  border-color: #404040;
+  color: #a1a1a1;
+}
+
+[data-theme="dark"] .log-entry {
+  border-bottom-color: #333;
+}
+
+[data-theme="dark"] .log-entry-time {
+  color: #737373;
+}
+
+[data-theme="dark"] .log-entry-error {
+  color: #f87171;
+}
+
+[data-theme="dark"] .mcp-section {
+  background: #262626;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .mcp-label {
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .mcp-badge {
+  background: #052e16;
+  color: #4ade80;
+  border-color: #166534;
+}
+
+[data-theme="dark"] .mcp-badge.off {
+  background: #333;
+  color: #737373;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .mcp-code-box {
+  background: #1a1a1a;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .mcp-code-box:hover {
+  border-color: #525252;
+}
+
+[data-theme="dark"] .mcp-code-box code {
+  color: #a1a1a1;
+}
+
+[data-theme="dark"] .mcp-hint {
+  color: #737373;
+}
+
+[data-theme="dark"] .btn {
+  background: #e5e5e5;
+  border-color: #e5e5e5;
+  color: #1a1a1a;
+}
+
+[data-theme="dark"] .btn:hover {
+  background: #d4d4d4;
+  border-color: #d4d4d4;
+}
+
+[data-theme="dark"] .btn-ghost {
+  color: #a1a1a1;
+}
+
+[data-theme="dark"] .btn-ghost:hover {
+  background: #333;
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .dev-actions .btn-ghost {
+  border-color: #404040;
+  background: #262626;
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .dev-actions .btn-ghost:hover {
+  background: #333;
+  border-color: #525252;
+}
+
+[data-theme="dark"] .btn-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+[data-theme="dark"] #dev-settings {
+  border-top-color: #404040;
+}
+
+[data-theme="dark"] .dev-header {
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .field label {
+  color: #a1a1a1;
+}
+
+[data-theme="dark"] .field input,
+[data-theme="dark"] .field select {
+  background: #262626;
+  border-color: #404040;
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .field input:focus,
+[data-theme="dark"] .field select:focus {
+  border-color: #737373;
+}
+
+[data-theme="dark"] .dev-status.success {
+  background: #052e16;
+  color: #4ade80;
+  border-color: #166534;
+}
+
+[data-theme="dark"] .dev-status.error {
+  background: #450a0a;
+  color: #f87171;
+  border-color: #991b1b;
+}
+
+[data-theme="dark"] .dev-hint {
+  color: #737373;
+}
+
+[data-theme="dark"] #trust-dialog {
+  background: #422006;
+  border-color: #92400e;
+}
+
+[data-theme="dark"] #trust-dialog h3 {
+  color: #fbbf24;
+}
+
+[data-theme="dark"] #trust-dialog p {
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .warning {
+  background: #450a0a;
+  color: #f87171 !important;
+}
