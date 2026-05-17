@@ -140,7 +140,7 @@ import { createInterface } from "readline";
 const rl = createInterface({
   input: process.stdin,
   output: process.stdout,
-  prompt: "webbridge> ",
+  prompt: "openweb> ",
 });
 
 let reqCounter = 0;
@@ -299,7 +299,7 @@ Commands:
 
 console.log(`
 ╔══════════════════════════════════════════╗
-║   WebBridge Open — Daemon                ║
+║   OpenWeb — Daemon                       ║
 ║   Listening on ws://127.0.0.1:${PORT}${PATH}    ║
 ╚══════════════════════════════════════════╝
 

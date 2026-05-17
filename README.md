@@ -1,4 +1,4 @@
-# WebBridge Open
+# OpenWeb
 
 Open-source browser automation for AI agents. Control Chrome from Claude Code, Cursor, Windsurf, OpenCode, or any MCP-compatible tool.
 
@@ -27,7 +27,8 @@ npx openweb setup
 This will:
 1. Clone the repo and install dependencies
 2. Register the MCP server with all detected AI tools
-3. Print instructions for loading the Chrome extension
+3. Start the daemon
+4. Print instructions for loading the Chrome extension
 
 ### Manual Install
 
@@ -44,20 +45,12 @@ npm install
 3. Click **Load unpacked** → select the `openweb` folder
 4. The extension icon appears in your toolbar
 
-### Step 2: Start the Daemon
+### Step 2: Connect the Extension
 
-```bash
-npm run daemon
-```
-
-The daemon listens on `ws://127.0.0.1:10086/ws`.
-
-### Step 3: Connect the Extension
-
-1. Click the WebBridge icon in your toolbar
+1. Click the OpenWeb icon in your toolbar
 2. Click **Connect** — the status turns green with an animated border
 
-### Step 4: Register MCP with Your AI Tool
+### Step 3: Register MCP with Your AI Tool
 
 ```bash
 # Interactive — see what's installed
@@ -102,13 +95,13 @@ Restart your AI tool after registration.
 The daemon has a built-in REPL for quick testing:
 
 ```
-webbridge> navigate https://example.com
-webbridge> snapshot
-webbridge> click a
-webbridge> screenshot
-webbridge> evaluate document.title
-webbridge> help
-webbridge> quit
+openweb> navigate https://example.com
+openweb> snapshot
+openweb> click a
+openweb> screenshot
+openweb> evaluate document.title
+openweb> help
+openweb> quit
 ```
 
 ## MCP Server

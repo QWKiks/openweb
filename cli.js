@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * WebBridge Open — CLI
+ * OpenWeb — CLI
  *
- * One-command setup: npx webbridge-open setup
+ * One-command setup: npx openweb setup
  */
 
 import { execSync } from "child_process";
@@ -51,17 +51,23 @@ switch (command) {
       // Some tools may not be detected, that's fine
     }
 
-    // 4. Print extension instructions
-    console.log("  ─────────────────────────────────────────────");
+    // 4. Start the daemon
+    console.log("  Starting daemon...\n");
+    const daemonPath = join(INSTALL_DIR, "daemon.js");
+    try {
+      execSync(`node "${daemonPath}"`, { stdio: "inherit" });
+    } catch {
+      // Daemon was stopped by user, that's fine
+    }
+
+    // 5. Print extension instructions
+    console.log("\n  ─────────────────────────────────────────────");
     console.log("  Load the Chrome extension:");
     console.log("    1. Open chrome://extensions");
     console.log("    2. Enable Developer mode (top right)");
     console.log(`    3. Click "Load unpacked" → select:`);
     console.log(`       ${INSTALL_DIR}`);
-    console.log("    4. Click the WebBridge icon → Connect\n");
-
-    console.log("  Start the daemon:");
-    console.log(`    node ${join(INSTALL_DIR, "daemon.js")}\n`);
+    console.log("    4. Click the OpenWeb icon → Connect\n");
 
     console.log("  Done! Restart your AI tool to pick up MCP.\n");
     break;
@@ -93,7 +99,7 @@ switch (command) {
   OpenWeb — CLI
 
   Usage:
-    npx openweb setup              Full setup (clone + install + MCP register)
+    npx openweb setup              Full setup (clone + install + MCP register + daemon)
     npx openweb daemon             Start the WebSocket daemon
     npx openweb mcp                Start the MCP server
     npx openweb help               Show this message
