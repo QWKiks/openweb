@@ -619,14 +619,25 @@ if (transport === "sse") {
   const port = parseInt(process.argv[process.argv.indexOf("--port") + 1] || "3001", 10);
   const app = express();
 
+  // #10: Bearer auth middleware for SSE transport when token is configured
+  const SSE_AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
+  function sseAuth(req, res, next) {
+    if (!SSE_AUTH_TOKEN) return next(); // No token configured — open access
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith("Bearer ") && auth.slice(7) === SSE_AUTH_TOKEN) {
+      return next();
+    }
+    res.status(401).json({ error: "Unauthorized — Bearer token required" });
+  }
+
   let sseTransport;
 
-  app.get("/sse", (req, res) => {
+  app.get("/sse", sseAuth, (req, res) => {
     sseTransport = new SSEServerTransport("/message", res);
     server.connect(sseTransport);
   });
 
-  app.post("/message", express.json(), (req, res) => {
+  app.post("/message", sseAuth, express.json(), (req, res) => {
     if (sseTransport) {
       sseTransport.handlePostMessage(req, res);
     }

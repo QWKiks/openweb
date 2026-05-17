@@ -32,7 +32,7 @@
   "web_accessible_resources": [
     {
       "resources": ["offscreen-worker.js"],
-      "matches": ["<all_urls>"]
+      "matches": ["chrome-extension://*/*"]
     }
   ]
 }

@@ -10,6 +10,7 @@
  */
 
 import { WebSocketServer } from "ws";
+import { timingSafeEqual } from "crypto";
 
 const PORT = 10086;
 const PATH = "/ws";
@@ -17,7 +18,11 @@ const PATH = "/ws";
 // Auth: Bearer token for controller connections (optional, set via WEBBRIDGE_TOKEN env)
 const AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
 
-const wss = new WebSocketServer({ port: PORT, path: PATH, perMessageDeflate: true });
+// #7: Reject ws:// connections when auth token is configured (token exposed on unencrypted ws://)
+const BIND_HOST = AUTH_TOKEN ? "127.0.0.1" : undefined; // Only bind localhost when auth is active
+const REQUIRE_TLS = AUTH_TOKEN;
+
+const wss = new WebSocketServer({ port: PORT, host: BIND_HOST, path: PATH, perMessageDeflate: true });
 
 // Verify auth on upgrade for controller connections
 wss.on("headers", (headers, req) => {
@@ -51,12 +56,19 @@ function pickExtension() {
 const extensionHeartbeats = new Map();
 const STALE_THRESHOLD_MS = 45000;
 
-// Periodically check for stale extensions
+// #9: Periodically check for stale extensions — remove and close them
 setInterval(() => {
   const now = Date.now();
   for (const [ws, lastBeat] of extensionHeartbeats) {
     if (now - lastBeat > STALE_THRESHOLD_MS) {
-      console.log("[heartbeat] extension is stale (no heartbeat for 45s)");
+      console.log("[heartbeat] extension is stale (no heartbeat for 45s) — removing");
+      extensions.delete(ws);
+      extensionHeartbeats.delete(ws);
+      // Clean up routing entries
+      for (const [rid, ext] of requestToExtension) {
+        if (ext === ws) requestToExtension.delete(rid);
+      }
+      try { ws.close(4002, "Stale — no heartbeat"); } catch {}
     }
   }
 }, 15000);
@@ -68,6 +80,9 @@ wss.on("connection", (ws, req) => {
   let role = null; // "extension" | "controller"
 
   ws.on("message", (raw) => {
+    // #8: Ignore all messages from rejected connections
+    if (role === "rejected") return;
+
     let msg;
     try {
       msg = JSON.parse(raw.toString());
@@ -89,11 +104,35 @@ wss.on("connection", (ws, req) => {
       }
 
       case "register": {
+        // #8: If already rejected, ignore all messages
+        if (role === "rejected") return;
+
         // AI client registers itself — check auth if token is configured
         if (AUTH_TOKEN) {
-          const token = msg.token || null;
-          if (token !== AUTH_TOKEN) {
+          // #7: Reject if connection is not encrypted (ws://)
+          const isSecure = req.socket.encrypted || req.headers["x-forwarded-proto"] === "https";
+          if (!isSecure) {
+            console.log("[register] rejected — unencrypted connection with auth token configured");
+            role = "rejected";
+            ws.send(JSON.stringify({ type: "register_nack", error: "Unencrypted connection not allowed when auth token is set. Use wss://." }));
+            ws.close(4001, "Unauthorized");
+            return;
+          }
+
+          // #6: Timing-safe token comparison
+          const token = msg.token || "";
+          const expected = AUTH_TOKEN;
+          let tokenMatch = false;
+          if (typeof token === "string" && typeof expected === "string" && token.length === expected.length) {
+            try {
+              tokenMatch = timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+            } catch {
+              tokenMatch = false;
+            }
+          }
+          if (!tokenMatch) {
             console.log("[register] auth failed — invalid token");
+            role = "rejected";
             ws.send(JSON.stringify({ type: "register_nack", error: "Invalid or missing auth token" }));
             ws.close(4001, "Unauthorized");
             return;
@@ -139,11 +178,18 @@ wss.on("connection", (ws, req) => {
         if (targetExt) {
           requestToExtension.set(rid, targetExt);
           targetExt.send(raw); // Transparent proxy: forward raw message
-        }
 
-        // Also store a promise resolver if someone is waiting
-        if (pendingResults.has(rid)) {
-          // nobody waiting yet, that's fine
+          // #11: TTL cleanup for pendingResults — auto-resolve with timeout error
+          setTimeout(() => {
+            if (requestToExtension.has(rid) && requestToExtension.get(rid) === targetExt) {
+              requestToExtension.delete(rid);
+              // Also clean up pendingResults if this request was pending
+              if (pendingResults.has(rid)) {
+                pendingResults.get(rid)({ payload: { error: "timeout (30s)" } });
+                pendingResults.delete(rid);
+              }
+            }
+          }, 30000);
         }
         break;
       }
@@ -192,6 +238,8 @@ wss.on("connection", (ws, req) => {
     for (const [rid, ext] of requestToExtension) {
       if (ext === ws) requestToExtension.delete(rid);
     }
+    // #12: Reset rrIndex when extension count changes to avoid out-of-bounds
+    rrIndex = 0;
   });
 
   ws.on("error", (err) => {

@@ -121,7 +121,14 @@ async function updateStatus(status) {
     for (const entry of logEntries.slice(0, 8)) {
       const div = document.createElement("div");
       div.className = "log-entry";
-      div.innerHTML = `<span class="log-entry-name${entry.error ? " log-entry-error" : ""}">${entry.name}</span><span class="log-entry-time">${entry.time}</span>`;
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "log-entry-name" + (entry.error ? " log-entry-error" : "");
+      nameSpan.textContent = entry.name;
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "log-entry-time";
+      timeSpan.textContent = entry.time;
+      div.appendChild(nameSpan);
+      div.appendChild(timeSpan);
       logEl.appendChild(div);
     }
   } else {
