@@ -34,5 +34,7 @@
   "statToolsLabel": { "message": "工具" },
   "statActionsLabel": { "message": "操作" },
   "statUptimeLabel": { "message": "运行时间" },
-  "logLabel": { "message": "最近操作" }
+  "logLabel": { "message": "最近操作" },
+  "languageLabel": { "message": "语言" },
+  "languageAuto": { "message": "自动（系统）" }
 }

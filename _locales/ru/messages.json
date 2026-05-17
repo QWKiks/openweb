@@ -1,0 +1,40 @@
+{
+  "description": {
+    "message": "WebBridge Open — расширение браузера с открытым исходным кодом для AI-агентов. AI может открывать страницы, кликать, заполнять формы, извлекать информацию и автоматизировать веб-задачи."
+  },
+  "readyMessage":      { "message": "Подключено" },
+  "notReadyMessage":   { "message": "Отключено" },
+  "guideText":         { "message": "Запустите WebSocket-демон по этому адресу, затем подключитесь ниже." },
+  "openDevSettings":   { "message": "Подключиться" },
+  "devClickHint": {
+    "message": "Ещё $N$ кликов для открытия расширенных настроек",
+    "placeholders": { "n": { "content": "$1" } }
+  },
+  "devAdvancedSettings": { "message": "Настройки подключения" },
+  "devExit": { "message": "Закрыть" },
+  "devServerUrlLabel": { "message": "WebSocket URL" },
+  "devTest": { "message": "Тест" },
+  "devTesting": { "message": "Тестирование…" },
+  "devSave": { "message": "Сохранить и подключиться" },
+  "devReset": { "message": "Сбросить" },
+  "devTestOk": { "message": "Подключение успешно" },
+  "devTestFailed": { "message": "Ошибка подключения — проверьте адрес и запущен ли демон" },
+  "devSaved": { "message": "Сохранено — переподключение…" },
+  "devUrlEmpty": { "message": "URL не может быть пустым" },
+  "devUrlInvalid": { "message": "Неверный формат URL" },
+  "devUrlWrongProtocol": { "message": "URL должен начинаться с ws:// или wss://" },
+  "devTrustWarningTitle": { "message": "Этот сервер получит управление вашим браузером" },
+  "devTrustWarningBody": { "message": "Он сможет кликать, вводить текст, читать содержимое страниц и управлять вкладками. Продолжайте только если полностью доверяете этому серверу." },
+  "devTrustWarningInsecure": { "message": "⚠ Подключение не зашифровано (ws://) — любой в той же сети может перехватить или подменить трафик." },
+  "devTrustCancel": { "message": "Отмена" },
+  "devTrustConfirm": { "message": "Доверяю — подключиться" },
+  "mcpLabel": { "message": "MCP-сервер" },
+  "mcpBadgeReady": { "message": "Готов" },
+  "mcpHint": { "message": "Скопируйте эту конфигурацию в ваш AI-клиент (Claude Desktop, Cursor, Windsurf), чтобы позволить ему управлять браузером." },
+  "statToolsLabel": { "message": "инструментов" },
+  "statActionsLabel": { "message": "действий" },
+  "statUptimeLabel": { "message": "время" },
+  "logLabel": { "message": "Последние" },
+  "languageLabel": { "message": "Язык" },
+  "languageAuto": { "message": "Авто (системный)" }
+}

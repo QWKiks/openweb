@@ -1,9 +1,16 @@
 /**
  * WebBridge Open — Popup Script
+ * Uses async i18n module for runtime language switching.
  */
 
-function msg(key) {
-  return chrome.i18n.getMessage(key);
+// ── i18n (async) ────────────────────────────────────────────────────────────
+let _msg = (key) => chrome.i18n.getMessage(key); // sync fallback before init
+
+async function initI18n() {
+  const i18n = await import("../lib/i18n.js");
+  await i18n.init();
+  _msg = i18n.getMessage; // Replace with async version
+  return i18n;
 }
 
 const $ = (id) => document.getElementById(id);
@@ -18,42 +25,87 @@ const statusLabel     = $("status-label");
 let devMode = false;
 let clickCount = 0;
 const CLICKS_TO_ENABLE = 7;
+let listenersAttached = false;
 
 // ── Init ────────────────────────────────────────────────────────────────────
-function initUI() {
-  $("version").textContent = `v${chrome.runtime.getManifest().version}`;
-  $("status-label").textContent = msg("notReadyMessage");
-  $("guide-text").textContent = msg("guideText");
-  $("open-dev-btn").textContent = msg("openDevSettings");
+async function initUI() {
+  const i18n = await initI18n();
 
-  $("dev-advanced-label").textContent = msg("devAdvancedSettings");
-  $("dev-exit-btn").textContent = msg("devExit");
-  $("dev-url-label").textContent = msg("devServerUrlLabel");
-  $("dev-test-btn").textContent = msg("devTest");
-  $("dev-save-btn").textContent = msg("devSave");
-  $("dev-reset-btn").textContent = msg("devReset");
-  $("trust-title").textContent = msg("devTrustWarningTitle");
-  $("trust-body").textContent = msg("devTrustWarningBody");
-  $("trust-cancel").textContent = msg("devTrustCancel");
-  $("trust-confirm").textContent = msg("devTrustConfirm");
+  $("version").textContent = `v${chrome.runtime.getManifest().version}`;
+  $("status-label").textContent = await _msg("notReadyMessage");
+  $("guide-text").textContent = await _msg("guideText");
+  $("open-dev-btn").textContent = await _msg("openDevSettings");
+
+  $("dev-advanced-label").textContent = await _msg("devAdvancedSettings");
+  $("dev-exit-btn").textContent = await _msg("devExit");
+  $("dev-url-label").textContent = await _msg("devServerUrlLabel");
+  $("dev-test-btn").textContent = await _msg("devTest");
+  $("dev-save-btn").textContent = await _msg("devSave");
+  $("dev-reset-btn").textContent = await _msg("devReset");
+  $("trust-title").textContent = await _msg("devTrustWarningTitle");
+  $("trust-body").textContent = await _msg("devTrustWarningBody");
+  $("trust-cancel").textContent = await _msg("devTrustCancel");
+  $("trust-confirm").textContent = await _msg("devTrustConfirm");
 
   // MCP section
-  $("mcp-label").textContent = msg("mcpLabel");
-  $("mcp-hint").textContent = msg("mcpHint");
-  $("stat-tools-label").textContent = msg("statToolsLabel");
-  $("stat-actions-label").textContent = msg("statActionsLabel");
-  $("stat-uptime-label").textContent = msg("statUptimeLabel");
-  $("log-label").textContent = msg("logLabel");
-  updateMcpConfig();
+  $("mcp-label").textContent = await _msg("mcpLabel");
+  $("mcp-hint").textContent = await _msg("mcpHint");
+  $("stat-tools-label").textContent = await _msg("statToolsLabel");
+  $("stat-actions-label").textContent = await _msg("statActionsLabel");
+  $("stat-uptime-label").textContent = await _msg("statUptimeLabel");
+  $("log-label").textContent = await _msg("logLabel");
+  await updateMcpConfig();
+
+  // Language selector
+  await initLanguageSelector(i18n);
+
+  // Attach event listeners only once
+  if (!listenersAttached) {
+    listenersAttached = true;
+    attachEventListeners();
+  }
+}
+
+async function initLanguageSelector(i18n) {
+  const select = $("language-select");
+  $("language-label").textContent = await _msg("languageLabel");
+
+  // Only populate options once
+  if (select.options.length === 0) {
+    const autoText = await _msg("languageAuto");
+    const autoOption = document.createElement("option");
+    autoOption.value = "";
+    autoOption.textContent = autoText;
+    select.appendChild(autoOption);
+
+    for (const locale of i18n.AVAILABLE_LOCALES) {
+      const option = document.createElement("option");
+      option.value = locale;
+      option.textContent = i18n.LOCALE_NAMES[locale] || locale;
+      select.appendChild(option);
+    }
+
+    // Handle change — only attached once
+    select.addEventListener("change", async () => {
+      const value = select.value || null;
+      await i18n.setLanguage(value);
+      // Re-apply all labels with new language
+      await initUI();
+    });
+  }
+
+  // Update current value (may have changed)
+  const current = await i18n.getLanguage();
+  select.value = current || "";
 }
 
 // ── Status ───────────────────────────────────────────────────────────────────
-function updateStatus(status) {
+async function updateStatus(status) {
   if (status.connected) {
     connectedView.classList.remove("hidden");
     disconnectedView.classList.add("hidden");
     statusBadge.className = "status connected";
-    statusLabel.textContent = msg("readyMessage");
+    statusLabel.textContent = await _msg("readyMessage");
     $("server-url").textContent = status.serverUrl || "";
 
     // Update metrics
@@ -76,7 +128,7 @@ function updateStatus(status) {
     connectedView.classList.add("hidden");
     disconnectedView.classList.remove("hidden");
     statusBadge.className = "status disconnected";
-    statusLabel.textContent = msg("notReadyMessage");
+    statusLabel.textContent = await _msg("notReadyMessage");
   }
 }
 
@@ -94,38 +146,9 @@ async function refreshStatus() {
   updateStatus(status);
 }
 
-// ── Copy ─────────────────────────────────────────────────────────────────────
+// ── SVG icons ───────────────────────────────────────────────────────────────
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-
-$("copy-url-btn").addEventListener("click", async () => {
-  const text = $("default-url").textContent;
-  await navigator.clipboard.writeText(text);
-  const btn = $("copy-url-btn");
-  btn.innerHTML = CHECK_SVG;
-  btn.classList.add("copied");
-  setTimeout(() => {
-    btn.innerHTML = COPY_SVG;
-    btn.classList.remove("copied");
-  }, 1500);
-});
-
-// ── Open dev settings ────────────────────────────────────────────────────────
-$("open-dev-btn").addEventListener("click", () => {
-  enableDevMode();
-});
-
-// ── Dev mode (7 clicks on connected view) ────────────────────────────────────
-$("dev-mode-trigger").addEventListener("click", () => {
-  if (devMode) return;
-  clickCount++;
-  const remaining = CLICKS_TO_ENABLE - clickCount;
-  if (remaining > 0) {
-    $("dev-click-hint").textContent = msg("devClickHint").replace("$N$", remaining);
-  } else {
-    enableDevMode();
-  }
-});
 
 function enableDevMode() {
   devMode = true;
@@ -134,71 +157,117 @@ function enableDevMode() {
   clickCount = 0;
 }
 
-$("dev-exit-btn").addEventListener("click", () => {
-  devMode = false;
-  devSettings.classList.add("hidden");
-  trustDialog.classList.add("hidden");
-  clickCount = 0;
-});
+// ── Event Listeners (attached once) ─────────────────────────────────────────
+function attachEventListeners() {
+  // Copy URL
+  $("copy-url-btn").addEventListener("click", async () => {
+    const text = $("default-url").textContent;
+    await navigator.clipboard.writeText(text);
+    const btn = $("copy-url-btn");
+    btn.innerHTML = CHECK_SVG;
+    btn.classList.add("copied");
+    setTimeout(() => {
+      btn.innerHTML = COPY_SVG;
+      btn.classList.remove("copied");
+    }, 1500);
+  });
 
-// ── Test ─────────────────────────────────────────────────────────────────────
-$("dev-test-btn").addEventListener("click", async () => {
-  const url = $("dev-server-url").value.trim();
-  if (!url) return showDevStatus(msg("devUrlEmpty"), "error");
-  if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
-    return showDevStatus(msg("devUrlWrongProtocol"), "error");
-  }
+  // Open dev settings
+  $("open-dev-btn").addEventListener("click", () => {
+    enableDevMode();
+  });
 
-  $("dev-test-btn").textContent = msg("devTesting");
-  $("dev-test-btn").disabled = true;
+  // Dev mode (7 clicks on connected view)
+  $("dev-mode-trigger").addEventListener("click", async () => {
+    if (devMode) return;
+    clickCount++;
+    const remaining = CLICKS_TO_ENABLE - clickCount;
+    if (remaining > 0) {
+      $("dev-click-hint").textContent = await _msg("devClickHint", [String(remaining)]);
+    } else {
+      enableDevMode();
+    }
+  });
 
-  const result = await chrome.runtime.sendMessage({ type: "TEST_CONNECTION", url });
+  $("dev-exit-btn").addEventListener("click", () => {
+    devMode = false;
+    devSettings.classList.add("hidden");
+    trustDialog.classList.add("hidden");
+    clickCount = 0;
+  });
 
-  $("dev-test-btn").textContent = msg("devTest");
-  $("dev-test-btn").disabled = false;
+  // Test
+  $("dev-test-btn").addEventListener("click", async () => {
+    const url = $("dev-server-url").value.trim();
+    if (!url) return showDevStatus(await _msg("devUrlEmpty"), "error");
+    if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
+      return showDevStatus(await _msg("devUrlWrongProtocol"), "error");
+    }
 
-  if (result.ok) {
-    showDevStatus(msg("devTestOk"), "success");
-  } else {
-    showDevStatus(msg("devTestFailed"), "error");
-  }
-});
+    $("dev-test-btn").textContent = await _msg("devTesting");
+    $("dev-test-btn").disabled = true;
 
-// ── Save & connect ──────────────────────────────────────────────────────────
-$("dev-save-btn").addEventListener("click", () => {
-  const url = $("dev-server-url").value.trim();
-  if (!url) return showDevStatus(msg("devUrlEmpty"), "error");
-  if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
-    return showDevStatus(msg("devUrlWrongProtocol"), "error");
-  }
+    const result = await chrome.runtime.sendMessage({ type: "TEST_CONNECTION", url });
 
-  trustDialog.classList.remove("hidden");
-  if (url.startsWith("ws://")) {
-    $("trust-insecure").classList.remove("hidden");
-    $("trust-insecure").textContent = msg("devTrustWarningInsecure");
-  } else {
-    $("trust-insecure").classList.add("hidden");
-  }
-});
+    $("dev-test-btn").textContent = await _msg("devTest");
+    $("dev-test-btn").disabled = false;
 
-$("trust-cancel").addEventListener("click", () => {
-  trustDialog.classList.add("hidden");
-});
+    if (result.ok) {
+      showDevStatus(await _msg("devTestOk"), "success");
+    } else {
+      showDevStatus(await _msg("devTestFailed"), "error");
+    }
+  });
 
-$("trust-confirm").addEventListener("click", async () => {
-  const url = $("dev-server-url").value.trim();
-  trustDialog.classList.add("hidden");
+  // Save & connect
+  $("dev-save-btn").addEventListener("click", async () => {
+    const url = $("dev-server-url").value.trim();
+    if (!url) return showDevStatus(await _msg("devUrlEmpty"), "error");
+    if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
+      return showDevStatus(await _msg("devUrlWrongProtocol"), "error");
+    }
 
-  await chrome.runtime.sendMessage({ type: "CONNECT", url });
-  showDevStatus(msg("devSaved"), "success");
-  setTimeout(refreshStatus, 500);
-});
+    trustDialog.classList.remove("hidden");
+    if (url.startsWith("ws://")) {
+      $("trust-insecure").classList.remove("hidden");
+      $("trust-insecure").textContent = await _msg("devTrustWarningInsecure");
+    } else {
+      $("trust-insecure").classList.add("hidden");
+    }
+  });
 
-// ── Reset ────────────────────────────────────────────────────────────────────
-$("dev-reset-btn").addEventListener("click", () => {
-  $("dev-server-url").value = "ws://127.0.0.1:10086/ws";
-  showDevStatus("", "");
-});
+  $("trust-cancel").addEventListener("click", () => {
+    trustDialog.classList.add("hidden");
+  });
+
+  $("trust-confirm").addEventListener("click", async () => {
+    const url = $("dev-server-url").value.trim();
+    trustDialog.classList.add("hidden");
+
+    await chrome.runtime.sendMessage({ type: "CONNECT", url });
+    showDevStatus(await _msg("devSaved"), "success");
+    setTimeout(refreshStatus, 500);
+  });
+
+  // Reset
+  $("dev-reset-btn").addEventListener("click", () => {
+    $("dev-server-url").value = "ws://127.0.0.1:10086/ws";
+    showDevStatus("", "");
+  });
+
+  // Copy MCP config
+  $("copy-mcp-btn").addEventListener("click", async () => {
+    const text = $("mcp-config").textContent;
+    await navigator.clipboard.writeText(text);
+    const btn = $("copy-mcp-btn");
+    btn.innerHTML = CHECK_SVG;
+    btn.classList.add("copied");
+    setTimeout(() => {
+      btn.innerHTML = COPY_SVG;
+      btn.classList.remove("copied");
+    }, 1500);
+  });
+}
 
 // ── Dev status ───────────────────────────────────────────────────────────────
 function showDevStatus(text, type) {
@@ -216,7 +285,7 @@ function showDevStatus(text, type) {
 }
 
 // ── MCP Config ───────────────────────────────────────────────────────────────
-function updateMcpConfig() {
+async function updateMcpConfig() {
   const mcpPath = "mcp-server.js";
   const config = {
     mcpServers: {
@@ -227,22 +296,9 @@ function updateMcpConfig() {
     },
   };
   $("mcp-config").textContent = JSON.stringify(config, null, 2);
-  $("mcp-status-badge").textContent = msg("mcpBadgeReady");
+  $("mcp-status-badge").textContent = await _msg("mcpBadgeReady");
   $("mcp-status-badge").classList.remove("off");
 }
 
-$("copy-mcp-btn").addEventListener("click", async () => {
-  const text = $("mcp-config").textContent;
-  await navigator.clipboard.writeText(text);
-  const btn = $("copy-mcp-btn");
-  btn.innerHTML = CHECK_SVG;
-  btn.classList.add("copied");
-  setTimeout(() => {
-    btn.innerHTML = COPY_SVG;
-    btn.classList.remove("copied");
-  }, 1500);
-});
-
 // ── Boot ─────────────────────────────────────────────────────────────────────
-initUI();
-refreshStatus();
+initUI().then(() => refreshStatus());

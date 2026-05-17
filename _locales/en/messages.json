@@ -47,5 +47,7 @@
   "statToolsLabel": { "message": "tools" },
   "statActionsLabel": { "message": "actions" },
   "statUptimeLabel": { "message": "uptime" },
-  "logLabel": { "message": "Recent" }
+  "logLabel": { "message": "Recent" },
+  "languageLabel": { "message": "Language" },
+  "languageAuto": { "message": "Auto (system)" }
 }
