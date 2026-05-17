@@ -10,7 +10,7 @@ const toolMap = new Map();
 
 // Tools that don't need tab context
 const GLOBAL_TOOLS = new Set([
-  "close_tab", "list_tabs", "close_session", "session",
+  "close_tab", "list_tabs", "close_session", "session", "bookmark",
 ]);
 
 /**

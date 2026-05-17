@@ -13,7 +13,8 @@
     "tabGroups",
     "windows",
     "offscreen",
-    "scripting"
+    "scripting",
+    "bookmarks"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {

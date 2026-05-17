@@ -437,6 +437,23 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "bookmark",
+    description: "Manage Chrome bookmarks: list, create, update, delete, or search bookmarks and folders.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: list, create, update, delete, search", enum: ["list", "create", "update", "delete", "search"] },
+        parentId: { type: "string", description: "Parent folder ID (for list, create). Default: root." },
+        title: { type: "string", description: "Bookmark/folder title (for create, update)" },
+        url: { type: "string", description: "Bookmark URL (for create, update)" },
+        index: { type: "number", description: "Position index in folder (for create)" },
+        id: { type: "string", description: "Bookmark ID (for update, delete)" },
+        query: { type: "string", description: "Search query (for search)" },
+      },
+      required: ["cmd"],
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────

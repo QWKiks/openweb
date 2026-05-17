@@ -38,6 +38,7 @@ import { ScrollTool } from "./tools/scroll.js";
 import { WaitTool } from "./tools/wait.js";
 import { DragDropTool } from "./tools/drag-drop.js";
 import { ContentScriptFallback } from "./tools/content-script.js";
+import { BookmarkTool } from "./tools/bookmark.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -71,6 +72,7 @@ register(new ScrollTool());
 register(new WaitTool());
 register(new DragDropTool());
 register(new ContentScriptFallback());
+register(new BookmarkTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";
