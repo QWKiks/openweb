@@ -1,5 +1,7 @@
 # OpenWeb
 
+**[English](README.md)** · **[Русский](README.ru.md)** · **[简体中文](README.zh.md)**
+
 Open-source browser automation for AI agents. Control Chrome from Claude Code, Cursor, Windsurf, OpenCode, or any MCP-compatible tool.
 
 ## Architecture
@@ -155,7 +157,7 @@ openweb/
 ├── mcp-server.js          # MCP server (stdio/SSE)
 ├── setup-mcp.js           # MCP registration script
 ├── package.json
-├── _locales/              # i18n (en, zh_CN)
+├── _locales/              # i18n (en, ru, zh_CN)
 ├── icon/                  # Extension icons
 ├── popup/                 # Extension popup UI
 │   ├── popup.html
