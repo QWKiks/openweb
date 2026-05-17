@@ -118,8 +118,10 @@ export function checkRateLimit() {
 // ── Metrics & Action Log ────────────────────────────────────────────────────
 const metrics = {
   toolCallCount: 0,
+  errorCount: 0,
   totalDurationMs: 0,
   connectedAt: null,
+  lastError: null,
 };
 const actionLog = []; // { name, time, error? }
 const MAX_LOG_ENTRIES = 20;
@@ -127,6 +129,10 @@ const MAX_LOG_ENTRIES = 20;
 export function trackToolCall(name, durationMs, error) {
   metrics.toolCallCount++;
   metrics.totalDurationMs += durationMs;
+  if (error) {
+    metrics.errorCount++;
+    metrics.lastError = { message: error, time: Date.now() };
+  }
   actionLog.unshift({
     name,
     time: new Date().toLocaleTimeString(),
@@ -136,15 +142,29 @@ export function trackToolCall(name, durationMs, error) {
   if (actionLog.length > MAX_LOG_ENTRIES) actionLog.pop();
 }
 
+export function trackError(message) {
+  metrics.errorCount++;
+  metrics.lastError = { message, time: Date.now() };
+  actionLog.unshift({
+    name: "system",
+    time: new Date().toLocaleTimeString(),
+    error: message,
+    durationMs: 0,
+  });
+  if (actionLog.length > MAX_LOG_ENTRIES) actionLog.pop();
+}
+
 export function getMetrics() {
   const uptime = metrics.connectedAt ? Date.now() - metrics.connectedAt : 0;
   return {
     toolCallCount: metrics.toolCallCount,
+    errorCount: metrics.errorCount,
     avgDurationMs: metrics.toolCallCount > 0 ? Math.round(metrics.totalDurationMs / metrics.toolCallCount) : 0,
     uptime,
     actionLog,
     toolCount: getToolNames().length,
     rateLimitPerSec,
+    lastError: metrics.lastError,
   };
 }
 

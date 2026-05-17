@@ -807,3 +807,48 @@ body[data-theme="dark"] {
   background: #450a0a;
   color: #f87171 !important;
 }
+
+/* ── Error Banner ──────────────────────────────────────────────────────────── */
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #991b1b;
+  font-weight: 500;
+}
+
+.error-banner-close {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: #991b1b;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.error-banner-close:hover {
+  color: #7f1d1d;
+}
+
+[data-theme="dark"] .error-banner {
+  background: #450a0a;
+  border-color: #991b1b;
+  color: #f87171;
+}
+
+[data-theme="dark"] .error-banner-close {
+  color: #f87171;
+}
+
+[data-theme="dark"] .error-banner-close:hover {
+  color: #fca5a5;
+}

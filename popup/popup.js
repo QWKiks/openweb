@@ -172,6 +172,15 @@ async function updateStatus(status) {
       div.appendChild(timeSpan);
       logEl.appendChild(div);
     }
+
+    // Error banner
+    const errorBanner = $("error-banner");
+    if (m.lastError && Date.now() - m.lastError.time < 30000) {
+      $("error-banner-text").textContent = m.lastError.message;
+      errorBanner.classList.remove("hidden");
+    } else {
+      errorBanner.classList.add("hidden");
+    }
   } else {
     connectedView.classList.add("hidden");
     disconnectedView.classList.remove("hidden");
@@ -327,6 +336,11 @@ function attachEventListeners() {
   // Theme change
   $("theme-select").addEventListener("change", async () => {
     await setTheme($("theme-select").value);
+  });
+
+  // Error banner close
+  $("error-banner-close").addEventListener("click", () => {
+    $("error-banner").classList.add("hidden");
   });
 }
 
