@@ -8,6 +8,7 @@ import { getActiveTab } from "../lib/tab-manager.js";
 
 const capturingTabs = new Set();
 const requestStore = new Map(); // tabId → Map<requestId, requestInfo>
+const MAX_REQUESTS_PER_TAB = 500;
 
 function getRequestMap(tabId) {
   let map = requestStore.get(tabId);
@@ -31,6 +32,11 @@ function ensureListener() {
     const store = getRequestMap(tabId);
 
     if (method === "Network.requestWillBeSent") {
+      // LRU: evict oldest if at capacity
+      if (store.size >= MAX_REQUESTS_PER_TAB) {
+        const oldestKey = store.keys().next().value;
+        store.delete(oldestKey);
+      }
       store.set(params.requestId, {
         requestId: params.requestId,
         url: params.request.url,

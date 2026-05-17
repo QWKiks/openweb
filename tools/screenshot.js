@@ -14,8 +14,8 @@ export class ScreenshotTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    const format = args.format || "png";
-    const quality = format === "jpeg" ? args.quality || 80 : undefined;
+    const format = args.format || "jpeg";
+    const quality = format === "jpeg" ? (args.quality || 60) : undefined;
     const selector = typeof args.selector === "string" ? args.selector : "";
 
     const options = { format };

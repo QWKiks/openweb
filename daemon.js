@@ -24,6 +24,9 @@ const controllers = new Set();
 /** Pending tool_results keyed by requestId */
 const pendingResults = new Map();
 
+/** Route tool_calls to specific extension: requestId → WebSocket */
+const requestToExtension = new Map();
+
 wss.on("connection", (ws, req) => {
   const ip = req.socket.remoteAddress;
   console.log(`[+] client connected from ${ip}`);
@@ -64,14 +67,31 @@ wss.on("connection", (ws, req) => {
         break;
 
       case "tool_call": {
-        // From controller → forward to ALL extensions
+        // From controller → route to ONE extension (not broadcast)
         const rid = msg.requestId;
         console.log(
           `[tool_call] → ${msg.payload?.name} (req ${rid})`
         );
-        const json = JSON.stringify(msg);
-        for (const ext of extensions) {
-          if (ext.readyState === ext.OPEN) ext.send(json);
+
+        // No extensions connected — immediate error
+        if (extensions.size === 0) {
+          console.log("[tool_call] no extension connected, returning error");
+          const errorResult = JSON.stringify({
+            type: "tool_result",
+            responseToRequestId: rid,
+            payload: { error: "No extension connected. Open the extension first." },
+          });
+          for (const ctrl of controllers) {
+            if (ctrl.readyState === ctrl.OPEN) ctrl.send(errorResult);
+          }
+          break;
+        }
+
+        // Route to first available extension
+        const targetExt = extensions.values().next().value;
+        if (targetExt?.readyState === targetExt.OPEN) {
+          requestToExtension.set(rid, targetExt);
+          targetExt.send(raw); // Transparent proxy: forward raw message
         }
 
         // Also store a promise resolver if someone is waiting
@@ -82,7 +102,7 @@ wss.on("connection", (ws, req) => {
       }
 
       case "tool_result": {
-        // From extension → forward to ALL controllers
+        // From extension → route to the controller that made the request
         const rid = msg.responseToRequestId;
         const payload = msg.payload;
         if (payload.error) {
@@ -93,10 +113,15 @@ wss.on("connection", (ws, req) => {
             typeof data === "object" ? JSON.stringify(data).slice(0, 120) : data;
           console.log(`[tool_result:${rid}] ${summary}`);
         }
-        const json = JSON.stringify(msg);
+
+        // Transparent proxy: forward raw to all controllers
+        // (we can't know which controller sent the request, so broadcast to controllers only)
         for (const ctrl of controllers) {
-          if (ctrl.readyState === ctrl.OPEN) ctrl.send(json);
+          if (ctrl.readyState === ctrl.OPEN) ctrl.send(raw);
         }
+
+        // Clean up routing
+        requestToExtension.delete(rid);
 
         // Resolve pending promise
         if (pendingResults.has(rid)) {
@@ -115,6 +140,10 @@ wss.on("connection", (ws, req) => {
     console.log(`[-] ${role || "client"} disconnected`);
     extensions.delete(ws);
     controllers.delete(ws);
+    // Clean up routing entries for this extension
+    for (const [rid, ext] of requestToExtension) {
+      if (ext === ws) requestToExtension.delete(rid);
+    }
   });
 
   ws.on("error", (err) => {

@@ -50,13 +50,22 @@ const TOOLS = [
   },
   {
     name: "screenshot",
-    description: "Take a screenshot of the current page. Returns base64 PNG image.",
+    description: "Take a screenshot of the current page. Returns base64 JPEG image (default) or PNG.",
     inputSchema: {
       type: "object",
       properties: {
         selector: {
           type: "string",
           description: "CSS selector to screenshot a specific element (optional)",
+        },
+        format: {
+          type: "string",
+          description: "Image format: jpeg (default, smaller) or png",
+          enum: ["jpeg", "png"],
+        },
+        quality: {
+          type: "number",
+          description: "JPEG quality 0-100 (default: 60)",
         },
       },
     },
@@ -368,17 +377,53 @@ const TOOLS = [
 let ws = null;
 let requestIdCounter = 0;
 const pendingCalls = new Map();
+let reconnectTimer = null;
+let reconnectDelay = 1000;
+const MAX_RECONNECT_DELAY = 30000;
+
+function scheduleReconnect() {
+  if (reconnectTimer) return; // Already scheduled
+  const delay = reconnectDelay;
+  reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
+  console.error(`[mcp] reconnecting to daemon in ${delay}ms...`);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectToDaemon().catch(() => {}); // scheduleReconnect will be called again on close
+  }, delay);
+}
+
+function resetReconnect() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectDelay = 1000;
+}
 
 function connectToDaemon() {
   return new Promise((resolve, reject) => {
     ws = new WebSocket(DAEMON_URL);
 
     ws.on("open", () => {
+      resetReconnect();
       ws.send(JSON.stringify({ type: "register" }));
       resolve();
     });
 
     ws.on("message", (raw) => {
+      // Handle binary frames (for screenshots)
+      if (Buffer.isBuffer(raw)) {
+        // Binary frame: first 4 bytes = requestId (uint32 LE), rest = binary data
+        if (raw.length < 4) return;
+        const reqId = raw.readUInt32LE(0);
+        const resolver = pendingCalls.get(String(reqId));
+        if (resolver) {
+          pendingCalls.delete(String(reqId));
+          resolver({ data: raw.slice(4), binary: true });
+        }
+        return;
+      }
+
       const msg = JSON.parse(raw.toString());
 
       if (msg.type === "ping") {
@@ -401,6 +446,8 @@ function connectToDaemon() {
         pendingCalls.delete(id);
         resolver({ error: "WebSocket disconnected" });
       }
+      // Auto-reconnect
+      scheduleReconnect();
     });
 
     ws.on("error", (err) => {
@@ -476,12 +523,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   // For screenshots, return as image
   if (name === "screenshot" && data?.data) {
+    const format = data.format || "jpeg";
+    const mimeType = format === "png" ? "image/png" : "image/jpeg";
     return {
       content: [
         {
           type: "image",
           data: data.data,
-          mimeType: "image/png",
+          mimeType,
         },
       ],
     };
