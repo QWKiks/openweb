@@ -45,17 +45,34 @@ cd openweb
 npm install
 ```
 
-### Step 1: Load the Chrome Extension
+### Step 1: Start the Daemon
+
+The daemon is the WebSocket relay between the MCP server and the Chrome extension.
+
+```bash
+npm start
+# or: node daemon.js
+```
+
+You should see:
+```
+[daemon] listening on ws://127.0.0.1:10086/ws
+```
+
+> **Auth (optional):** Set `WEBBRIDGE_TOKEN` env var to require Bearer auth for controllers and SSE transport.
+> ```bash
+> WEBBRIDGE_TOKEN=mysecret npm start
+> ```
+
+### Step 2: Load the Chrome Extension
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked** → select the `openweb` folder
 4. The extension icon appears in your toolbar
+5. Click the OpenWeb icon → the status should turn **green** (connected to daemon)
 
-### Step 2: Connect the Extension
-
-1. Click the OpenWeb icon in your toolbar
-2. Click **Connect** — the status turns green with an animated border
+> If the status stays red, click **Connect** in the popup or check that the daemon is running.
 
 ### Step 3: Register MCP with Your AI Tool
 
@@ -112,6 +129,8 @@ Restart your AI tool after registration.
 | `dialog` | Handle JS dialogs (alert, confirm, prompt) |
 | `emulate` | Emulate mobile device, geolocation, user agent |
 | `session` | Save and restore browser session state |
+| `bookmark` | Manage Chrome bookmarks (list, create, update, delete, search) |
+| `extension` | Manage Chrome extensions (list, enable, disable, info) |
 
 ## Daemon REPL
 
@@ -163,10 +182,17 @@ openweb/
 │   ├── popup.html
 │   ├── popup.css
 │   └── popup.js
+├── devtools/              # Chrome DevTools panel
+│   ├── devtools.html      # DevTools entry point
+│   ├── devtools.js        # Panel registration
+│   ├── panel.html         # Panel UI
+│   ├── panel.css
+│   └── panel.js           # Real-time tool call monitor
 ├── lib/                   # Shared libraries
 │   ├── cdp.js             # Chrome DevTools Protocol manager
 │   ├── ws-client.js       # WebSocket client (extension side)
 │   ├── tab-manager.js     # Tab tracking & grouping
+│   ├── i18n.js            # Runtime i18n module
 │   ├── snapshot-refs.js   # Accessibility tree ref system
 │   └── match-pattern.js   # URL match pattern parser
 └── tools/                 # Browser automation tools
@@ -198,6 +224,8 @@ openweb/
     ├── dialog.js
     ├── emulate.js
     ├── session.js
+    ├── bookmark.js
+    ├── extension.js
     ├── save-as-pdf.js
     ├── upload.js
     └── close-session.js
