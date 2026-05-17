@@ -23,6 +23,20 @@ import { UploadTool } from "./tools/upload.js";
 import { CloseTabTool } from "./tools/close-tab.js";
 import { ListTabsTool } from "./tools/list-tabs.js";
 import { CloseSessionTool } from "./tools/close-session.js";
+import { HoverTool } from "./tools/hover.js";
+import { SelectTool } from "./tools/select.js";
+import { GetTextTool } from "./tools/get-text.js";
+import { CookieTool } from "./tools/cookie.js";
+import { HistoryTool } from "./tools/history.js";
+import { InterceptTool } from "./tools/intercept.js";
+import { ViewportTool } from "./tools/viewport.js";
+import { ConsoleTool } from "./tools/console.js";
+import { DialogTool } from "./tools/dialog.js";
+import { EmulateTool } from "./tools/emulate.js";
+import { SessionTool } from "./tools/session.js";
+import { ScrollTool } from "./tools/scroll.js";
+import { WaitTool } from "./tools/wait.js";
+import { DragDropTool } from "./tools/drag-drop.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -41,6 +55,20 @@ register(new UploadTool());
 register(new CloseTabTool());
 register(new ListTabsTool());
 register(new CloseSessionTool());
+register(new HoverTool());
+register(new SelectTool());
+register(new GetTextTool());
+register(new CookieTool());
+register(new HistoryTool());
+register(new InterceptTool());
+register(new ViewportTool());
+register(new ConsoleTool());
+register(new DialogTool());
+register(new EmulateTool());
+register(new SessionTool());
+register(new ScrollTool());
+register(new WaitTool());
+register(new DragDropTool());
 
 // ── Reconnect WebSocket on service worker wake-up ───────────────────────────
 wsClient.reconnectIfNeeded();

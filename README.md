@@ -86,14 +86,28 @@ Restart your AI tool after registration.
 | `screenshot` | Take a PNG screenshot |
 | `click` | Click an element by CSS selector or `@e` ref |
 | `fill` | Fill a form field by CSS selector or `@e` ref |
+| `hover` | Hover over an element (triggers mouseover/mouseenter) |
+| `select` | Select an option in a `<select>` dropdown |
+| `scroll` | Scroll page or element (down/up/top/bottom) |
+| `get_text` | Extract text content from page or element |
 | `key_type` | Type text into the focused element |
 | `send_keys` | Send key combos (Enter, Ctrl+A, Tab, etc.) |
+| `drag_drop` | Drag an element and drop onto another |
+| `wait` | Wait for selector, navigation, or network idle |
 | `evaluate` | Execute JavaScript on the page |
 | `list_tabs` | List all open browser tabs |
 | `find_tab` | Find a tab by URL pattern |
 | `close_tab` | Close a tab by ID |
 | `mouse_click` | Physical mouse click via CDP |
 | `network` | Capture/list/inspect HTTP requests |
+| `intercept` | Block, redirect, modify, or mock HTTP requests |
+| `cookie` | Get, set, or delete cookies |
+| `history` | Go back, forward, or refresh the page |
+| `viewport` | Change viewport size and device scale factor |
+| `console` | Capture and read browser console output |
+| `dialog` | Handle JS dialogs (alert, confirm, prompt) |
+| `emulate` | Emulate mobile device, geolocation, user agent |
+| `session` | Save and restore browser session state |
 
 ## Daemon REPL
 
@@ -156,16 +170,30 @@ openweb/
     ├── navigate.js
     ├── click.js
     ├── fill.js
+    ├── hover.js
+    ├── select.js
+    ├── scroll.js
+    ├── get-text.js
     ├── snapshot.js
     ├── screenshot.js
     ├── evaluate.js
     ├── key-type.js
     ├── send-keys.js
     ├── mouse-click.js
+    ├── drag-drop.js
+    ├── wait.js
     ├── list-tabs.js
     ├── find-tab.js
     ├── close-tab.js
     ├── network.js
+    ├── intercept.js
+    ├── cookie.js
+    ├── history.js
+    ├── viewport.js
+    ├── console.js
+    ├── dialog.js
+    ├── emulate.js
+    ├── session.js
     ├── save-as-pdf.js
     ├── upload.js
     └── close-session.js

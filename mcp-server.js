@@ -164,6 +164,204 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "hover",
+    description: "Hover over an element by CSS selector or snapshot ref. Triggers mouseover/mouseenter events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref of the element to hover over" },
+      },
+      required: ["selector"],
+    },
+  },
+  {
+    name: "select",
+    description: "Select an option in a <select> dropdown element by CSS selector or snapshot ref.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref of the <select> element" },
+        value: { type: "string", description: "Option value or text content to select. Use a number for index." },
+      },
+      required: ["selector", "value"],
+    },
+  },
+  {
+    name: "get_text",
+    description: "Extract text content from the page or a specific element. Returns clean text without HTML markup.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref (optional — returns full page text if omitted)" },
+        maxLength: { type: "number", description: "Maximum text length to return (default: 50000)" },
+        includeHidden: { type: "boolean", description: "Include hidden/invisible elements (default: false)" },
+      },
+    },
+  },
+  {
+    name: "cookie",
+    description: "Get, set, or delete cookies for the current page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: get, set, or delete", enum: ["get", "set", "delete"] },
+        name: { type: "string", description: "Cookie name" },
+        value: { type: "string", description: "Cookie value (for set)" },
+        domain: { type: "string", description: "Cookie domain (for set)" },
+        path: { type: "string", description: "Cookie path (for set)" },
+        secure: { type: "boolean", description: "Secure flag (for set)" },
+        httpOnly: { type: "boolean", description: "HttpOnly flag (for set)" },
+        sameSite: { type: "string", description: "SameSite policy (for set): Strict, Lax, None" },
+        expires: { type: "number", description: "Expiration timestamp in seconds since epoch (for set)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "history",
+    description: "Navigate browser history: go back, go forward, or refresh the current page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: back, forward, or refresh", enum: ["back", "forward", "refresh"] },
+        ignoreCache: { type: "boolean", description: "Bypass cache on refresh (default: false)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "intercept",
+    description: "Intercept, modify, block, or mock HTTP requests. Start interception, add rules, then stop when done.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: start, stop, add_rule, remove_rule, list_rules", enum: ["start", "stop", "add_rule", "remove_rule", "list_rules"] },
+        pattern: { type: "string", description: "URL substring to match (for add_rule)" },
+        action: { type: "string", description: "Intercept action: block, redirect, modify, mock (for add_rule)", enum: ["block", "redirect", "modify", "mock"] },
+        redirectUrl: { type: "string", description: "Redirect target URL (for redirect action)" },
+        headers: { type: "object", description: "Headers to add/modify (for modify action)" },
+        mockBody: { type: "string", description: "Response body for mock action" },
+        mockHeaders: { type: "object", description: "Response headers for mock action" },
+        responseCode: { type: "number", description: "HTTP response code (for mock/redirect)" },
+        ruleId: { type: "string", description: "Rule ID (for remove_rule)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "viewport",
+    description: "Change the browser viewport size, device scale factor, and touch mode. Useful for responsive testing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: set, get, or reset", enum: ["set", "get", "reset"] },
+        width: { type: "number", description: "Viewport width in pixels (default: 1280)" },
+        height: { type: "number", description: "Viewport height in pixels (default: 720)" },
+        deviceScaleFactor: { type: "number", description: "Device pixel ratio (default: 1)" },
+        mobile: { type: "boolean", description: "Enable mobile mode (default: false)" },
+        touch: { type: "boolean", description: "Enable touch emulation (default: same as mobile)" },
+      },
+    },
+  },
+  {
+    name: "console",
+    description: "Capture and read browser console output (log, warn, error, info). Start capture, then list entries.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: start, stop, list, or clear", enum: ["start", "stop", "list", "clear"] },
+        type: { type: "string", description: "Filter by log type: log, warn, error, info, debug" },
+        limit: { type: "number", description: "Max entries to return (default: 100)" },
+        offset: { type: "number", description: "Offset for pagination (default: 0)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "dialog",
+    description: "Handle JavaScript dialogs (alert, confirm, prompt, beforeunload). List, accept/dismiss, or auto-handle.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: list, handle, or auto", enum: ["list", "handle", "auto"] },
+        accept: { type: "boolean", description: "Accept (true) or dismiss (false) the dialog (default: true)" },
+        promptText: { type: "string", description: "Text to enter in prompt dialogs" },
+        disable: { type: "boolean", description: "Disable auto-handler (for auto cmd)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "emulate",
+    description: "Emulate a mobile device, set geolocation, or change user agent. Includes device presets.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: device, geolocation, user_agent, or reset", enum: ["device", "geolocation", "user_agent", "reset"] },
+        device: { type: "string", description: "Device preset: iphone_14, iphone_14_pro_max, pixel_7, ipad_pro, galaxy_s23" },
+        width: { type: "number", description: "Custom viewport width" },
+        height: { type: "number", description: "Custom viewport height" },
+        deviceScaleFactor: { type: "number", description: "Custom device pixel ratio" },
+        mobile: { type: "boolean", description: "Mobile mode" },
+        touch: { type: "boolean", description: "Touch emulation" },
+        userAgent: { type: "string", description: "Custom user agent string" },
+        latitude: { type: "number", description: "Geolocation latitude" },
+        longitude: { type: "number", description: "Geolocation longitude" },
+        accuracy: { type: "number", description: "Geolocation accuracy in meters (default: 100)" },
+        clear: { type: "boolean", description: "Clear geolocation override" },
+        platform: { type: "string", description: "Platform to report (for user_agent)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "session",
+    description: "Save and restore browser session state (open tabs). Persists across service worker restarts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: save, restore, clear, or info", enum: ["save", "restore", "clear", "info"] },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "scroll",
+    description: "Scroll the page or a specific element in a given direction by viewport heights.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        direction: { type: "string", description: "Direction: down, up, left, right, top, bottom", enum: ["down", "up", "left", "right", "top", "bottom"] },
+        amount: { type: "number", description: "Number of viewport heights to scroll (default: 3)" },
+        selector: { type: "string", description: "CSS selector to scroll a specific element (optional — scrolls page if omitted)" },
+      },
+    },
+  },
+  {
+    name: "wait",
+    description: "Wait for a condition on the page: element to appear (selector), navigation to complete, or network idle.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", description: "Wait type: selector, navigation, or network_idle", enum: ["selector", "navigation", "network_idle"] },
+        selector: { type: "string", description: "CSS selector to wait for (for type=selector)" },
+        timeout: { type: "number", description: "Maximum wait time in ms (default: 10000)" },
+      },
+    },
+  },
+  {
+    name: "drag_drop",
+    description: "Drag an element and drop it onto another element using CDP mouse events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: { type: "string", description: "CSS selector or @e ref of the element to drag" },
+        target: { type: "string", description: "CSS selector or @e ref of the drop target" },
+      },
+      required: ["source", "target"],
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────

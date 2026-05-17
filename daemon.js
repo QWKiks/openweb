@@ -159,6 +159,19 @@ Commands:
   screenshot               Take screenshot
   click <selector>         Click element
   fill <selector> <value>  Fill form field
+  hover <selector>         Hover over element
+  select <selector> <val>  Select option in <select>
+  scroll <dir>             Scroll page (down/up/top/bottom)
+  get_text [selector]      Get page or element text
+  history <cmd>            back, forward, refresh
+  cookie <cmd> [name]      get, set, delete cookies
+  console <cmd>            start, stop, list, clear
+  dialog <cmd>             list, handle, auto
+  viewport <cmd> [w] [h]   set, get, reset
+  emulate <cmd>            device, geolocation, user_agent, reset
+  session <cmd>             save, restore, clear, info
+  intercept <cmd>          start, stop, add_rule, list_rules
+  wait <type> [selector]   selector, navigation, network_idle
   evaluate <code>          Run JS on page
   list_tabs                List open tabs
   raw <json>               Send raw tool_call JSON
@@ -202,6 +215,20 @@ Commands:
       screenshot: () => ({ name: "screenshot", args: {} }),
       click:      () => ({ name: "click", args: { selector: parts[1] } }),
       fill:       () => ({ name: "fill", args: { selector: parts[1], value: parts.slice(2).join(" ") } }),
+      hover:      () => ({ name: "hover", args: { selector: parts[1] } }),
+      select:     () => ({ name: "select", args: { selector: parts[1], value: parts[2] } }),
+      scroll:     () => ({ name: "scroll", args: { direction: parts[1] || "down", amount: parseInt(parts[2]) || 3 } }),
+      get_text:   () => ({ name: "get_text", args: parts[1] ? { selector: parts[1] } : {} }),
+      history:    () => ({ name: "history", args: { cmd: parts[1] || "back" } }),
+      cookie:     () => ({ name: "cookie", args: { cmd: parts[1] || "get", name: parts[2] } }),
+      console:    () => ({ name: "console", args: { cmd: parts[1] || "list" } }),
+      dialog:     () => ({ name: "dialog", args: { cmd: parts[1] || "list" } }),
+      viewport:   () => ({ name: "viewport", args: { cmd: parts[1] || "get", width: parseInt(parts[2]) || 1280, height: parseInt(parts[3]) || 720 } }),
+      emulate:    () => ({ name: "emulate", args: { cmd: parts[1] || "device", device: parts[2] } }),
+      session:    () => ({ name: "session", args: { cmd: parts[1] || "info" } }),
+      intercept:  () => ({ name: "intercept", args: { cmd: parts[1] || "list_rules" } }),
+      wait:       () => ({ name: "wait", args: { type: parts[1] || "selector", selector: parts[2] } }),
+      drag_drop:  () => ({ name: "drag_drop", args: { source: parts[1], target: parts[2] } }),
       evaluate:   () => ({ name: "evaluate", args: { code: parts.slice(1).join(" ") } }),
       list_tabs:  () => ({ name: "list_tabs", args: {} }),
       find_tab:   () => ({ name: "find_tab", args: { url: parts[1] } }),
