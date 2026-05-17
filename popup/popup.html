@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <img class="logo" src="../icon/48.png" alt="">
+        <div class="title-group">
+          <span class="app-title">WebBridge</span>
+          <span class="version" id="version"></span>
+        </div>
+      </div>
+      <div class="status" id="status-badge">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-label"></span>
+      </div>
+    </div>
+
+    <!-- Connected -->
+    <div id="connected-view" class="view hidden">
+      <div class="url-row">
+        <code id="server-url"></code>
+      </div>
+
+      <!-- MCP Server Section -->
+      <div class="mcp-section">
+        <div class="mcp-header">
+          <span class="mcp-label" id="mcp-label"></span>
+          <span class="mcp-badge" id="mcp-status-badge"></span>
+        </div>
+        <div class="mcp-code-box">
+          <code id="mcp-config"></code>
+          <button class="copy-btn" id="copy-mcp-btn" title="Copy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <p class="mcp-hint" id="mcp-hint"></p>
+      </div>
+
+      <button id="dev-mode-trigger" class="dev-trigger"></button>
+    </div>
+
+    <!-- Disconnected -->
+    <div id="disconnected-view" class="view hidden">
+      <p class="hint" id="guide-text"></p>
+      <div class="url-box">
+        <code id="default-url">ws://127.0.0.1:10086/ws</code>
+        <button class="copy-btn" id="copy-url-btn" title="Copy">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+      <button id="open-dev-btn" class="btn"></button>
+    </div>
+
+    <!-- Settings -->
+    <div id="dev-settings" class="hidden">
+      <div class="dev-header">
+        <span id="dev-advanced-label"></span>
+        <button id="dev-exit-btn" class="btn-ghost">✕</button>
+      </div>
+      <div class="field">
+        <label id="dev-url-label" for="dev-server-url"></label>
+        <input id="dev-server-url" type="text" placeholder="ws://127.0.0.1:10086/ws" spellcheck="false">
+      </div>
+      <div class="dev-actions">
+        <button id="dev-test-btn" class="btn btn-ghost"></button>
+        <button id="dev-save-btn" class="btn"></button>
+      </div>
+      <div id="dev-reset-row">
+        <button id="dev-reset-btn" class="btn-ghost btn-tiny"></button>
+      </div>
+      <p id="dev-status-msg" class="dev-status hidden"></p>
+      <p id="dev-click-hint" class="dev-hint"></p>
+
+      <!-- Trust -->
+      <div id="trust-dialog" class="hidden">
+        <h3 id="trust-title"></h3>
+        <p id="trust-body"></p>
+        <p id="trust-insecure" class="warning hidden"></p>
+        <div class="trust-actions">
+          <button id="trust-cancel" class="btn btn-ghost"></button>
+          <button id="trust-confirm" class="btn btn-danger"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

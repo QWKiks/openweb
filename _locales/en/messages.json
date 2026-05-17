@@ -1,0 +1,47 @@
+{
+  "description": {
+    "message": "WebBridge Open — open-source browser extension for AI agents. AI can open pages, click, fill forms, extract info, and automate web tasks.",
+    "description": "Extension description shown in Chrome Web Store and extension management page."
+  },
+  "readyMessage": {
+    "message": "Connected",
+    "description": "Status badge when connected."
+  },
+  "notReadyMessage": {
+    "message": "Disconnected",
+    "description": "Status badge when disconnected."
+  },
+  "guideText": {
+    "message": "Start a WebSocket daemon on this address, then connect below.",
+    "description": "Short instruction shown when disconnected."
+  },
+  "openDevSettings": {
+    "message": "Connect",
+    "description": "Button to open connection settings."
+  },
+  "devClickHint": {
+    "message": "$N$ more clicks to enable advanced options",
+    "placeholders": { "n": { "content": "$1" } }
+  },
+  "devAdvancedSettings": { "message": "Connection Settings" },
+  "devExit": { "message": "Close" },
+  "devServerUrlLabel": { "message": "WebSocket URL" },
+  "devTest": { "message": "Test" },
+  "devTesting": { "message": "Testing…" },
+  "devSave": { "message": "Save & Connect" },
+  "devReset": { "message": "Reset" },
+  "devTestOk": { "message": "Connection OK" },
+  "devTestFailed": { "message": "Connection failed — check address and that the daemon is running" },
+  "devSaved": { "message": "Saved — reconnecting…" },
+  "devUrlEmpty": { "message": "URL cannot be empty" },
+  "devUrlInvalid": { "message": "Invalid URL format" },
+  "devUrlWrongProtocol": { "message": "URL must start with ws:// or wss://" },
+  "devTrustWarningTitle": { "message": "This server will gain control of your browser" },
+  "devTrustWarningBody": { "message": "It can click, type, read page contents, and operate tabs. Only continue if you fully trust this server." },
+  "devTrustWarningInsecure": { "message": "⚠ Connection is unencrypted (ws://) — anyone on the same network can monitor or tamper with traffic." },
+  "devTrustCancel": { "message": "Cancel" },
+  "devTrustConfirm": { "message": "I trust this — connect" },
+  "mcpLabel": { "message": "MCP Server" },
+  "mcpBadgeReady": { "message": "Ready" },
+  "mcpHint": { "message": "Copy this config into your AI client (Claude Desktop, Cursor, Windsurf) to let it control the browser." }
+}

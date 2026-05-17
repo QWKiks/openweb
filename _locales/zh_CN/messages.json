@@ -1,0 +1,34 @@
+{
+  "description": {
+    "message": "WebBridge Open — 开源的 AI Agent 浏览器插件，让 AI 帮你打开网页、点击按钮、填写表单、提取信息，自动化各种繁琐的网页操作。"
+  },
+  "readyMessage":      { "message": "已连接" },
+  "notReadyMessage":   { "message": "未连接" },
+  "guideText":         { "message": "在此地址启动 WebSocket 守护进程，然后点击下方连接。" },
+  "openDevSettings":   { "message": "连接" },
+  "devClickHint": {
+    "message": "再点 $N$ 次开启高级选项",
+    "placeholders": { "n": { "content": "$1" } }
+  },
+  "devAdvancedSettings": { "message": "连接设置" },
+  "devExit": { "message": "关闭" },
+  "devServerUrlLabel": { "message": "WebSocket 地址" },
+  "devTest": { "message": "测试" },
+  "devTesting": { "message": "测试中…" },
+  "devSave": { "message": "保存并连接" },
+  "devReset": { "message": "恢复默认" },
+  "devTestOk": { "message": "连接成功" },
+  "devTestFailed": { "message": "连接失败 — 请检查地址和守护进程是否运行" },
+  "devSaved": { "message": "已保存，连接中…" },
+  "devUrlEmpty": { "message": "地址不能为空" },
+  "devUrlInvalid": { "message": "地址格式不正确" },
+  "devUrlWrongProtocol": { "message": "地址必须以 ws:// 或 wss:// 开头" },
+  "devTrustWarningTitle": { "message": "该服务将获得控制你浏览器的权限" },
+  "devTrustWarningBody": { "message": "它能点击、打字、读取页面内容、操作标签页。仅在你完全信任该服务端时继续。" },
+  "devTrustWarningInsecure": { "message": "⚠ 连接未加密（ws://），同网络的人可监听或篡改流量。" },
+  "devTrustCancel": { "message": "取消" },
+  "devTrustConfirm": { "message": "我信任 — 连接" },
+  "mcpLabel": { "message": "MCP 服务器" },
+  "mcpBadgeReady": { "message": "就绪" },
+  "mcpHint": { "message": "将此配置复制到你的 AI 客户端（Claude Desktop、Cursor、Windsurf），即可让 AI 控制浏览器。" }
+}
