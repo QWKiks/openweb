@@ -68,6 +68,8 @@ npm run setup-mcp -- --all
 npm run setup-mcp -- --claude
 npm run setup-mcp -- --cursor
 npm run setup-mcp -- --windsurf
+npm run setup-mcp -- --gemini
+npm run setup-mcp -- --antigravity
 npm run setup-mcp -- --opencode
 npm run setup-mcp -- --codex
 

@@ -10,11 +10,13 @@
  *   node setup-mcp.js --claude     # Claude Code only
  *   node setup-mcp.js --cursor     # Cursor only
  *   node setup-mcp.js --windsurf   # Windsurf only
+ *   node setup-mcp.js --gemini     # Gemini CLI only
+ *   node setup-mcp.js --antigravity # Google Antigravity only
  *   node setup-mcp.js --codex      # OpenAI Codex only
  *   node setup-mcp.js --remove     # remove from all
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "fs";
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { execSync } from "child_process";
@@ -142,15 +144,82 @@ const TOOLS = {
       try { execSync("codex --version", { stdio: "pipe" }); return true; } catch { return false; }
     },
     add: () => {
-      // Codex CLI uses ~/.codex/config.json with mcpServers
+      // Codex CLI uses config.toml (not JSON) with [mcp_servers.<name>] sections
       const configDir = join(homedir(), ".codex");
-      const configFile = join(configDir, "config.json");
-      return writeGlobalConfig(configDir, configFile);
+      const configFile = join(configDir, "config.toml");
+      return writeCodexTomlConfig(configDir, configFile);
     },
     remove: () => {
-      const configFile = join(homedir(), ".codex", "config.json");
-      removeMcpEntry(configFile);
+      const configFile = join(homedir(), ".codex", "config.toml");
+      removeCodexTomlEntry(configFile);
       console.log("  ✓ Removed from Codex");
+    },
+  },
+
+  gemini: {
+    name: "Gemini CLI",
+    detect: () => {
+      try { execSync("gemini --version", { stdio: "pipe" }); return true; } catch { return false; }
+    },
+    add: () => {
+      // Gemini CLI uses .gemini/settings.json with mcpServers
+      // Try gemini mcp add first, then fallback to manual config
+      try {
+        execSync(`gemini mcp add webbridge -s user -- node "${MCP_SERVER_PATH}"`, { stdio: "inherit" });
+        console.log("  ✓ Added via 'gemini mcp add' (global)");
+        return true;
+      } catch {
+        // Fallback: write to .gemini/settings.json
+        const projectConfig = join(PROJECT_DIR, ".gemini", "settings.json");
+        const globalConfig = join(homedir(), ".gemini", "settings.json");
+        writeGeminiSettings(projectConfig);
+        console.log("  ✓ Wrote .gemini/settings.json in project");
+        writeGeminiSettings(globalConfig);
+        console.log(`  ✓ Wrote ${globalConfig}`);
+        return true;
+      }
+    },
+    remove: () => {
+      try { execSync("gemini mcp remove webbridge -s user", { stdio: "pipe" }); } catch {}
+      const projectConfig = join(PROJECT_DIR, ".gemini", "settings.json");
+      removeMcpEntry(projectConfig);
+      const globalConfig = join(homedir(), ".gemini", "settings.json");
+      removeMcpEntry(globalConfig);
+      console.log("  ✓ Removed from Gemini CLI");
+    },
+  },
+
+  antigravity: {
+    name: "Google Antigravity",
+    detect: () => {
+      // Antigravity is a VS Code-based IDE — check for its extension dir
+      const vscodeExtensions = join(homedir(), ".vscode", "extensions");
+      try {
+        const dirs = readdirSync(vscodeExtensions, { withFileTypes: true });
+        return dirs.some(d => d.name.startsWith("google.antigravity"));
+      } catch {
+        return false;
+      }
+    },
+    add: () => {
+      // Antigravity uses mcpServers in .antigravity/mcp.json (project) or global config
+      const projectConfig = join(PROJECT_DIR, ".antigravity", "mcp.json");
+      writeMcpJson(projectConfig);
+      console.log("  ✓ Wrote .antigravity/mcp.json in project");
+
+      // Also write to VS Code settings (Antigravity reads from there too)
+      const vscodeDir = join(PROJECT_DIR, ".vscode");
+      const vscodeConfig = join(vscodeDir, "mcp.json");
+      writeMcpJson(vscodeConfig);
+      console.log("  ✓ Wrote .vscode/mcp.json in project");
+      return true;
+    },
+    remove: () => {
+      const projectConfig = join(PROJECT_DIR, ".antigravity", "mcp.json");
+      removeMcpEntry(projectConfig);
+      const vscodeConfig = join(PROJECT_DIR, ".vscode", "mcp.json");
+      removeMcpEntry(vscodeConfig);
+      console.log("  ✓ Removed from Antigravity");
     },
   },
 };
@@ -277,6 +346,63 @@ function removeMcpEntry(filePath) {
   } catch {}
 }
 
+function writeGeminiSettings(filePath) {
+  try {
+    const dir = dirname(filePath);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+
+    let config = {};
+    if (existsSync(filePath)) {
+      try { config = JSON.parse(readFileSync(filePath, "utf8")); } catch { config = {}; }
+    }
+
+    config.mcpServers = config.mcpServers || {};
+    config.mcpServers.webbridge = {
+      command: "node",
+      args: [MCP_SERVER_PATH],
+    };
+
+    writeFileSync(filePath, JSON.stringify(config, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function writeCodexTomlConfig(configDir, configFile) {
+  try {
+    if (!existsSync(configDir)) mkdirSync(configDir, { recursive: true });
+
+    let content = "";
+    if (existsSync(configFile)) {
+      content = readFileSync(configFile, "utf8");
+    }
+
+    // Remove existing [mcp_servers.webbridge] section
+    content = content.replace(/\n?\[mcp_servers\.webbridge\][^\[]*(?=\n\[|$)/g, "");
+
+    // Append new section
+    const section = `\n[mcp_servers.webbridge]\ncommand = "node"\nargs = ["${MCP_SERVER_PATH}"]\n`;
+
+    content = content.trimEnd() + "\n" + section;
+    writeFileSync(configFile, content);
+    console.log(`  ✓ Wrote ${configFile}`);
+    return true;
+  } catch (e) {
+    console.log(`  ✗ Failed to write ${configFile}: ${e.message}`);
+    return false;
+  }
+}
+
+function removeCodexTomlEntry(configFile) {
+  if (!existsSync(configFile)) return;
+  try {
+    let content = readFileSync(configFile, "utf8");
+    content = content.replace(/\n?\[mcp_servers\.webbridge\][^\[]*(?=\n\[|$)/g, "");
+    writeFileSync(configFile, content.trimEnd() + "\n");
+  } catch {}
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -310,6 +436,8 @@ if (targetTools.length === 0) {
   console.log("    node setup-mcp.js --claude       # Claude Code only");
   console.log("    node setup-mcp.js --cursor       # Cursor only");
   console.log("    node setup-mcp.js --windsurf     # Windsurf only");
+  console.log("    node setup-mcp.js --gemini       # Gemini CLI only");
+  console.log("    node setup-mcp.js --antigravity  # Google Antigravity only");
   console.log("    node setup-mcp.js --codex        # OpenAI Codex only");
   console.log("    node setup-mcp.js --opencode     # OpenCode only");
   console.log("    node setup-mcp.js --remove       # Remove from all\n");
