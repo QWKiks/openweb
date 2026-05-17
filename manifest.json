@@ -14,7 +14,8 @@
     "windows",
     "offscreen",
     "scripting",
-    "bookmarks"
+    "bookmarks",
+    "management"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {

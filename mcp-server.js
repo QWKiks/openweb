@@ -454,6 +454,19 @@ const TOOLS = [
       required: ["cmd"],
     },
   },
+  {
+    name: "extension",
+    description: "Manage Chrome extensions: list, enable, disable, or get info about installed extensions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: list, enable, disable, info", enum: ["list", "enable", "disable", "info"] },
+        id: { type: "string", description: "Extension ID (for enable, disable, info)" },
+        type: { type: "string", description: "Filter by type (for list): extension, theme, hosted_app, etc." },
+      },
+      required: ["cmd"],
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────
