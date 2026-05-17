@@ -20,15 +20,20 @@ Browser
 
 ### One Command Install
 
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1 | iex
+```
+
+**macOS / Linux:**
 ```bash
-npx openweb setup
+curl -fsSL https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh | bash
 ```
 
 This will:
 1. Clone the repo and install dependencies
 2. Register the MCP server with all detected AI tools
-3. Start the daemon
-4. Print instructions for loading the Chrome extension
+3. Print instructions for loading the Chrome extension
 
 ### Manual Install
 
