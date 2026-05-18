@@ -5,8 +5,21 @@
 <script>
 // Offscreen document to keep the service worker alive.
 // Chrome MV3 kills service workers after 30s of inactivity.
-// This document keeps a Web Worker running to prevent that.
-const worker = new Worker(chrome.runtime.getURL("offscreen-worker.js"));
+// A persistent port connection prevents this.
+const port = chrome.runtime.connect({ name: "keepalive" });
+
+// Ping every 20s to keep the port active
+setInterval(() => {
+  try { port.postMessage({ type: "ping" }); } catch {
+    // Port closed — reconnect
+    location.reload();
+  }
+}, 20000);
+
+port.onDisconnect.addListener(() => {
+  // Service worker disconnected — reload to re-establish
+  location.reload();
+});
 </script>
 </body>
 </html>

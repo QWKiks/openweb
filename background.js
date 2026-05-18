@@ -189,6 +189,15 @@ export function getMetrics() {
   };
 }
 
+// ── Keepalive port from offscreen document ────────────────────────────────────
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "keepalive") {
+    port.onMessage.addListener((msg) => {
+      if (msg.type === "ping") port.postMessage({ type: "pong" });
+    });
+  }
+});
+
 // ── Offscreen keepalive for MV3 service worker ──────────────────────────────
 const OFFSCREEN_URL = chrome.runtime.getURL("offscreen.html");
 const KEEPALIVE_INTERVAL_MS = 25000; // Chrome kills SW after 30s idle
@@ -199,8 +208,8 @@ async function ensureOffscreen() {
     if (!existing) {
       await chrome.offscreen.createDocument({
         url: OFFSCREEN_URL,
-        reasons: "WORKERS",
-        justification: "Keep service worker alive for WebSocket connection",
+        reasons: "MESSAGES",
+        justification: "Persistent port connection keeps service worker alive for WebSocket",
       });
     }
   } catch {
