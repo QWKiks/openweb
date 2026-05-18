@@ -221,7 +221,17 @@ security_scan  detailed: true
 - Cookie analysis
 - Form security
 - Iframe sandboxing
-- Risk score calculation (LOW/MEDIUM/HIGH)
+- Risk score calculation (LOW/MEDIUM/HIGH/CRITICAL)
+
+**Advanced Deep Scans:**
+- **CSP Bypass Analysis** - unsafe-eval, unsafe-inline, wildcard domains, data: URIs, missing directives
+- **CORS Misconfiguration** - fetch/XHR patterns, wildcard origins, reflective origins
+- **DOM XSS Sinks** - innerHTML, outerHTML, insertAdjacentHTML, eval(), setTimeout(), location.hash
+- **Service Worker Security** - scope issues, cache poisoning, offline bypass
+- **WebSocket Security** - connection patterns, origin validation, authentication
+- **Timing Attack Detection** - Date.now(), performance.now(), setTimeout/setInterval patterns
+- **Prototype Pollution** - __proto__, constructor.prototype, Object.assign, JSON.parse
+- **SSRF Patterns** - fetch with user input, location assignment, API endpoint patterns
 
 **Output includes:**
 - Risk level and score

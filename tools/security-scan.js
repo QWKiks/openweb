@@ -176,7 +176,19 @@ export class SecurityScanTool {
         report.xss.hasOuterHtml = bodyHTML.includes('outerHTML');
         report.xss.hasDangerousMethods = report.xss.hasInnerHtml || report.xss.hasEval || report.xss.hasDocumentWrite || report.xss.hasOuterHtml;
         
-        // Calculate risk score
+        // Advanced Security Checks
+        report.advanced = {
+          cspBypass: this.checkCSPBypass(report),
+          corsMisconfig: this.checkCORSMisconfig(),
+          domXssSinks: this.checkDOMXssSinks(),
+          serviceWorker: this.checkServiceWorker(),
+          websockets: this.checkWebSockets(),
+          timingAttacks: this.checkTimingAttacks(),
+          prototypePollution: this.checkPrototypePollution(),
+          ssrfPatterns: this.checkSSRFPatterns()
+        };
+
+        // Calculate risk score (including advanced checks)
         let riskScore = 0;
         let riskLevel = 'LOW';
         
@@ -190,7 +202,18 @@ export class SecurityScanTool {
         if (report.cookies.hasCookies) riskScore += 5;
         if (report.iframe.withoutSandbox > 0) riskScore += 10;
         
-        if (riskScore >= 60) riskLevel = 'HIGH';
+        // Advanced checks
+        if (report.advanced.cspBypass.hasBypass) riskScore += 15;
+        if (report.advanced.corsMisconfig.hasMisconfig) riskScore += 20;
+        if (report.advanced.domXssSinks.hasSinks) riskScore += 25;
+        if (report.advanced.serviceWorker.hasIssues) riskScore += 10;
+        if (report.advanced.websockets.hasIssues) riskScore += 15;
+        if (report.advanced.timingAttacks.hasTimingLeaks) riskScore += 20;
+        if (report.advanced.prototypePollution.hasPollution) riskScore += 25;
+        if (report.advanced.ssrfPatterns.hasPatterns) riskScore += 20;
+        
+        if (riskScore >= 80) riskLevel = 'CRITICAL';
+        else if (riskScore >= 60) riskLevel = 'HIGH';
         else if (riskScore >= 30) riskLevel = 'MEDIUM';
         
         report.risk = {
@@ -310,5 +333,250 @@ export class SecurityScanTool {
     }
 
     return recommendations;
+  }
+
+  checkCSPBypass(report) {
+    const bypass = {
+      hasBypass: false,
+      techniques: []
+    };
+
+    if (!report.headers.csp) {
+      return bypass; // Already covered by missing CSP
+    }
+
+    const csp = report.headers.csp.toLowerCase();
+    
+    // Check for unsafe-eval
+    if (csp.includes('unsafe-eval')) {
+      bypass.hasBypass = true;
+      bypass.techniques.push('script-src includes unsafe-eval');
+    }
+
+    // Check for unsafe-inline
+    if (csp.includes('unsafe-inline')) {
+      bypass.hasBypass = true;
+      bypass.techniques.push('script-src/style-src includes unsafe-inline');
+    }
+
+    // Check for wildcard domains
+    if (csp.includes('*')) {
+      bypass.hasBypass = true;
+      bypass.techniques.push('Wildcard domains in CSP');
+    }
+
+    // Check for data: URIs
+    if (csp.includes('data:')) {
+      bypass.hasBypass = true;
+      bypass.techniques.push('data: URIs allowed');
+    }
+
+    // Check for missing object-src
+    if (!csp.includes('object-src')) {
+      bypass.hasBypass = true;
+      bypass.techniques.push('Missing object-src directive');
+    }
+
+    // Check for missing base-uri
+    if (!csp.includes('base-uri')) {
+      bypass.hasBypass = true;
+      bypass.techniques.push('Missing base-uri directive');
+    }
+
+    return bypass;
+  }
+
+  checkCORSMisconfig() {
+    const misconfig = {
+      hasMisconfig: false,
+      issues: []
+    };
+
+    // Check for wildcard origins (this would need server-side response headers)
+    // For now, we check for common patterns that might indicate CORS issues
+    const fetchCalls = document.body.innerHTML.match(/fetch\s*\(/g) || [];
+    if (fetchCalls.length > 0) {
+      misconfig.hasMisconfig = true;
+      misconfig.issues.push(`${fetchCalls.length} fetch() calls detected - verify CORS headers`);
+    }
+
+    // Check for XHR requests
+    const xhrCalls = document.body.innerHTML.match(/XMLHttpRequest/g) || [];
+    if (xhrCalls.length > 0) {
+      misconfig.hasMisconfig = true;
+      misconfig.issues.push(`${xhrCalls.length} XMLHttpRequest calls detected - verify CORS headers`);
+    }
+
+    return misconfig;
+  }
+
+  checkDOMXssSinks() {
+    const sinks = {
+      hasSinks: false,
+      dangerousSinks: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for dangerous DOM sinks
+    const sinkPatterns = [
+      { pattern: 'innerHTML', name: 'innerHTML sink' },
+      { pattern: 'outerHTML', name: 'outerHTML sink' },
+      { pattern: 'insertAdjacentHTML', name: 'insertAdjacentHTML sink' },
+      { pattern: 'document.write', name: 'document.write sink' },
+      { pattern: 'document.writeln', name: 'document.writeln sink' },
+      { pattern: 'eval(', name: 'eval() sink' },
+      { pattern: 'Function(', name: 'Function() sink' },
+      { pattern: 'setTimeout(', name: 'setTimeout() with string sink' },
+      { pattern: 'setInterval(', name: 'setInterval() with string sink' },
+      { pattern: 'location.hash', name: 'location.hash sink' },
+      { pattern: 'location.search', name: 'location.search sink' },
+      { pattern: 'document.cookie', name: 'document.cookie sink' }
+    ];
+
+    for (const sink of sinkPatterns) {
+      if (bodyHTML.includes(sink.pattern)) {
+        sinks.hasSinks = true;
+        sinks.dangerousSinks.push(sink.name);
+      }
+    }
+
+    return sinks;
+  }
+
+  checkServiceWorker() {
+    const sw = {
+      hasIssues: false,
+      registered: false,
+      scopeIssues: []
+    };
+
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      sw.registered = true;
+      
+      // Check for potential scope issues
+      if (window.location.pathname.includes('/')) {
+        sw.hasIssues = true;
+        sw.scopeIssues.push('Service worker registered at root - check scope boundaries');
+      }
+    }
+
+    return sw;
+  }
+
+  checkWebSockets() {
+    const ws = {
+      hasIssues: false,
+      webSockets: [],
+      issues: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+    
+    // Check for WebSocket connections
+    const wsPatterns = [
+      /new\s+WebSocket\s*\(/g,
+      /ws:\/\//g,
+      /wss:\/\//g
+    ];
+
+    for (const pattern of wsPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 0) {
+        ws.hasIssues = true;
+        ws.webSockets.push(`${matches.length} WebSocket connections detected`);
+        ws.issues.push('WebSocket connections detected - verify origin validation and authentication');
+      }
+    }
+
+    return ws;
+  }
+
+  checkTimingAttacks() {
+    const timing = {
+      hasTimingLeaks: false,
+      patterns: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for timing-sensitive patterns
+    const timingPatterns = [
+      /Date\.now\(\)/g,
+      /performance\.now\(\)/g,
+      /setTimeout\s*\(/g,
+      /setInterval\s*\(/g
+    ];
+
+    for (const pattern of timingPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 5) {
+        timing.hasTimingLeaks = true;
+        timing.patterns.push(`${matches.length} ${pattern} calls - potential timing leak`);
+      }
+    }
+
+    return timing;
+  }
+
+  checkPrototypePollution() {
+    const pollution = {
+      hasPollution: false,
+      patterns: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for prototype pollution vectors
+    const pollutionPatterns = [
+      /__proto__/g,
+      /constructor\.prototype/g,
+      /Object\.assign\s*\(/g,
+      /\.\.\.spread/g,
+      /merge\s*\(/g,
+      /extend\s*\(/g,
+      /JSON\.parse\s*\(/g
+    ];
+
+    for (const pattern of pollutionPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 0) {
+        pollution.hasPollution = true;
+        pollution.patterns.push(`${matches.length} ${pattern} occurrences - potential prototype pollution`);
+      }
+    }
+
+    return pollution;
+  }
+
+  checkSSRFPatterns() {
+    const ssrf = {
+      hasPatterns: false,
+      patterns: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for SSRF patterns
+    const ssrfPatterns = [
+      /fetch\s*\(\s*['"]http/g,
+      /XMLHttpRequest.*open\s*\(\s*['"]GET/g,
+      /location\.href\s*=/g,
+      /window\.location\s*=/g,
+      /document\.location\s*=/g,
+      /url\s*:/g,
+      /endpoint\s*:/g,
+      /api\s*:/g
+    ];
+
+    for (const pattern of ssrfPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 0) {
+        ssrf.hasPatterns = true;
+        ssrf.patterns.push(`${matches.length} potential SSRF vectors: ${pattern}`);
+      }
+    }
+
+    return ssrf;
   }
 }
