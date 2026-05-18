@@ -13,6 +13,7 @@ import { WebSocketServer } from "ws";
 import { timingSafeEqual, randomBytes } from "crypto";
 import { createServer } from "http";
 import { log, debug, metrics } from "./lib/logger.js";
+import { isRecording, startSession, recordToolCall, recordToolResult, stopSession } from "./lib/recorder.js";
 
 const PORT = 10086;
 const PATH = "/ws";
@@ -304,6 +305,7 @@ wss.on("connection", (ws, req) => {
           // Forward as TEXT (raw is a Buffer from ws — sending Buffer makes it binary!)
           const rawText = raw.toString();
           targetExt.send(rawText);
+          recordToolCall(msg);
           console.log(`[forward→ext] ${msg.payload?.name || msg.type} (req ${rid})`);
 
           // #11: TTL cleanup for pendingResults — auto-resolve with timeout error
@@ -350,7 +352,8 @@ wss.on("connection", (ws, req) => {
           extActiveRequests.set(extForReq, Math.max(0, count));
         }
 
-        // Resolve pending promise
+        // #11: Extension finished tool — route to the matching controller
+        recordToolResult(msg);
         if (pendingResults.has(rid)) {
           pendingResults.get(rid)(msg);
           pendingResults.delete(rid);
@@ -619,6 +622,9 @@ healthServer.listen(PORT + 1, BIND_HOST || "127.0.0.1", () => {
 function gracefulShutdown(signal) {
   console.log(`\n[${signal}] shutting down gracefully...`);
 
+  // Stop recording session
+  stopSession();
+
   // Reject all pending tool calls
   for (const [rid, resolve] of pendingResults) {
     resolve({ payload: { error: `Daemon shutting down (${signal})` } });
@@ -654,3 +660,6 @@ console.log(`
 
 Type "help" for commands.
 `);
+
+// Start recording session if RECORDING=1
+startSession();
