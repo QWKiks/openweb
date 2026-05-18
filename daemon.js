@@ -11,6 +11,7 @@
 
 import { WebSocketServer } from "ws";
 import { timingSafeEqual, randomBytes } from "crypto";
+import { createServer } from "http";
 
 const PORT = 10086;
 const PATH = "/ws";
@@ -37,6 +38,7 @@ function isOriginAllowed(origin, roleHint) {
 }
 
 function checkRateLimit(ip) {
+  if (ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1") return { allowed: true };
   const now = Date.now();
   let rl = rateLimits.get(ip);
   if (!rl) {
@@ -76,6 +78,9 @@ const extensions = new Set();
 /** @type {Set<WebSocket>} AI / controller clients */
 const controllers = new Set();
 
+/** Active request counts per extension (for load-aware routing) */
+const extActiveRequests = new Map();
+
 /** Pending tool_results keyed by requestId */
 const pendingResults = new Map();
 
@@ -88,9 +93,11 @@ let rrIndex = 0;
 function pickExtension() {
   const exts = [...extensions].filter(ws => ws.readyState === ws.OPEN);
   if (exts.length === 0) return null;
-  const ext = exts[rrIndex % exts.length];
-  rrIndex = (rrIndex + 1) % exts.length;
-  return ext;
+  if (exts.length === 1) return exts[0];
+
+  // Load-aware: pick extension with fewest active requests
+  exts.sort((a, b) => (extActiveRequests.get(a) || 0) - (extActiveRequests.get(b) || 0));
+  return exts[0];
 }
 
 /** Heartbeat tracking: extension → last heartbeat timestamp */
@@ -267,10 +274,11 @@ wss.on("connection", (ws, req) => {
           break;
         }
 
-        // Route to extension via round-robin
+        // Route to extension via load-aware picker
         const targetExt = pickExtension();
         if (targetExt) {
           requestToExtension.set(rid, targetExt);
+          extActiveRequests.set(targetExt, (extActiveRequests.get(targetExt) || 0) + 1);
           // Forward as TEXT (raw is a Buffer from ws — sending Buffer makes it binary!)
           const rawText = raw.toString();
           targetExt.send(rawText);
@@ -313,7 +321,12 @@ wss.on("connection", (ws, req) => {
         console.log(`[forward→ctrl×${fwdCount}] tool_result (req ${rid})`);
 
         // Clean up routing
+        const extForReq = requestToExtension.get(rid);
         requestToExtension.delete(rid);
+        if (extForReq) {
+          const count = (extActiveRequests.get(extForReq) || 0) - 1;
+          extActiveRequests.set(extForReq, Math.max(0, count));
+        }
 
         // Resolve pending promise
         if (pendingResults.has(rid)) {
@@ -333,18 +346,19 @@ wss.on("connection", (ws, req) => {
     extensions.delete(ws);
     controllers.delete(ws);
     extensionHeartbeats.delete(ws);
+    extActiveRequests.delete(ws);
     // Clean up routing entries for this extension
     for (const [rid, ext] of requestToExtension) {
       if (ext === ws) requestToExtension.delete(rid);
     }
-    // #12: Reset rrIndex when extension count changes to avoid out-of-bounds
-    rrIndex = 0;
   });
 
   ws.on("error", (err) => {
     console.log("[!] ws error:", err.message);
     extensions.delete(ws);
     controllers.delete(ws);
+    extensionHeartbeats.delete(ws);
+    extActiveRequests.delete(ws);
   });
 
   // Ping every 30s
@@ -361,17 +375,18 @@ wss.on("connection", (ws, req) => {
 // ── Interactive REPL ─────────────────────────────────────────────────────────
 import { createInterface } from "readline";
 
-const rl = createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  prompt: "openweb> ",
-});
-
+const REPL_ENABLED = process.stdin.isTTY;
+let rl;
 let reqCounter = 0;
 
-rl.prompt();
-
-rl.on("line", (line) => {
+if (REPL_ENABLED) {
+  rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: "openweb> ",
+  });
+  rl.prompt();
+  rl.on("line", (line) => {
   const trimmed = line.trim();
   if (!trimmed) { rl.prompt(); return; }
 
@@ -547,6 +562,60 @@ Commands:
     rl.prompt();
   });
 });
+} // if (REPL_ENABLED)
+
+// ── HTTP Health Endpoint ──────────────────────────────────────────────────
+const healthServer = createServer((req, res) => {
+  if (req.url === "/health") {
+    const extLoad = [...extActiveRequests.entries()].map(([ws, count]) => count);
+    const body = JSON.stringify({
+      status: "ok",
+      extensions: extensions.size,
+      controllers: controllers.size,
+      pendingRequests: requestToExtension.size,
+      extensionLoad: extLoad,
+    });
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(body);
+  } else {
+    res.writeHead(404);
+    res.end("Not found");
+  }
+});
+healthServer.listen(PORT + 1, BIND_HOST || "127.0.0.1", () => {
+  console.log(`[health] http://127.0.0.1:${PORT + 1}/health`);
+});
+
+// ── Graceful Shutdown ─────────────────────────────────────────────────────
+function gracefulShutdown(signal) {
+  console.log(`\n[${signal}] shutting down gracefully...`);
+
+  // Reject all pending tool calls
+  for (const [rid, resolve] of pendingResults) {
+    resolve({ payload: { error: `Daemon shutting down (${signal})` } });
+  }
+  pendingResults.clear();
+
+  // Close all WebSocket connections
+  wss.clients.forEach(ws => ws.close(1001, "Server shutting down"));
+
+  // Close servers
+  wss.close(() => {
+    healthServer.close(() => {
+      rl.close();
+      process.exit(0);
+    });
+  });
+
+  // Force exit after 5s if graceful shutdown hangs
+  setTimeout(() => {
+    console.error("[!] forced exit after timeout");
+    process.exit(1);
+  }, 5000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 console.log(`
 ╔══════════════════════════════════════════╗
