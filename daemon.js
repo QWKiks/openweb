@@ -82,6 +82,8 @@ const controllers = new Set();
 
 /** Active request counts per extension (for load-aware routing) */
 const extActiveRequests = new Map();
+/** browserId per extension ws */
+const extBrowserId = new Map();
 
 /** Pending tool_results keyed by requestId */
 const pendingResults = new Map();
@@ -92,14 +94,30 @@ const requestToExtension = new Map();
 /** Round-robin index for multi-extension routing */
 let rrIndex = 0;
 
-function pickExtension() {
-  const exts = [...extensions].filter(ws => ws.readyState === ws.OPEN);
-  if (exts.length === 0) return null;
-  if (exts.length === 1) return exts[0];
+function pickExtension(browserId = null) {
+  let arr = [...extensions];
+  if (arr.length === 0) return null;
 
-  // Load-aware: pick extension with fewest active requests
-  exts.sort((a, b) => (extActiveRequests.get(a) || 0) - (extActiveRequests.get(b) || 0));
-  return exts[0];
+  // Filter by browserId if specified
+  if (browserId) {
+    arr = arr.filter((e) => extBrowserId.get(e) === browserId);
+    if (arr.length === 0) return null;
+  }
+
+  // 1. Prefer extensions with lowest active request count
+  arr.sort(
+    (a, b) =>
+      (extActiveRequests.get(a) || 0) - (extActiveRequests.get(b) || 0)
+  );
+  const bestLoad = extActiveRequests.get(arr[0]) || 0;
+  const candidates = arr.filter(
+    (e) => (extActiveRequests.get(e) || 0) === bestLoad
+  );
+
+  // 2. Round-robin among least-loaded
+  const target = candidates[rrIndex % candidates.length];
+  rrIndex++;
+  return target;
 }
 
 /** Heartbeat tracking: extension → last heartbeat timestamp */
@@ -164,8 +182,9 @@ wss.on("connection", (ws, req) => {
         }
         role = "extension";
         extensions.add(ws);
+        extBrowserId.set(ws, msg.payload?.browserId || "default");
         console.log(
-          `[hello] extension v${msg.payload?.extensionVersion ?? "?"} connected`
+          `[hello] extension v${msg.payload?.extensionVersion ?? "?"} browser=${msg.payload?.browserId || "default"} connected`
         );
         ws.send(JSON.stringify({ type: "hello_ack" }));
         break;
@@ -276,8 +295,9 @@ wss.on("connection", (ws, req) => {
           break;
         }
 
-        // Route to extension via load-aware picker
-        const targetExt = pickExtension();
+        // Route to extension via load-aware picker (optionally target specific browser)
+        const targetBrowserId = msg.payload?.args?._browserId || null;
+        const targetExt = pickExtension(targetBrowserId);
         if (targetExt) {
           requestToExtension.set(rid, targetExt);
           extActiveRequests.set(targetExt, (extActiveRequests.get(targetExt) || 0) + 1);
@@ -349,6 +369,7 @@ wss.on("connection", (ws, req) => {
     controllers.delete(ws);
     extensionHeartbeats.delete(ws);
     extActiveRequests.delete(ws);
+    extBrowserId.delete(ws);
     // Clean up routing entries for this extension
     for (const [rid, ext] of requestToExtension) {
       if (ext === ws) requestToExtension.delete(rid);
@@ -361,6 +382,7 @@ wss.on("connection", (ws, req) => {
     controllers.delete(ws);
     extensionHeartbeats.delete(ws);
     extActiveRequests.delete(ws);
+    extBrowserId.delete(ws);
   });
 
   // Ping every 30s
@@ -570,12 +592,17 @@ Commands:
 const healthServer = createServer((req, res) => {
   if (req.url === "/health") {
     const extLoad = [...extActiveRequests.entries()].map(([ws, count]) => count);
+    const browsers = {};
+    for (const [ws, bid] of extBrowserId) {
+      browsers[bid] = (browsers[bid] || 0) + 1;
+    }
     const body = JSON.stringify({
       status: "ok",
       extensions: extensions.size,
       controllers: controllers.size,
       pendingRequests: requestToExtension.size,
       extensionLoad: extLoad,
+      browsers,
     });
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(body);
