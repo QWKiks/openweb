@@ -198,17 +198,18 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
-// ── Offscreen keepalive for MV3 service worker ──────────────────────────────
+// ── Offscreen keepalive for MV3 service worker (Chrome only) ───────────────
 const OFFSCREEN_URL = chrome.runtime.getURL("offscreen.html");
 const KEEPALIVE_INTERVAL_MS = 25000; // Chrome kills SW after 30s idle
 
 async function ensureOffscreen() {
+  if (!chrome.offscreen) return; // Firefox MV2 doesn't have offscreen API
   try {
     const existing = await chrome.offscreen.hasDocument();
     if (!existing) {
       await chrome.offscreen.createDocument({
         url: OFFSCREEN_URL,
-        reasons: "MESSAGES",
+        reasons: ["MESSAGES"],
         justification: "Persistent port connection keeps service worker alive for WebSocket",
       });
     }
@@ -218,11 +219,13 @@ async function ensureOffscreen() {
 }
 
 // Ensure offscreen is created early and kept alive
-ensureOffscreen();
-setInterval(() => { ensureOffscreen(); }, 25000);
+if (chrome.offscreen) {
+  ensureOffscreen();
+  setInterval(() => { ensureOffscreen(); }, KEEPALIVE_INTERVAL_MS);
+}
 
 // ── Reconnect WebSocket on service worker wake-up ───────────────────────────
-ensureOffscreen();
+if (chrome.offscreen) ensureOffscreen();
 wsClient.reconnectIfNeeded();
 
 // ── Alarm-based reconnection fallback ───────────────────────────────────────

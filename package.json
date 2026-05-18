@@ -12,6 +12,9 @@
     "daemon": "node daemon.js",
     "mcp": "node mcp-server.js",
     "setup-mcp": "node setup-mcp.js",
+    "build:chrome": "node build.js chrome",
+    "build:firefox": "node build.js firefox",
+    "build:edge": "node build.js edge",
     "test": "node --test test/unit/**/*.test.js",
     "test:e2e": "node test-all-tools.js",
     "test:all": "npm test && npm run test:e2e"

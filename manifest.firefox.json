@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2,
+  "name": "WebBridge Open",
+  "description": "__MSG_description__",
+  "version": "1.2.1",
+  "default_locale": "en",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "debugger",
+    "storage",
+    "alarms",
+    "windows",
+    "scripting",
+    "bookmarks",
+    "management",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["lib/browser-polyfill.min.js", "background.js"],
+    "persistent": false
+  },
+  "browser_action": {
+    "default_popup": "popup/popup.html"
+  },
+  "devtools_page": "devtools/devtools.html",
+  "icons": {
+    "16": "icon/16.png",
+    "32": "icon/32.png",
+    "48": "icon/48.png",
+    "128": "icon/128.png"
+  },
+  "web_accessible_resources": ["offscreen-worker.js"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "openweb@qw8k.dev",
+      "strict_min_version": "109.0"
+    }
+  }
+}
