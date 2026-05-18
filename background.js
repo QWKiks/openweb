@@ -189,9 +189,6 @@ export function getMetrics() {
   };
 }
 
-// ── Reconnect WebSocket on service worker wake-up ───────────────────────────
-wsClient.reconnectIfNeeded();
-
 // ── Offscreen keepalive for MV3 service worker ──────────────────────────────
 const OFFSCREEN_URL = chrome.runtime.getURL("offscreen.html");
 const KEEPALIVE_INTERVAL_MS = 25000; // Chrome kills SW after 30s idle
@@ -211,14 +208,13 @@ async function ensureOffscreen() {
   }
 }
 
-// Start keepalive when connected
-const origConnect = wsClient.connect.bind(wsClient);
-wsClient.connect = async function(url) {
-  await origConnect(url);
-  if (wsClient.isConnected()) {
-    ensureOffscreen();
-  }
-};
+// Ensure offscreen is created early and kept alive
+ensureOffscreen();
+setInterval(() => { ensureOffscreen(); }, 25000);
+
+// ── Reconnect WebSocket on service worker wake-up ───────────────────────────
+ensureOffscreen();
+wsClient.reconnectIfNeeded();
 
 // ── Alarm-based reconnection fallback ───────────────────────────────────────
 chrome.alarms.onAlarm.addListener((alarm) => {
