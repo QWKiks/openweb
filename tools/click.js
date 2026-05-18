@@ -6,6 +6,7 @@
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
+import { isSemanticSelector, resolveSelector } from "../lib/semantic-selector.js";
 
 export class ClickTool {
   name = "click";
@@ -17,7 +18,7 @@ export class ClickTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    return isRef(selector) ? this.clickByRef(selector) : this.clickBySelector(selector);
+    return isRef(selector) ? this.clickByRef(selector) : this.clickBySelector(selector, args);
   }
 
   async clickByRef(ref) {
@@ -43,7 +44,28 @@ export class ClickTool {
     return result.result.value || { success: true };
   }
 
-  async clickBySelector(selector) {
+  async clickBySelector(selector, args = {}) {
+    // If semantic selector, resolve to CSS candidates and try each
+    if (isSemanticSelector(selector)) {
+      const candidates = resolveSelector(selector);
+      for (const css of candidates) {
+        const result = await sendCommand("Runtime.evaluate", {
+          expression: `(() => {
+            const el = document.querySelector(${JSON.stringify(css)});
+            if (!el) return null;
+            el.scrollIntoView({ block: 'center' });
+            el.click();
+            return { success: true, tag: el.tagName, text: el.textContent?.slice(0, 100), resolvedWith: ${JSON.stringify(css)} };
+          })()`,
+          returnByValue: true,
+          awaitPromise: false,
+        });
+        const value = result.result?.value;
+        if (value) return value;
+      }
+      throw new Error(`click: semantic selector "${selector}" — no matching element found`);
+    }
+
     const result = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         const el = document.querySelector(${JSON.stringify(selector)});

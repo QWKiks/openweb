@@ -6,6 +6,7 @@
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
+import { isSemanticSelector, resolveSelector } from "../lib/semantic-selector.js";
 
 export class FillTool {
   name = "fill";
@@ -42,6 +43,25 @@ export class FillTool {
   }
 
   async fillBySelector(selector, value) {
+    // If semantic selector, resolve to CSS candidates and try each
+    if (isSemanticSelector(selector)) {
+      const candidates = resolveSelector(selector);
+      for (const css of candidates) {
+        const result = await sendCommand("Runtime.evaluate", {
+          expression: `(() => {
+            const el = document.querySelector(${JSON.stringify(css)});
+            if (!el) return null;
+            ${generateFillCode("el", value)}
+          })()`,
+          returnByValue: true,
+          awaitPromise: false,
+        });
+        const val = result.result?.value;
+        if (val && !val.error) return { ...val, resolvedWith: css };
+      }
+      throw new Error(`fill: semantic selector "${selector}" — no matching element found`);
+    }
+
     const result = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         const el = document.querySelector(${JSON.stringify(selector)});
