@@ -12,9 +12,11 @@
 import { WebSocketServer } from "ws";
 import { timingSafeEqual, randomBytes } from "crypto";
 import { createServer } from "http";
+import { log, debug, metrics } from "./lib/logger.js";
 
 const PORT = 10086;
 const PATH = "/ws";
+const DBG = debug("daemon");
 
 // ── Security Configuration ────────────────────────────────────────────────
 
@@ -137,7 +139,7 @@ wss.on("connection", (ws, req) => {
     // Rate limit check
     const rl = checkRateLimit(ip);
     if (!rl.allowed) {
-      console.log(`[security] rate limit exceeded (${rl.reason}) from ${ip} — closing connection`);
+      log.warn("rate limit exceeded", { ip, reason: rl.reason });
       isRejected = true;
       ws.close(4008, "Rate limit exceeded");
       return;
@@ -342,7 +344,7 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("close", () => {
-    console.log(`[-] ${role || "client"} disconnected`);
+    log.info(`client disconnected`, { role: role || "unknown" });
     extensions.delete(ws);
     controllers.delete(ws);
     extensionHeartbeats.delete(ws);
@@ -354,7 +356,7 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("error", (err) => {
-    console.log("[!] ws error:", err.message);
+    log.error("ws error", { message: err.message });
     extensions.delete(ws);
     controllers.delete(ws);
     extensionHeartbeats.delete(ws);
