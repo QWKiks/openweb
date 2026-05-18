@@ -11,7 +11,10 @@
     "start": "node daemon.js",
     "daemon": "node daemon.js",
     "mcp": "node mcp-server.js",
-    "setup-mcp": "node setup-mcp.js"
+    "setup-mcp": "node setup-mcp.js",
+    "test": "node --test test/unit/**/*.test.js",
+    "test:e2e": "node test-all-tools.js",
+    "test:all": "npm test && npm run test:e2e"
   },
   "dependencies": {
     "ws": "^8.18.0",
