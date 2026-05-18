@@ -10,10 +10,51 @@
  */
 
 import { WebSocketServer } from "ws";
-import { timingSafeEqual } from "crypto";
+import { timingSafeEqual, randomBytes } from "crypto";
 
 const PORT = 10086;
 const PATH = "/ws";
+
+// ── Security Configuration ────────────────────────────────────────────────
+
+const RATE_LIMIT_WINDOW_MS = 10000;  // 10 seconds
+const RATE_LIMIT_MAX_MSG = 100;       // max messages per window per IP
+const RATE_LIMIT_MAX_BURST = 20;      // max messages in a single second
+
+/** @type {Map<string, { count: number, reset: number, burst: number, burstReset: number }>} */
+const rateLimits = new Map();
+
+/** @type {Set<string>} recent nonces to prevent replay */
+const recentNonces = new Set();
+setInterval(() => recentNonces.clear(), 120000); // clear every 2 min
+
+function isOriginAllowed(origin, roleHint) {
+  if (!origin || origin === "null") return true; // Node.js clients have no origin
+  if (origin.startsWith("chrome-extension://")) return roleHint === "extension" || roleHint === "any";
+  if (origin.startsWith("http://localhost") || origin.startsWith("https://localhost")) return true;
+  if (origin.startsWith("http://127.0.0.1") || origin.startsWith("https://127.0.0.1")) return true;
+  return false;
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  let rl = rateLimits.get(ip);
+  if (!rl) {
+    rl = { count: 0, reset: now + RATE_LIMIT_WINDOW_MS, burst: 0, burstReset: now + 1000 };
+    rateLimits.set(ip, rl);
+  }
+  if (now > rl.reset) {
+    rl.count = 0; rl.reset = now + RATE_LIMIT_WINDOW_MS;
+  }
+  if (now > rl.burstReset) {
+    rl.burst = 0; rl.burstReset = now + 1000;
+  }
+  rl.count++;
+  rl.burst++;
+  if (rl.burst > RATE_LIMIT_MAX_BURST) return { allowed: false, reason: "burst" };
+  if (rl.count > RATE_LIMIT_MAX_MSG) return { allowed: false, reason: "window" };
+  return { allowed: true };
+}
 
 // Auth: Bearer token for controller connections (optional, set via WEBBRIDGE_TOKEN env)
 const AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
@@ -74,14 +115,26 @@ setInterval(() => {
 }, 15000);
 
 wss.on("connection", (ws, req) => {
-  const ip = req.socket.remoteAddress;
-  console.log(`[+] client connected from ${ip}`);
+  const ip = req.socket.remoteAddress || "unknown";
+  const origin = req.headers.origin || "null";
+  console.log(`[+] client connected from ${ip} origin=${origin}`);
 
   let role = null; // "extension" | "controller"
+  let isRejected = false;
 
-  ws.on("message", (raw) => {
+  ws.on("message", (raw, isBinary) => {
+    if (isBinary) return; // reject binary frames
     // #8: Ignore all messages from rejected connections
-    if (role === "rejected") return;
+    if (role === "rejected" || isRejected) return;
+
+    // Rate limit check
+    const rl = checkRateLimit(ip);
+    if (!rl.allowed) {
+      console.log(`[security] rate limit exceeded (${rl.reason}) from ${ip} — closing connection`);
+      isRejected = true;
+      ws.close(4008, "Rate limit exceeded");
+      return;
+    }
 
     let msg;
     try {
@@ -94,6 +147,12 @@ wss.on("connection", (ws, req) => {
     switch (msg.type) {
       case "hello": {
         // Extension sends hello on connect
+        if (!isOriginAllowed(origin, "extension")) {
+          console.log(`[security] extension origin rejected: ${origin}`);
+          isRejected = true;
+          ws.close(4003, "Origin not allowed");
+          return;
+        }
         role = "extension";
         extensions.add(ws);
         console.log(
@@ -105,7 +164,42 @@ wss.on("connection", (ws, req) => {
 
       case "register": {
         // #8: If already rejected, ignore all messages
-        if (role === "rejected") return;
+        if (role === "rejected" || isRejected) return;
+
+        // Origin check for controllers
+        if (!isOriginAllowed(origin, "controller")) {
+          console.log(`[security] controller origin rejected: ${origin}`);
+          isRejected = true;
+          role = "rejected";
+          ws.send(JSON.stringify({ type: "register_nack", error: "Origin not allowed" }));
+          ws.close(4003, "Origin not allowed");
+          return;
+        }
+
+        // Timestamp / nonce anti-replay check
+        if (msg.timestamp) {
+          const now = Date.now();
+          const ts = Number(msg.timestamp);
+          if (Number.isNaN(ts) || Math.abs(now - ts) > 30000) {
+            console.log(`[security] register rejected — stale timestamp`);
+            isRejected = true;
+            role = "rejected";
+            ws.send(JSON.stringify({ type: "register_nack", error: "Timestamp too old or invalid" }));
+            ws.close(4009, "Stale timestamp");
+            return;
+          }
+        }
+        if (msg.nonce) {
+          if (recentNonces.has(msg.nonce)) {
+            console.log(`[security] register rejected — replayed nonce`);
+            isRejected = true;
+            role = "rejected";
+            ws.send(JSON.stringify({ type: "register_nack", error: "Nonce replay detected" }));
+            ws.close(4009, "Replay nonce");
+            return;
+          }
+          recentNonces.add(msg.nonce);
+        }
 
         // AI client registers itself — check auth if token is configured
         if (AUTH_TOKEN) {

@@ -502,7 +502,9 @@ function connectToDaemon() {
 
     ws.on("open", () => {
       resetReconnect();
-      const registerMsg = { type: "register" };
+      const registerMsg = { type: "register", timestamp: Date.now() };
+      // Add random nonce for replay protection
+      registerMsg.nonce = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, "0")).join("");
       // Pass auth token if configured via env
       const token = process.env.WEBBRIDGE_TOKEN;
       if (token) registerMsg.token = token;
