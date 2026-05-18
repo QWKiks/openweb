@@ -5,7 +5,7 @@
  */
 
 import { register, getToolNames } from "./tools/registry.js";
-import { wsClient } from "./lib/ws-client.js";
+import { wsClient, setTrackToolCall, setTrackError, setRateLimit as setWsRateLimit } from "./lib/ws-client.js";
 
 import { NavigateTool } from "./tools/navigate.js";
 import { FindTabTool } from "./tools/find-tab.js";
@@ -80,7 +80,6 @@ register(new ExtensionTool());
 const RATE_LIMIT_KEY = "webbridge_rate_limit";
 const DEFAULT_RATE_LIMIT = 0; // 0 = unlimited
 let rateLimitPerSec = DEFAULT_RATE_LIMIT;
-const callTimestamps = []; // sliding window of call timestamps
 
 /** Load rate limit setting from storage */
 async function loadRateLimit() {
@@ -91,32 +90,18 @@ async function loadRateLimit() {
     rateLimitPerSec = DEFAULT_RATE_LIMIT;
   }
 }
-loadRateLimit();
+loadRateLimit().then(() => setWsRateLimit(rateLimitPerSec));
 
 /** Set rate limit (0 = unlimited) */
 export async function setRateLimit(perSec) {
   rateLimitPerSec = perSec;
   await chrome.storage.local.set({ [RATE_LIMIT_KEY]: perSec });
+  setWsRateLimit(perSec);
 }
 
 /** Get current rate limit */
 export function getRateLimit() {
   return rateLimitPerSec;
-}
-
-/** Check if a tool call is allowed under rate limit */
-export function checkRateLimit() {
-  if (rateLimitPerSec <= 0) return true; // unlimited
-  const now = Date.now();
-  // Remove timestamps older than 1 second
-  while (callTimestamps.length > 0 && now - callTimestamps[0] > 1000) {
-    callTimestamps.shift();
-  }
-  if (callTimestamps.length >= rateLimitPerSec) {
-    return false; // rate limited
-  }
-  callTimestamps.push(now);
-  return true;
 }
 
 // ── Metrics & Action Log ────────────────────────────────────────────────────
@@ -162,6 +147,10 @@ export function trackError(message) {
   if (actionLog.length > MAX_LOG_ENTRIES) actionLog.pop();
   broadcastToDevTools({ type: "TOOL_CALL_EVENT", data: entry });
 }
+
+// Wire callbacks into ws-client (avoids circular dynamic imports)
+setTrackToolCall(trackToolCall);
+setTrackError(trackError);
 
 // ── DevTools Panel Connections ──────────────────────────────────────────────
 const devtoolsPorts = new Set();
