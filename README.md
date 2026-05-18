@@ -138,6 +138,7 @@ Restart your AI tool after registration.
 | `session` | Save and restore browser session state |
 | `bookmark` | Manage Chrome bookmarks (list, create, update, delete, search) |
 | `extension` | Manage Chrome extensions (list, enable, disable, info) |
+| `security_scan` | Comprehensive security assessment (headers, XSS, mixed content, SSL/TLS) |
 
 ## AI-Native Semantic Selectors
 
@@ -198,6 +199,34 @@ node cloud.js --provider browserstack --user $BROWSERSTACK_USER --key $BROWSERST
 # Sauce Labs
 node cloud.js --provider saucelabs --user $SAUCE_USERNAME --key $SAUCE_ACCESS_KEY
 ```
+
+## Security Scan Tool
+
+Automated security assessment of the current page:
+
+```bash
+# Basic security scan
+security_scan
+
+# Detailed scan with full report
+security_scan  detailed: true
+```
+
+**Checks performed:**
+- Security headers (CSP, X-Frame-Options, HSTS)
+- Mixed content detection
+- XSS vulnerability patterns
+- SSL/TLS configuration
+- External scripts with SRI
+- Cookie analysis
+- Form security
+- Iframe sandboxing
+- Risk score calculation (LOW/MEDIUM/HIGH)
+
+**Output includes:**
+- Risk level and score
+- Detailed findings by category
+- Prioritized recommendations with examples
 
 ## Security
 

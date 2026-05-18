@@ -40,6 +40,7 @@ import { DragDropTool } from "./tools/drag-drop.js";
 import { ContentScriptFallback } from "./tools/content-script.js";
 import { BookmarkTool } from "./tools/bookmark.js";
 import { ExtensionTool } from "./tools/extension.js";
+import { SecurityScanTool } from "./tools/security-scan.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -75,6 +76,7 @@ register(new DragDropTool());
 register(new ContentScriptFallback());
 register(new BookmarkTool());
 register(new ExtensionTool());
+register(new SecurityScanTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";
