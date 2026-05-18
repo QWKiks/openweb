@@ -177,7 +177,10 @@ wss.on("connection", (ws, req) => {
         const targetExt = pickExtension();
         if (targetExt) {
           requestToExtension.set(rid, targetExt);
-          targetExt.send(raw); // Transparent proxy: forward raw message
+          // Forward as TEXT (raw is a Buffer from ws — sending Buffer makes it binary!)
+          const rawText = raw.toString();
+          targetExt.send(rawText);
+          console.log(`[forward→ext] ${msg.payload?.name || msg.type} (req ${rid})`);
 
           // #11: TTL cleanup for pendingResults — auto-resolve with timeout error
           setTimeout(() => {
@@ -207,11 +210,13 @@ wss.on("connection", (ws, req) => {
           console.log(`[tool_result:${rid}] ${summary}`);
         }
 
-        // Transparent proxy: forward raw to all controllers
-        // (we can't know which controller sent the request, so broadcast to controllers only)
+        // Transparent proxy: forward raw to all controllers (as TEXT)
+        const rawText = raw.toString();
+        let fwdCount = 0;
         for (const ctrl of controllers) {
-          if (ctrl.readyState === ctrl.OPEN) ctrl.send(raw);
+          if (ctrl.readyState === ctrl.OPEN) { ctrl.send(rawText); fwdCount++; }
         }
+        console.log(`[forward→ctrl×${fwdCount}] tool_result (req ${rid})`);
 
         // Clean up routing
         requestToExtension.delete(rid);

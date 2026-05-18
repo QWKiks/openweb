@@ -510,9 +510,9 @@ function connectToDaemon() {
       resolve();
     });
 
-    ws.on("message", (raw) => {
+    ws.on("message", (raw, isBinary) => {
       // Handle binary frames (for screenshots)
-      if (Buffer.isBuffer(raw)) {
+      if (isBinary) {
         // Binary frame: first 4 bytes = requestId (uint32 LE), rest = binary data
         if (raw.length < 4) return;
         const reqId = raw.readUInt32LE(0);
@@ -576,13 +576,16 @@ function sendToolCall(name, args) {
     }
 
     const requestId = String(++requestIdCounter);
+    console.error(`[mcp] → tool_call: ${name} (req ${requestId})`);
     const timeout = setTimeout(() => {
       pendingCalls.delete(requestId);
+      console.error(`[mcp] ✗ timeout: ${name} (req ${requestId})`);
       resolve({ error: `Tool call timed out (30s): ${name}` });
     }, 30000);
 
     pendingCalls.set(requestId, (payload) => {
       clearTimeout(timeout);
+      console.error(`[mcp] ← result: ${name} (req ${requestId}) ${payload?.error ? "ERROR" : "OK"}`);
       resolve(payload);
     });
 
