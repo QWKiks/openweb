@@ -3,23 +3,22 @@
 <head><title>WebBridge Keepalive</title></head>
 <body>
 <script>
-// Offscreen document to keep the service worker alive.
-// Chrome MV3 kills service workers after 30s of inactivity.
-// A persistent port connection prevents this.
-const port = chrome.runtime.connect({ name: "keepalive" });
+// Offscreen document holds a persistent port to the service worker.
+// As long as this port is open, MV3 keeps the service worker alive indefinitely.
+let port;
+function connectPort() {
+  port = chrome.runtime.connect({ name: "keepalive" });
+  port.onDisconnect.addListener(() => {
+    // Wait for SW to come back, then reconnect
+    setTimeout(connectPort, 1000);
+  });
+}
+connectPort();
 
-// Ping every 20s to keep the port active
+// Also ping every 20s to keep traffic flowing (defense-in-depth)
 setInterval(() => {
-  try { port.postMessage({ type: "ping" }); } catch {
-    // Port closed — reconnect
-    location.reload();
-  }
+  try { port && port.postMessage({ type: "ping" }); } catch {}
 }, 20000);
-
-port.onDisconnect.addListener(() => {
-  // Service worker disconnected — reload to re-establish
-  location.reload();
-});
 </script>
 </body>
 </html>
