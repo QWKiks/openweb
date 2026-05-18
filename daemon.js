@@ -65,7 +65,7 @@ const AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
 const BIND_HOST = AUTH_TOKEN ? "127.0.0.1" : undefined; // Only bind localhost when auth is active
 const REQUIRE_TLS = AUTH_TOKEN;
 
-const wss = new WebSocketServer({ port: PORT, host: BIND_HOST, path: PATH, perMessageDeflate: true });
+const wss = new WebSocketServer({ port: PORT, host: BIND_HOST, path: PATH, perMessageDeflate: false, maxPayload: 50 * 1024 * 1024 });
 
 // Verify auth on upgrade for controller connections
 wss.on("headers", (headers, req) => {
