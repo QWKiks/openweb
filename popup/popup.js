@@ -358,7 +358,7 @@ async function updateMcpConfig() {
     },
   };
   $("mcp-config").textContent = JSON.stringify(config, null, 2);
-  $("mcp-status-badge").textContent = await _msg("mcpBadgeReady");
+  $("mcp-status-badge").textContent = "";
   $("mcp-status-badge").classList.remove("off");
 }
 

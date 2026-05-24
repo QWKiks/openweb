@@ -365,6 +365,10 @@ body {
   border: 1px solid #bbf7d0;
 }
 
+.mcp-badge:empty {
+  display: none;
+}
+
 .mcp-badge.off {
   background: #f5f5f5;
   color: #737373;
