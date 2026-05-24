@@ -305,11 +305,11 @@ function attachEventListeners() {
   });
 
   // Toggle MCP section collapse
-  $("mcp-toggle").addEventListener("click", () => {
+  $("mcp-toggle-btn").addEventListener("click", () => {
     const body = $("mcp-body");
-    const icon = $("mcp-toggle-icon");
+    const chevron = $("mcp-chevron");
     body.classList.toggle("collapsed");
-    icon.classList.toggle("collapsed");
+    chevron.classList.toggle("collapsed");
   });
 
   // Rate limit change

@@ -289,36 +289,63 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
   user-select: none;
 }
 
-.mcp-header:hover {
-  opacity: 0.8;
+.mcp-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.mcp-toggle-icon {
-  font-size: 10px;
+.mcp-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
   color: #a1a1a1;
-  margin-left: 6px;
-  transition: transform 0.2s;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
 }
 
-.mcp-toggle-icon.collapsed {
-  transform: rotate(-90deg);
+.mcp-toggle-btn:hover {
+  background: #f3f4f6;
+  color: #525252;
 }
 
+.mcp-toggle-btn:active {
+  transform: scale(0.92);
+}
+
+.mcp-chevron {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mcp-chevron.collapsed {
+  transform: rotate(-180deg);
+}
+
+/* Grid-based smooth height animation */
 .mcp-body {
-  overflow: hidden;
-  transition: max-height 0.2s ease-out, opacity 0.2s ease-out;
-  max-height: 200px;
-  opacity: 1;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.2s ease;
+  margin-top: 8px;
 }
 
 .mcp-body.collapsed {
-  max-height: 0;
-  opacity: 0;
+  grid-template-rows: 0fr;
   margin-top: 0;
+}
+
+.mcp-body-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .mcp-label {
@@ -728,6 +755,15 @@ body[data-theme="dark"] {
   background: #333;
   color: #737373;
   border-color: #404040;
+}
+
+[data-theme="dark"] .mcp-toggle-btn {
+  color: #737373;
+}
+
+[data-theme="dark"] .mcp-toggle-btn:hover {
+  background: #333;
+  color: #a1a1a1;
 }
 
 [data-theme="dark"] .mcp-code-box {
