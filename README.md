@@ -139,7 +139,8 @@ Restart your AI tool after registration.
 | `bookmark` | Manage Chrome bookmarks (list, create, update, delete, search) |
 | `extension` | Manage Chrome extensions (list, enable, disable, info) |
 | `security_scan` | Comprehensive security assessment (headers, XSS, mixed content, SSL/TLS) |
-| `speech_to_text` | Transcribe video/audio from any page using local Whisper (offline, no API key) |
+| `speech_to_text` | Transcribe video/audio from any page using local Whisper (offline, no API key). Optional auto-translate |
+| `translate` | Translate text offline using argos-translate (no API key) |
 
 ## AI-Native Semantic Selectors
 
@@ -214,6 +215,22 @@ speech_to_text tabId: <tab_id> language: "en"
 **Performance on M1 Mac:**
 - `base` model: ~70s for 25min audio
 - `small` model: ~2min for 25min audio (recommended)
+
+### Auto-Translate
+
+Add `translateTo` parameter to automatically translate the transcript:
+
+```bash
+speech_to_text tabId: <tab_id> language: "en" translateTo: "ru"
+```
+
+Or use the standalone `translate` tool for any text:
+
+```bash
+translate text: "Hello world" from: "en" to: "ru"
+```
+
+**Supported language pairs:** Any pair supported by argos-translate (commonly: en↔ru, en↔zh, en↔es, en↔fr, en↔de, etc.)
 
 ## Recording & Playback
 

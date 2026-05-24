@@ -112,7 +112,8 @@ npm run setup-mcp -- --remove
 | `dialog` | 处理 JS 对话框（alert、confirm、prompt） |
 | `emulate` | 模拟移动设备、地理位置、用户代理 |
 | `session` | 保存和恢复浏览器会话状态 |
-| `speech_to_text` | 使用本地 Whisper 转录视频/音频（离线，无需 API 密钥） |
+| `speech_to_text` | 使用本地 Whisper 转录视频/音频（离线，无需 API 密钥）。可选自动翻译 |
+| `translate` | 使用 argos-translate 离线翻译文本（无需 API 密钥） |
 
 ## 语音转文字 (Local Whisper)
 
@@ -170,6 +171,22 @@ speech_to_text tabId: <tab_id> language: "zh"
 **M1 Mac 性能：**
 - `base` 模型：25分钟音频约 70 秒
 - `small` 模型：25分钟音频约 2 分钟（推荐）
+
+### 自动翻译
+
+添加 `translateTo` 参数自动翻译转录文本：
+
+```bash
+speech_to_text tabId: <tab_id> language: "en" translateTo: "zh"
+```
+
+或使用独立的 `translate` 工具翻译任何文本：
+
+```bash
+translate text: "Hello world" from: "en" to: "zh"
+```
+
+**支持的语言对：** argos-translate 支持的任何语言对（常见：en↔zh, en↔ru, en↔es, en↔fr, en↔de 等）
 
 ## 守护进程 REPL
 

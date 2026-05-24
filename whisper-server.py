@@ -147,6 +147,35 @@ def transcribe():
             pass
 
 
+@app.route("/translate", methods=["POST"])
+def translate():
+    data = request.get_json(force=True)
+    text = data.get("text", "")
+    from_lang = data.get("from", "en")
+    to_lang = data.get("to", "ru")
+    
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+    
+    try:
+        import argostranslate.package
+        import argostranslate.translate
+        
+        # Auto-download language package if needed
+        argostranslate.package.update_package_index()
+        available_packages = argostranslate.package.get_available_packages()
+        package_to_install = next(
+            filter(lambda x: x.from_code == from_lang and x.to_code == to_lang, available_packages)
+        , None)
+        if package_to_install:
+            argostranslate.package.install_from_path(package_to_install.download())
+        
+        translated = argostranslate.translate.translate(text, from_lang, to_lang)
+        return jsonify({"text": translated, "from": from_lang, "to": to_lang})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "model": MODEL_SIZE, "device": MODEL_DEVICE})

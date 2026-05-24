@@ -112,7 +112,8 @@ npm run setup-mcp -- --remove
 | `dialog` | Обработать JS-диалоги (alert, confirm, prompt) |
 | `emulate` | Эмулировать мобильное устройство, геолокацию, user agent |
 | `session` | Сохранить и восстановить состояние сессии браузера |
-| `speech_to_text` | Распознать речь из видео/аудио через локальный Whisper (офлайн, без API-ключа) |
+| `speech_to_text` | Распознать речь из видео/аудио через локальный Whisper (офлайн, без API-ключа). Опциональный авто-перевод |
+| `translate` | Перевести текст офлайн через argos-translate (без API-ключа) |
 
 ## Распознавание речи (Local Whisper)
 
@@ -170,6 +171,22 @@ speech_to_text tabId: <tab_id> language: "ru"
 **Производительность на M1 Mac:**
 - Модель `base`: ~70с для 25мин аудио
 - Модель `small`: ~2мин для 25мин аудио (рекомендуется)
+
+### Авто-перевод
+
+Добавьте параметр `translateTo` для автоматического перевода транскрипции:
+
+```bash
+speech_to_text tabId: <tab_id> language: "en" translateTo: "ru"
+```
+
+Или используйте standalone инструмент `translate` для любого текста:
+
+```bash
+translate text: "Hello world" from: "en" to: "ru"
+```
+
+**Поддерживаемые языковые пары:** Любые пары, поддерживаемые argos-translate (часто: en↔ru, en↔zh, en↔es, en↔fr, en↔de и др.)
 
 ## REPL демона
 

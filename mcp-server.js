@@ -510,14 +510,28 @@ const TOOLS = [
   },
   {
     name: "speech_to_text",
-    description: "Transcribe audio from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Requires whisper-server.py to be running locally.",
+    description: "Transcribe audio from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Optional: auto-translate to target language. Requires whisper-server.py to be running locally.",
     inputSchema: {
       type: "object",
       properties: {
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
         videoUrl: { type: "string", description: "Direct video URL (optional — auto-detected from page if omitted)" },
         language: { type: "string", description: "Language code for transcription, e.g. 'en', 'ru' (optional)" },
+        translateTo: { type: "string", description: "Auto-translate transcript to this language code, e.g. 'ru', 'zh' (optional, requires whisper-server.py translate endpoint)" },
       },
+    },
+  },
+  {
+    name: "translate",
+    description: "Translate text offline using argos-translate (no API key). Requires whisper-server.py to be running locally.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Text to translate" },
+        from: { type: "string", description: "Source language code (default: 'en')" },
+        to: { type: "string", description: "Target language code (default: 'ru')" },
+      },
+      required: ["text"],
     },
   },
 ];
@@ -862,7 +876,21 @@ async function handleSpeechToText(args) {
       logError("Failed to save transcription", saveErr.message);
     }
     
-    return { text: whisperData.text, videoUrl };
+    // Auto-translate if requested
+    if (args.translateTo && whisperData.text) {
+      logInfo("Auto-translating transcript to", args.translateTo);
+      const translateResult = await handleTranslate({
+        text: whisperData.text,
+        from: args.language || "auto",
+        to: args.translateTo,
+      });
+      if (!translateResult.error) {
+        whisperData.translated = translateResult.text;
+        logInfo("Translation completed", { length: translateResult.text.length });
+      }
+    }
+    
+    return { text: whisperData.text, translated: whisperData.translated, videoUrl };
   } catch (e) {
     logError("speech_to_text error", e.message);
     return { error: e.message };
@@ -870,6 +898,41 @@ async function handleSpeechToText(args) {
     if (tempPath) {
       try { require("fs").unlinkSync(tempPath); } catch {}
     }
+  }
+}
+
+// ── Translate Helper ────────────────────────────────────────────────────────
+async function handleTranslate(args) {
+  logInfo("translate called", args);
+  
+  const text = args.text;
+  if (!text) {
+    return { error: "text is required" };
+  }
+  
+  const fromLang = args.from || "en";
+  const toLang = args.to || "ru";
+  
+  try {
+    logInfo("Translating", { from: fromLang, to: toLang, length: text.length });
+    const res = await fetch("http://127.0.0.1:5001/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, from: fromLang, to: toLang }),
+    });
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      logError("Translate API error", { status: res.status, error: errText });
+      return { error: `Translate API ${res.status}: ${errText}` };
+    }
+    
+    const data = await res.json();
+    logInfo("Translation completed", { length: data.text?.length });
+    return { text: data.text };
+  } catch (e) {
+    logError("translate error", e.message);
+    return { error: e.message };
   }
 }
 
@@ -905,6 +968,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
     logInfo("speech_to_text handler succeeded");
+    const output = result.translated 
+      ? `=== Original ===\n${result.text}\n\n=== Translated ===\n${result.translated}`
+      : result.text;
+    return {
+      content: [{ type: "text", text: output }],
+    };
+  }
+
+  if (name === "translate") {
+    logInfo("Routing to translate handler");
+    const result = await handleTranslate(args || {});
+    if (result.error) {
+      logError("translate handler returned error", result.error);
+      return {
+        content: [{ type: "text", text: `Error: ${result.error}` }],
+        isError: true,
+      };
+    }
+    logInfo("translate handler succeeded");
     return {
       content: [{ type: "text", text: result.text }],
     };
