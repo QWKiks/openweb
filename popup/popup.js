@@ -304,6 +304,14 @@ function attachEventListeners() {
     }, 1500);
   });
 
+  // Toggle MCP section collapse
+  $("mcp-toggle").addEventListener("click", () => {
+    const body = $("mcp-body");
+    const icon = $("mcp-toggle-icon");
+    body.classList.toggle("collapsed");
+    icon.classList.toggle("collapsed");
+  });
+
   // Rate limit change
   $("rate-limit-input").addEventListener("change", async () => {
     const val = parseInt($("rate-limit-input").value, 10);

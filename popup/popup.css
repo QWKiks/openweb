@@ -290,6 +290,35 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  user-select: none;
+}
+
+.mcp-header:hover {
+  opacity: 0.8;
+}
+
+.mcp-toggle-icon {
+  font-size: 10px;
+  color: #a1a1a1;
+  margin-left: 6px;
+  transition: transform 0.2s;
+}
+
+.mcp-toggle-icon.collapsed {
+  transform: rotate(-90deg);
+}
+
+.mcp-body {
+  overflow: hidden;
+  transition: max-height 0.2s ease-out, opacity 0.2s ease-out;
+  max-height: 200px;
+  opacity: 1;
+}
+
+.mcp-body.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
 }
 
 .mcp-label {

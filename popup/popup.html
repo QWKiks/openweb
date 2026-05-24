@@ -48,17 +48,20 @@
 
       <!-- MCP Server Section -->
       <div class="mcp-section">
-        <div class="mcp-header">
+        <div class="mcp-header" id="mcp-toggle" style="cursor: pointer;">
           <span class="mcp-label" id="mcp-label"></span>
           <span class="mcp-badge" id="mcp-status-badge"></span>
+          <span class="mcp-toggle-icon" id="mcp-toggle-icon">▼</span>
         </div>
-        <div class="mcp-code-box">
-          <code id="mcp-config"></code>
-          <button class="copy-btn" id="copy-mcp-btn" title="Copy">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </button>
+        <div class="mcp-body" id="mcp-body">
+          <div class="mcp-code-box">
+            <code id="mcp-config"></code>
+            <button class="copy-btn" id="copy-mcp-btn" title="Copy">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </div>
+          <p class="mcp-hint" id="mcp-hint"></p>
         </div>
-        <p class="mcp-hint" id="mcp-hint"></p>
       </div>
 
       <button id="dev-mode-trigger" class="dev-trigger"></button>
