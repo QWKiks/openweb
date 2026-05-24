@@ -25,9 +25,16 @@ export class ClickTool {
     const nodeInfo = resolveRef(ref);
     if (!nodeInfo) throw new Error(`click: unknown ref "${ref}". Run snapshot first to get refs.`);
 
-    const { object } = await sendCommand("DOM.resolveNode", {
-      backendNodeId: nodeInfo.backendDOMNodeId,
-    });
+    let object;
+    try {
+      ({ object } = await sendCommand("DOM.resolveNode", {
+        backendNodeId: nodeInfo.backendDOMNodeId,
+      }));
+    } catch (err) {
+      throw new Error(
+        `click: element "${ref}" was recreated by the page (SPA update). Run snapshot again to get updated @e refs.`
+      );
+    }
     if (!object?.objectId) throw new Error(`click: could not resolve ref "${ref}" to DOM element`);
 
     const result = await sendCommand("Runtime.callFunctionOn", {
@@ -39,6 +46,9 @@ export class ClickTool {
       }`,
       returnByValue: true,
     });
+
+    // Clean up remote object to avoid leaking
+    try { await sendCommand("Runtime.releaseObject", { objectId: object.objectId }); } catch {}
 
     if (result.exceptionDetails) throw new Error(`click: ${result.exceptionDetails.text}`);
     return result.result.value || { success: true };

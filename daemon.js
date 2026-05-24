@@ -392,14 +392,14 @@ wss.on("connection", (ws, req) => {
     extBrowserId.delete(ws);
   });
 
-  // Ping every 30s
+  // Ping every 20s (must be < MV3 service-worker idle timeout of ~30s)
   const pingInterval = setInterval(() => {
     if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify({ type: "ping" }));
     } else {
       clearInterval(pingInterval);
     }
-  }, 30000);
+  }, 20000);
   ws.on("close", () => clearInterval(pingInterval));
 });
 
@@ -543,10 +543,19 @@ Commands:
     }
 
     const json = JSON.stringify(toolCall);
-    for (const ext of extensions) {
-      if (ext.readyState === ext.OPEN) ext.send(json);
+    const ext = pickExtension();
+    if (ext) {
+      ext.send(json);
+      requestToExtension.set(rid, ext);
+      const prev = extActiveRequests.get(ext) || 0;
+      extActiveRequests.set(ext, prev + 1);
+      console.log(`→ ${name} (req ${rid})`);
+    } else {
+      console.log("No extension available.");
+      pendingResults.delete(rid);
+      rl.prompt();
+      return;
     }
-    console.log(`→ ${name} (req ${rid})`);
 
     // Wait for result asynchronously
     resultPromise.then((result) => {
@@ -582,8 +591,17 @@ Commands:
     setTimeout(() => { pendingResults.delete(rid); resolve({ payload: { error: "timeout" } }); }, 30000);
   });
 
-  for (const ext of extensions) {
-    if (ext.readyState === ext.OPEN) ext.send(JSON.stringify(toolCall));
+  const targetExt = pickExtension();
+  if (targetExt) {
+    targetExt.send(JSON.stringify(toolCall));
+    requestToExtension.set(rid, targetExt);
+    const prev = extActiveRequests.get(targetExt) || 0;
+    extActiveRequests.set(targetExt, prev + 1);
+  } else {
+    console.log("No extension available.");
+    pendingResults.delete(rid);
+    rl.prompt();
+    return;
   }
 
   resultPromise.then((result) => {

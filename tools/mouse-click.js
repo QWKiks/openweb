@@ -46,8 +46,17 @@ export class MouseClickTool {
     }
 
     // Calculate center point
-    const x = (content[0] + content[2] + content[4] + content[6]) / 4;
-    const y = (content[1] + content[3] + content[5] + content[7]) / 4;
+    let x = (content[0] + content[2] + content[4] + content[6]) / 4;
+    let y = (content[1] + content[3] + content[5] + content[7]) / 4;
+
+    // Apply devicePixelRatio correction for Retina displays
+    const dprResult = await sendCommand("Runtime.evaluate", {
+      expression: "window.devicePixelRatio",
+      returnByValue: true,
+    });
+    const dpr = dprResult.result?.value || 1;
+    x = x / dpr;
+    y = y / dpr;
 
     // Dispatch mouse events
     await sendCommand("Input.dispatchMouseEvent", {
@@ -80,9 +89,16 @@ export class MouseClickTool {
     const nodeInfo = resolveRef(ref);
     if (!nodeInfo) throw new Error(`mouse_click: unknown ref "${ref}". Run snapshot first to get refs.`);
 
-    const { object } = await sendCommand("DOM.resolveNode", {
-      backendNodeId: nodeInfo.backendDOMNodeId,
-    });
+    let object;
+    try {
+      ({ object } = await sendCommand("DOM.resolveNode", {
+        backendNodeId: nodeInfo.backendDOMNodeId,
+      }));
+    } catch (err) {
+      throw new Error(
+        `mouse_click: element "${ref}" was recreated by the page (SPA update). Run snapshot again to get updated @e refs.`
+      );
+    }
     if (!object?.objectId) throw new Error(`mouse_click: could not resolve ref "${ref}" to DOM element`);
     return object.objectId;
   }
