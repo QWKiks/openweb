@@ -304,8 +304,8 @@ function attachEventListeners() {
     }, 1500);
   });
 
-  // Toggle MCP section collapse
-  $("mcp-toggle-btn").addEventListener("click", () => {
+  // Toggle MCP section collapse (click anywhere on header)
+  $("mcp-toggle").addEventListener("click", () => {
     const body = $("mcp-body");
     const chevron = $("mcp-chevron");
     body.classList.toggle("collapsed");
