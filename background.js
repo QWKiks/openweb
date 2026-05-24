@@ -43,6 +43,16 @@ import { ExtensionTool } from "./tools/extension.js";
 import { SecurityScanTool } from "./tools/security-scan.js";
 import { GetSourceTool } from "./tools/get-source.js";
 import { PerformanceAuditTool } from "./tools/performance-audit.js";
+import { SeoAuditTool } from "./tools/seo-audit.js";
+import { BrokenLinksTool } from "./tools/broken-links.js";
+import { LocalStorageTool } from "./tools/local-storage.js";
+import { WebSocketMonitorTool } from "./tools/websocket-monitor.js";
+import { HarExportTool } from "./tools/har-export.js";
+import { CoverageTool } from "./tools/coverage.js";
+import { A11yAuditTool } from "./tools/a11y-audit.js";
+import { RedirectChainTool } from "./tools/redirect-chain.js";
+import { ShadowDomTool } from "./tools/shadow-dom.js";
+import { IframeTool } from "./tools/iframe-tool.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -81,6 +91,16 @@ register(new ExtensionTool());
 register(new SecurityScanTool());
 register(new GetSourceTool());
 register(new PerformanceAuditTool());
+register(new SeoAuditTool());
+register(new BrokenLinksTool());
+register(new LocalStorageTool());
+register(new WebSocketMonitorTool());
+register(new HarExportTool());
+register(new CoverageTool());
+register(new A11yAuditTool());
+register(new RedirectChainTool());
+register(new ShadowDomTool());
+register(new IframeTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";

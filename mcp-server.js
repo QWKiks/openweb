@@ -561,6 +561,119 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "seo_audit",
+    description: "Extract SEO metadata: title, meta tags, Open Graph, Twitter Cards, canonical, hreflang, JSON-LD structured data, headings, images, links.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "broken_links",
+    description: "Check all <a href> links on the page for 404/500/redirects. Returns broken, redirecting, and OK links.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        maxChecks: { type: "number", description: "Maximum number of links to check (default: 50)", default: 50 },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "local_storage",
+    description: "Read, write, delete, or clear localStorage and sessionStorage on the active page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action: read, write, delete, clear", enum: ["read", "write", "delete", "clear"], default: "read" },
+        storage: { type: "string", description: "Storage type: localStorage or sessionStorage", enum: ["localStorage", "sessionStorage"], default: "localStorage" },
+        key: { type: "string", description: "Storage key (required for write/delete)" },
+        value: { type: "string", description: "Value to write (required for write action)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "websocket_monitor",
+    description: "Capture, read, or clear intercepted WebSocket send/receive messages on the active page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action: capture (install interceptors), read (get messages), clear", enum: ["capture", "read", "clear"], default: "capture" },
+        maxMessages: { type: "number", description: "Max messages to keep in memory (default: 100)", default: 100 },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "har_export",
+    description: "Export network activity from the active page in HAR format for offline analysis or DevTools import.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "coverage",
+    description: "Analyze CSS and JS coverage — shows percentage of unused code on the active page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", description: "Coverage type: css, js, or both (default)", enum: ["css", "js", "both"], default: "both" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "a11y_audit",
+    description: "Run an accessibility audit: checks alt texts, labels, contrast, ARIA, landmarks, skip links, and focusability.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "redirect_chain",
+    description: "Trace the full redirect chain for a given URL with status codes for each hop.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "URL to trace redirects for (required)" },
+      },
+      required: ["url"],
+    },
+  },
+  {
+    name: "shadow_dom",
+    description: "List shadow DOM hosts or extract content from a specific web component / shadow root.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action: list (all shadow hosts) or content (specific host)", enum: ["list", "content"], default: "list" },
+        selector: { type: "string", description: "CSS selector of the shadow host (required for content action)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "iframe_list",
+    description: "List all iframes on the page or extract content from a specific iframe by index.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action: list (all iframes) or content (specific iframe)", enum: ["list", "content"], default: "list" },
+        index: { type: "number", description: "Iframe index to extract content from (required for content action)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────
