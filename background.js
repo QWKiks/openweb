@@ -54,6 +54,16 @@ import { RedirectChainTool } from "./tools/redirect-chain.js";
 import { ShadowDomTool } from "./tools/shadow-dom.js";
 import { IframeTool } from "./tools/iframe-tool.js";
 import { DesignCloneTool } from "./tools/design-clone.js";
+import { ConsoleErrorsTool } from "./tools/console-errors.js";
+import { DomMutationsTool } from "./tools/dom-mutations.js";
+import { ServiceWorkerTool } from "./tools/service-worker.js";
+import { SecurityHeadersTool } from "./tools/security-headers.js";
+import { CookieAuditTool } from "./tools/cookie-audit.js";
+import { FormAuditTool } from "./tools/form-audit.js";
+import { ApiDiscoveryTool } from "./tools/api-discovery.js";
+import { SwaggerParserTool } from "./tools/swagger-parser.js";
+import { ResponsiveTestTool } from "./tools/responsive-test.js";
+import { ColorPaletteTool } from "./tools/color-palette.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -103,6 +113,16 @@ register(new RedirectChainTool());
 register(new ShadowDomTool());
 register(new IframeTool());
 register(new DesignCloneTool());
+register(new ConsoleErrorsTool());
+register(new DomMutationsTool());
+register(new ServiceWorkerTool());
+register(new SecurityHeadersTool());
+register(new CookieAuditTool());
+register(new FormAuditTool());
+register(new ApiDiscoveryTool());
+register(new SwaggerParserTool());
+register(new ResponsiveTestTool());
+register(new ColorPaletteTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";

@@ -684,6 +684,109 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "console_errors",
+    description: "Collect JavaScript errors, warnings, exceptions, and unhandled promise rejections from the active page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action: read (get collected errors) or install (setup interceptors)", enum: ["read", "install"], default: "read" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "dom_mutations",
+    description: "Observe and track dynamic DOM changes in SPAs via MutationObserver.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action: start (begin observing), read (get mutations), stop (stop observing)", enum: ["start", "read", "stop"], default: "read" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "service_worker",
+    description: "Check service worker registration, status, cache, and push subscription for the active page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "security_headers",
+    description: "Audit security response headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, etc.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "cookie_audit",
+    description: "Extended cookie analysis: count, sizes, and preview values (flags require the cookie tool for full details).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "form_audit",
+    description: "Analyze all forms: fields, types, validation, CSRF tokens, and autofill attributes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "api_discovery",
+    description: "Automatically find API endpoints in page JS code by scanning fetch, axios, XHR patterns and Performance API history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "swagger_parser",
+    description: "Parse Swagger / OpenAPI specification from the active page and extract endpoints, parameters, and schemas.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Optional: direct URL to swagger.json" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "responsive_test",
+    description: "Quick responsive check at mobile (375x667), tablet (768x1024), and desktop (1440x900) breakpoints.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "color_palette",
+    description: "Extract dominant colors from the website for branding and design analysis.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────
