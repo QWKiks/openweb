@@ -81,10 +81,8 @@ async function initUI() {
   // MCP section
   $("mcp-label").textContent = await _msg("mcpLabel");
   $("mcp-hint").textContent = await _msg("mcpHint");
-  $("stat-tools-label").textContent = await _msg("statToolsLabel");
   $("stat-actions-label").textContent = await _msg("statActionsLabel");
   $("stat-uptime-label").textContent = await _msg("statUptimeLabel");
-  $("log-label").textContent = await _msg("logLabel");
   await updateMcpConfig();
 
   // Language selector
@@ -151,27 +149,8 @@ async function updateStatus(status) {
 
     // Update metrics
     const m = status.metrics || {};
-    $("tool-count").textContent = m.toolCount || 0;
     $("action-count").textContent = m.toolCallCount || 0;
     $("uptime").textContent = formatUptime(m.uptime || 0);
-
-    // Update action log
-    const logEntries = m.actionLog || [];
-    const logEl = $("log-entries");
-    logEl.innerHTML = "";
-    for (const entry of logEntries.slice(0, 8)) {
-      const div = document.createElement("div");
-      div.className = "log-entry";
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "log-entry-name" + (entry.error ? " log-entry-error" : "");
-      nameSpan.textContent = entry.name;
-      const timeSpan = document.createElement("span");
-      timeSpan.className = "log-entry-time";
-      timeSpan.textContent = entry.time;
-      div.appendChild(nameSpan);
-      div.appendChild(timeSpan);
-      logEl.appendChild(div);
-    }
 
     // Error banner
     const errorBanner = $("error-banner");
