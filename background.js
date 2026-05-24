@@ -41,6 +41,7 @@ import { ContentScriptFallback } from "./tools/content-script.js";
 import { BookmarkTool } from "./tools/bookmark.js";
 import { ExtensionTool } from "./tools/extension.js";
 import { SecurityScanTool } from "./tools/security-scan.js";
+import { GetSourceTool } from "./tools/get-source.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -77,6 +78,7 @@ register(new ContentScriptFallback());
 register(new BookmarkTool());
 register(new ExtensionTool());
 register(new SecurityScanTool());
+register(new GetSourceTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";

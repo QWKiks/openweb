@@ -534,6 +534,22 @@ const TOOLS = [
       required: ["text"],
     },
   },
+  {
+    name: "get_source",
+    description: "Extract full page source (HTML, CSS/JS metadata) for AI analysis. Returns structured or raw HTML.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        format: {
+          type: "string",
+          description: "Output format: 'full' (raw HTML), 'head_only', 'body_only', or 'structured' (default)",
+          enum: ["full", "head_only", "body_only", "structured"],
+          default: "structured",
+        },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────
