@@ -112,6 +112,64 @@ npm run setup-mcp -- --remove
 | `dialog` | Обработать JS-диалоги (alert, confirm, prompt) |
 | `emulate` | Эмулировать мобильное устройство, геолокацию, user agent |
 | `session` | Сохранить и восстановить состояние сессии браузера |
+| `speech_to_text` | Распознать речь из видео/аудио через локальный Whisper (офлайн, без API-ключа) |
+
+## Распознавание речи (Local Whisper)
+
+Распознаёт речь из видео и аудио с любого сайта **офлайн** — API-ключ не нужен.
+
+**Поддерживаемые платформы:** YouTube, X/Twitter, TikTok, Instagram, Vimeo и 100+ сайтов через `yt-dlp`.
+
+### Установка
+
+```bash
+# 1. Python-зависимости
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install faster-whisper flask
+
+# 2. Системные зависимости (macOS)
+brew install ffmpeg yt-dlp
+
+# Linux
+# sudo apt install ffmpeg yt-dlp
+```
+
+### Запуск сервера Whisper
+
+```bash
+# Терминал 1: Запуск демона
+npm start
+
+# Терминал 2: Запуск локального Whisper
+python whisper-server.py
+
+# Или с конкретной моделью
+WHISPER_MODEL=small python whisper-server.py
+```
+
+Сервер работает на `http://127.0.0.1:5001` по умолчанию.
+
+### Использование
+
+```bash
+# Открыть страницу с видео
+navigate url: "https://x.com/username/status/1234567890"
+
+# Распознать речь
+speech_to_text tabId: <tab_id> language: "ru"
+```
+
+**Параметры:**
+- `tabId` — Вкладка с видео (опционально, автоопределение активной)
+- `videoUrl` — Прямая ссылка на видео (опционально, автоопределение со страницы)
+- `language` — Код языка для распознавания (например `"en"`, `"ru"`, `"zh"`)
+
+**Доступные модели:** `tiny`, `base` (по умолчанию), `small`, `medium`, `large` — чем больше, тем точнее, но медленнее.
+
+**Производительность на M1 Mac:**
+- Модель `base`: ~70с для 25мин аудио
+- Модель `small`: ~2мин для 25мин аудио (рекомендуется)
 
 ## REPL демона
 
@@ -162,6 +220,7 @@ openweb/
 ├── background.js          # Точка входа service worker
 ├── daemon.js              # WebSocket-демон + REPL
 ├── mcp-server.js          # MCP-сервер (stdio/SSE)
+├── whisper-server.py      # Локальный Whisper-сервер для распознавания речи
 ├── setup-mcp.js           # Скрипт регистрации MCP
 ├── package.json
 ├── _locales/              # Локализация (en, ru, zh_CN)

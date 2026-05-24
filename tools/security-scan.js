@@ -6,6 +6,8 @@
 
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
+import { VulnerabilityChainAnalyzer } from "./security-chain-analyzer.js";
+import { DeepSecurityAnalyzer } from "./security-deep-analyzer.js";
 
 export class SecurityScanTool {
   name = "security_scan";
@@ -185,7 +187,33 @@ export class SecurityScanTool {
           websockets: this.checkWebSockets(),
           timingAttacks: this.checkTimingAttacks(),
           prototypePollution: this.checkPrototypePollution(),
-          ssrfPatterns: this.checkSSRFPatterns()
+          ssrfPatterns: this.checkSSRFPatterns(),
+          idorPatterns: this.checkIDORPatterns(),
+          csrfAnalysis: this.checkCSRFAnalysis(),
+          sessionCookieSecurity: this.checkSessionCookieSecurity(),
+          authenticationFlow: this.checkAuthenticationFlow(),
+          authorizationPatterns: this.checkAuthorizationPatterns(),
+          parameterTampering: this.checkParameterTampering(),
+          cacheHeaders: this.checkCacheHeaders(),
+          advancedClickjacking: this.checkAdvancedClickjacking(),
+          apiEndpoints: this.checkAPIEndpoints(),
+          raceConditions: this.checkRaceConditions(),
+          businessLogic: this.checkBusinessLogic(),
+          supplyChain: this.checkSupplyChain(),
+          errorHandling: this.checkErrorHandling(),
+          fileUploadSecurity: this.checkFileUploadSecurity(),
+          rateLimiting: this.checkRateLimiting(),
+          domXssAdvanced: this.checkDOMXssAdvanced(),
+          webCachePoisoning: this.checkWebCachePoisoning(),
+          graphqlSecurity: this.checkGraphQLSecurity(),
+          // OWASP WSTG missing checks
+          informationGathering: this.checkInformationGathering(),
+          sslTlsAnalysis: this.checkSSLTlsAnalysis(),
+          sqlInjection: this.checkSQLInjection(),
+          commandInjection: this.checkCommandInjection(),
+          jwtAnalysis: this.checkJWTAnalysis(),
+          oauthAnalysis: this.checkOAuthAnalysis(),
+          massAssignment: this.checkMassAssignment()
         };
 
         // Calculate risk score (including advanced checks)
@@ -212,6 +240,41 @@ export class SecurityScanTool {
         if (report.advanced.prototypePollution.hasPollution) riskScore += 25;
         if (report.advanced.ssrfPatterns.hasPatterns) riskScore += 20;
         
+        // HIGH PRIORITY - Bug Bounty top findings
+        if (report.advanced.idorPatterns.hasPatterns) riskScore += 30;
+        if (report.advanced.csrfAnalysis.hasIssues) riskScore += 25;
+        if (report.advanced.sessionCookieSecurity.hasIssues) riskScore += 20;
+        if (report.advanced.authenticationFlow.hasIssues) riskScore += 30;
+        if (report.advanced.authorizationPatterns.hasIssues) riskScore += 25;
+        if (report.advanced.parameterTampering.hasIssues) riskScore += 20;
+        
+        // MEDIUM PRIORITY
+        if (report.advanced.cacheHeaders.hasIssues) riskScore += 15;
+        if (report.advanced.advancedClickjacking.hasIssues) riskScore += 15;
+        if (report.advanced.apiEndpoints.hasEndpoints) riskScore += 10;
+        if (report.advanced.raceConditions.hasIndicators) riskScore += 20;
+        
+        // LOW PRIORITY
+        if (report.advanced.businessLogic.hasPatterns) riskScore += 15;
+        if (report.advanced.supplyChain.hasIssues) riskScore += 10;
+        if (report.advanced.errorHandling.hasLeaks) riskScore += 15;
+        
+        // Additional checks
+        if (report.advanced.fileUploadSecurity.hasIssues) riskScore += 15;
+        if (report.advanced.rateLimiting.hasIndicators) riskScore += 10;
+        if (report.advanced.domXssAdvanced.hasVectors) riskScore += 20;
+        if (report.advanced.webCachePoisoning.hasVectors) riskScore += 15;
+        if (report.advanced.graphqlSecurity.hasIssues) riskScore += 15;
+        
+        // OWASP WSTG missing checks
+        if (report.advanced.informationGathering.hasFindings) riskScore += 10;
+        if (report.advanced.sslTlsAnalysis.hasIssues) riskScore += 20;
+        if (report.advanced.sqlInjection.hasPatterns) riskScore += 30;
+        if (report.advanced.commandInjection.hasPatterns) riskScore += 30;
+        if (report.advanced.jwtAnalysis.hasIssues) riskScore += 25;
+        if (report.advanced.oauthAnalysis.hasIssues) riskScore += 20;
+        if (report.advanced.massAssignment.hasPatterns) riskScore += 20;
+        
         if (riskScore >= 80) riskLevel = 'CRITICAL';
         else if (riskScore >= 60) riskLevel = 'HIGH';
         else if (riskScore >= 30) riskLevel = 'MEDIUM';
@@ -233,8 +296,44 @@ export class SecurityScanTool {
 
     const report = result.result.value;
 
+    // Run deep behavioral analysis (second browser evaluate)
+    const deepResult = await sendCommand("Runtime.evaluate", {
+      expression: this.getDeepAnalysisScript(),
+      returnByValue: true,
+      awaitPromise: false,
+    });
+    if (!deepResult.exceptionDetails) {
+      report.deep = deepResult.result.value;
+    }
+
     // Add vulnerability recommendations
     report.recommendations = this.generateRecommendations(report);
+
+    // Run advanced chain analysis
+    const chainAnalyzer = new VulnerabilityChainAnalyzer(report);
+    report.chainAnalysis = chainAnalyzer.analyze();
+
+    // Update risk score with chain analysis context
+    if (report.chainAnalysis.contextScore > report.risk.score) {
+      report.risk.score = report.chainAnalysis.contextScore;
+      if (report.risk.score >= 80) report.risk.level = 'CRITICAL';
+      else if (report.risk.score >= 60) report.risk.level = 'HIGH';
+      else if (report.risk.score >= 30) report.risk.level = 'MEDIUM';
+    }
+
+    // Add chain-based recommendations
+    if (report.chainAnalysis.chains.length > 0) {
+      for (const chain of report.chainAnalysis.chains) {
+        report.recommendations.push({
+          severity: chain.severity,
+          issue: `Chain: ${chain.name}`,
+          recommendation: chain.recommendation,
+          chainId: chain.id,
+          steps: chain.steps.length,
+          combinedRisk: chain.combinedRisk
+        });
+      }
+    }
 
     return report;
   }
@@ -578,5 +677,1204 @@ export class SecurityScanTool {
     }
 
     return ssrf;
+  }
+
+  checkIDORPatterns() {
+    const idor = {
+      hasPatterns: false,
+      patterns: [],
+      endpoints: []
+    };
+
+    const url = window.location.href;
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for IDOR-friendly URL patterns
+    const idorPatterns = [
+      /\/api\/(users|files|documents|orders|invoices|products|posts|comments|messages)\/\d+/g,
+      /\/(user|file|document|order|invoice|product|post|comment|message)\/\d+/g,
+      /\/api\/\w+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, // UUID
+      /\/\w+\/id\/\d+/g,
+      /\/\w+\/\d+/g
+    ];
+
+    for (const pattern of idorPatterns) {
+      const matches = url.match(pattern);
+      if (matches) {
+        idor.hasPatterns = true;
+        idor.patterns.push(`IDOR pattern: ${pattern}`);
+        idor.endpoints.push(matches[0]);
+      }
+    }
+
+    // Check for sequential ID patterns in links
+    const links = document.querySelectorAll('a[href]');
+    for (const link of links) {
+      const href = link.getAttribute('href');
+      if (href && href.match(/\/\d+$/)) {
+        idor.hasPatterns = true;
+        idor.endpoints.push(href);
+      }
+    }
+
+    return idor;
+  }
+
+  checkCSRFAnalysis() {
+    const csrf = {
+      hasIssues: false,
+      issues: [],
+      tokens: []
+    };
+
+    const forms = document.querySelectorAll('form');
+    
+    for (const form of forms) {
+      const tokenInput = form.querySelector('input[type="hidden"][name*="token"], input[type="hidden"][name*="csrf"]');
+      
+      if (!tokenInput) {
+        csrf.hasIssues = true;
+        csrf.issues.push(`Form without CSRF token: ${form.action || 'current'}`);
+      } else {
+        const tokenValue = tokenInput.value;
+        csrf.tokens.push({
+          form: form.action || 'current',
+          tokenLength: tokenValue.length,
+          tokenEntropy: this.calculateEntropy(tokenValue)
+        });
+        
+        // Check for weak tokens
+        if (tokenValue.length < 16) {
+          csrf.hasIssues = true;
+          csrf.issues.push(`Weak CSRF token length: ${tokenValue.length}`);
+        }
+        if (this.calculateEntropy(tokenValue) < 2.0) {
+          csrf.hasIssues = true;
+          csrf.issues.push('Low entropy CSRF token');
+        }
+      }
+    }
+
+    return csrf;
+  }
+
+  checkSessionCookieSecurity() {
+    const cookieSecurity = {
+      hasIssues: false,
+      issues: [],
+      cookies: []
+    };
+
+    const cookies = document.cookie.split(';').filter(c => c.trim());
+    
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      const cookieInfo = {
+        name: name,
+        hasSecure: false,
+        hasHttpOnly: false,
+        hasSameSite: false,
+        sameSiteValue: null
+      };
+
+      // Check cookie attributes (this is limited in client-side JS)
+      // We can only check the cookie value, not the actual attributes
+      // This would need to be checked via HTTP response headers
+      
+      cookieSecurity.cookies.push(cookieInfo);
+      
+      // Check for session-related cookies
+      if (name.toLowerCase().includes('session') || name.toLowerCase().includes('sid')) {
+        if (value.length < 16) {
+          cookieSecurity.hasIssues = true;
+          cookieSecurity.issues.push(`Short session ID: ${name} (${value.length} chars)`);
+        }
+      }
+    }
+
+    return cookieSecurity;
+  }
+
+  checkAuthenticationFlow() {
+    const auth = {
+      hasIssues: false,
+      issues: [],
+      loginForms: [],
+      passwordResetLinks: []
+    };
+
+    // Check for login forms
+    const loginForms = document.querySelectorAll('form');
+    for (const form of loginForms) {
+      const passwordInput = form.querySelector('input[type="password"]');
+      const usernameInput = form.querySelector('input[type="text"], input[type="email"], input[name*="user"], input[name*="email"]');
+      
+      if (passwordInput && usernameInput) {
+        const loginForm = {
+          action: form.action || 'current',
+          hasAutocomplete: passwordInput.hasAttribute('autocomplete'),
+          autocompleteValue: passwordInput.getAttribute('autocomplete'),
+          hasMFA: false
+        };
+
+        // Check for MFA indicators
+        const mfaKeywords = ['mfa', '2fa', 'two-factor', 'totp', 'sms', 'code'];
+        const formText = form.textContent.toLowerCase();
+        loginForm.hasMFA = mfaKeywords.some(keyword => formText.includes(keyword));
+
+        auth.loginForms.push(loginForm);
+
+        if (!loginForm.hasAutocomplete || loginForm.autocompleteValue === 'on') {
+          auth.hasIssues = true;
+          auth.issues.push('Password field with autocomplete enabled');
+        }
+
+        if (!loginForm.hasMFA) {
+          auth.hasIssues = true;
+          auth.issues.push('Login form without MFA');
+        }
+      }
+    }
+
+    // Check for password reset links
+    const links = document.querySelectorAll('a[href]');
+    for (const link of links) {
+      const href = link.getAttribute('href');
+      const text = link.textContent.toLowerCase();
+      
+      if (href && (text.includes('reset') || text.includes('forgot') || text.includes('recover'))) {
+        auth.passwordResetLinks.push(href);
+      }
+    }
+
+    return auth;
+  }
+
+  checkAuthorizationPatterns() {
+    const authz = {
+      hasIssues: false,
+      issues: [],
+      adminEndpoints: [],
+      rolePatterns: []
+    };
+
+    const url = window.location.href;
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for admin endpoints
+    const adminPatterns = [
+      /\/admin/gi,
+      /\/dashboard/gi,
+      /\/management/gi,
+      /\/settings/gi,
+      /\/api\/admin/gi
+    ];
+
+    for (const pattern of adminPatterns) {
+      if (url.match(pattern)) {
+        authz.adminEndpoints.push(url);
+      }
+    }
+
+    // Check for role-based access patterns in links
+    const links = document.querySelectorAll('a[href]');
+    for (const link of links) {
+      const href = link.getAttribute('href');
+      if (href && href.match(/\/(admin|user|moderator|manager)/)) {
+        authz.rolePatterns.push(href);
+      }
+    }
+
+    // Check for API key exposure in JavaScript
+    const apiKeyPatterns = [
+      /api[_-]?key\s*[:=]\s*['"][\w-]+['"]/gi,
+      /apikey\s*[:=]\s*['"][\w-]+['"]/gi,
+      /secret[_-]?key\s*[:=]\s*['"][\w-]+['"]/gi
+    ];
+
+    for (const pattern of apiKeyPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        authz.hasIssues = true;
+        authz.issues.push(`Potential API key exposure: ${matches.length} matches`);
+      }
+    }
+
+    return authz;
+  }
+
+  checkParameterTampering() {
+    const tampering = {
+      hasIssues: false,
+      issues: [],
+      hiddenFields: [],
+      cookieParams: []
+    };
+
+    // Check for hidden fields
+    const hiddenFields = document.querySelectorAll('input[type="hidden"]');
+    for (const field of hiddenFields) {
+      const fieldName = field.name.toLowerCase();
+      const fieldValue = field.value;
+      
+      tampering.hiddenFields.push({
+        name: field.name,
+        value: fieldValue.substring(0, 50) + (fieldValue.length > 50 ? '...' : ''),
+        isSensitive: fieldName.includes('price') || fieldName.includes('amount') || fieldName.includes('id') || fieldName.includes('user')
+      });
+
+      if (fieldValue && (fieldName.includes('price') || fieldName.includes('amount'))) {
+        tampering.hasIssues = true;
+        tampering.issues.push(`Sensitive data in hidden field: ${field.name}`);
+      }
+    }
+
+    // Check cookie parameters
+    const cookies = document.cookie.split(';').filter(c => c.trim());
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      const cookieName = name.toLowerCase();
+      
+      if (cookieName.includes('role') || cookieName.includes('user') || cookieName.includes('admin')) {
+        tampering.cookieParams.push(name);
+        tampering.hasIssues = true;
+        tampering.issues.push(`Sensitive parameter in cookie: ${name}`);
+      }
+    }
+
+    return tampering;
+  }
+
+  checkCacheHeaders() {
+    const cache = {
+      hasIssues: false,
+      issues: [],
+      headers: []
+    };
+
+    // This would need to check HTTP response headers
+    // For now, we check for cache-related meta tags
+    const metaNoCache = document.querySelector('meta[http-equiv="Cache-Control"]');
+    const metaPragma = document.querySelector('meta[http-equiv="Pragma"]');
+    const metaExpires = document.querySelector('meta[http-equiv="Expires"]');
+
+    if (!metaNoCache && !metaPragma) {
+      cache.hasIssues = true;
+      cache.issues.push('Missing cache control meta tags');
+    }
+
+    return cache;
+  }
+
+  checkAdvancedClickjacking() {
+    const clickjack = {
+      hasIssues: false,
+      issues: [],
+      pointerEvents: false,
+      dragDrop: false
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for pointer-events manipulation
+    if (bodyHTML.includes('pointer-events') || bodyHTML.includes('pointerEvents')) {
+      clickjack.pointerEvents = true;
+      clickjack.hasIssues = true;
+      clickjack.issues.push('Pointer events manipulation detected');
+    }
+
+    // Check for drag-and-drop functionality
+    if (bodyHTML.includes('ondrag') || bodyHTML.includes('ondrop')) {
+      clickjack.dragDrop = true;
+      clickjack.hasIssues = true;
+      clickjack.issues.push('Drag-and-drop functionality detected');
+    }
+
+    return clickjack;
+  }
+
+  checkAPIEndpoints() {
+    const api = {
+      hasEndpoints: false,
+      endpoints: [],
+      restAPI: [],
+      graphql: false
+    };
+
+    const bodyHTML = document.body.innerHTML;
+    const url = window.location.href;
+
+    // Check for REST API patterns
+    const restPatterns = [
+      /\/api\/v?\d*\//g,
+      /\/v\d+\//g
+    ];
+
+    for (const pattern of restPatterns) {
+      const matches = url.match(pattern);
+      if (matches) {
+        api.hasEndpoints = true;
+        api.restAPI.push(matches[0]);
+      }
+    }
+
+    // Check for GraphQL
+    if (bodyHTML.includes('graphql') || bodyHTML.includes('/graphql')) {
+      api.graphql = true;
+      api.hasEndpoints = true;
+    }
+
+    // Check for API calls in JavaScript
+    const fetchPatterns = [
+      /fetch\s*\(\s*['"]\/api\//g,
+      /axios\.(get|post|put|delete)\s*\(/g
+    ];
+
+    for (const pattern of fetchPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        api.hasEndpoints = true;
+        api.endpoints.push(`${matches.length} API calls detected`);
+      }
+    }
+
+    return api;
+  }
+
+  checkRaceConditions() {
+    const race = {
+      hasIndicators: false,
+      indicators: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for race condition indicators
+    const racePatterns = [
+      /setTimeout\s*\(/g,
+      /setInterval\s*\(/g,
+      /Promise\.all\s*\(/g,
+      /Promise\.race\s*\(/g,
+      /async\s+function/g,
+      /await\s+/g
+    ];
+
+    for (const pattern of racePatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 10) {
+        race.hasIndicators = true;
+        race.indicators.push(`${matches.length} async operations detected`);
+      }
+    }
+
+    return race;
+  }
+
+  checkBusinessLogic() {
+    const logic = {
+      hasPatterns: false,
+      patterns: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for business logic patterns
+    const logicPatterns = [
+      /price\s*[:=]/gi,
+      /discount\s*[:=]/gi,
+      /coupon\s*[:=]/gi,
+      /cart\s*[:=]/gi,
+      /checkout\s*[:=]/gi,
+      /payment\s*[:=]/gi,
+      /order\s*[:=]/gi
+    ];
+
+    for (const pattern of logicPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        logic.hasPatterns = true;
+        logic.patterns.push(`${matches.length} business logic patterns: ${pattern}`);
+      }
+    }
+
+    return logic;
+  }
+
+  checkSupplyChain() {
+    const supply = {
+      hasIssues: false,
+      issues: [],
+      externalLibraries: []
+    };
+
+    const scripts = document.querySelectorAll('script[src]');
+    
+    for (const script of scripts) {
+      const src = script.src;
+      
+      // Check for CDN usage
+      if (src.includes('cdn') || src.includes('cdnjs') || src.includes('unpkg') || src.includes('jsdelivr')) {
+        supply.externalLibraries.push({
+          src: src,
+          type: 'CDN',
+          hasIntegrity: script.hasAttribute('integrity')
+        });
+        
+        if (!script.hasAttribute('integrity')) {
+          supply.hasIssues = true;
+          supply.issues.push(`CDN script without SRI: ${src}`);
+        }
+      }
+    }
+
+    return supply;
+  }
+
+  checkErrorHandling() {
+    const error = {
+      hasLeaks: false,
+      leaks: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for error handling patterns
+    const errorPatterns = [
+      /console\.(log|error|warn|debug)\s*\(/g,
+      /console\.trace\s*\(/g,
+      /debugger\s*;/g,
+      /stack\s*[:=]/gi
+    ];
+
+    for (const pattern of errorPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 5) {
+        error.hasLeaks = true;
+        error.leaks.push(`${matches.length} debug statements: ${pattern}`);
+      }
+    }
+
+    return error;
+  }
+
+  calculateEntropy(str) {
+    if (!str) return 0;
+    const len = str.length;
+    const charset = new Set(str.split(''));
+    return Math.log2(charset.size) * (len / Math.max(len, 1));
+  }
+
+  checkFileUploadSecurity() {
+    const upload = {
+      hasIssues: false,
+      issues: [],
+      uploadForms: [],
+      fileTypes: []
+    };
+
+    // Check for file upload forms
+    const forms = document.querySelectorAll('form');
+    for (const form of forms) {
+      const fileInput = form.querySelector('input[type="file"]');
+      
+      if (fileInput) {
+        const accept = fileInput.getAttribute('accept');
+        const multiple = fileInput.hasAttribute('multiple');
+        
+        upload.uploadForms.push({
+          action: form.action || 'current',
+          hasAccept: !!accept,
+          acceptValue: accept || 'any',
+          hasMultiple: multiple
+        });
+
+        if (!accept) {
+          upload.hasIssues = true;
+          upload.issues.push('File upload without accept attribute');
+        }
+
+        if (multiple) {
+          upload.hasIssues = true;
+          upload.issues.push('Multiple file upload enabled');
+        }
+      }
+    }
+
+    // Check for file type validation in JavaScript
+    const bodyHTML = document.body.innerHTML;
+    const fileTypePatterns = [
+      /\.png|\.jpg|\.jpeg|\.gif/gi,
+      /\.pdf|\.doc|\.docx|\.xls/gi,
+      /image\//gi,
+      /application\//gi
+    ];
+
+    for (const pattern of fileTypePatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        upload.fileTypes.push(`${matches.length} file type patterns: ${pattern}`);
+      }
+    }
+
+    return upload;
+  }
+
+  checkRateLimiting() {
+    const rateLimit = {
+      hasIndicators: false,
+      indicators: [],
+      headers: []
+    };
+
+    // Check for rate limiting headers (this would need HTTP response headers)
+    // For now, we check for rate limiting patterns in JavaScript
+    const bodyHTML = document.body.innerHTML;
+
+    const rateLimitPatterns = [
+      /rate[_-]?limit/gi,
+      /throttle/gi,
+      /quota/gi,
+      /429/gi,
+      /too many requests/gi
+    ];
+
+    for (const pattern of rateLimitPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        rateLimit.hasIndicators = true;
+        rateLimit.indicators.push(`${matches.length} rate limiting patterns: ${pattern}`);
+      }
+    }
+
+    return rateLimit;
+  }
+
+  checkDOMXssAdvanced() {
+    const domXss = {
+      hasVectors: false,
+      vectors: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for advanced DOM XSS vectors
+    const domXssPatterns = [
+      /location\.hash/gi,
+      /location\.search/gi,
+      /window\.name/gi,
+      /postMessage/gi,
+      /document\.URL/gi,
+      /document\.documentURI/gi,
+      /URLSearchParams/gi,
+      /decodeURIComponent/gi,
+      /atob\(/gi,
+      /btoa\(/gi
+    ];
+
+    for (const pattern of domXssPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 0) {
+        domXss.hasVectors = true;
+        domXss.vectors.push(`${matches.length} DOM XSS vectors: ${pattern}`);
+      }
+    }
+
+    // Check for self-XSS patterns
+    if (bodyHTML.includes('self') || bodyHTML.includes('this')) {
+      domXss.hasVectors = true;
+      domXss.vectors.push('Potential self-XSS patterns detected');
+    }
+
+    return domXss;
+  }
+
+  checkWebCachePoisoning() {
+    const cachePoison = {
+      hasVectors: false,
+      vectors: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for web cache poisoning patterns
+    const cachePoisonPatterns = [
+      /X-Forwarded-For/gi,
+      /X-Real-IP/gi,
+      /Host:/gi,
+      /User-Agent:/gi,
+      /Accept-Language:/gi,
+      /Accept-Encoding:/gi
+    ];
+
+    for (const pattern of cachePoisonPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 0) {
+        cachePoison.hasVectors = true;
+        cachePoison.vectors.push(`${matches.length} cache poisoning vectors: ${pattern}`);
+      }
+    }
+
+    return cachePoison;
+  }
+
+  checkGraphQLSecurity() {
+    const graphql = {
+      hasIssues: false,
+      issues: [],
+      introspection: false,
+      queryDepth: false
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for GraphQL introspection
+    if (bodyHTML.includes('__schema') || bodyHTML.includes('__type') || bodyHTML.includes('introspection')) {
+      graphql.introspection = true;
+      graphql.hasIssues = true;
+      graphql.issues.push('GraphQL introspection may be enabled');
+    }
+
+    // Check for deep query patterns
+    if (bodyHTML.includes('fragment') || bodyHTML.includes('query depth')) {
+      graphql.queryDepth = true;
+      graphql.hasIssues = true;
+      graphql.issues.push('Potential GraphQL depth analysis issues');
+    }
+
+    // Check for N+1 query patterns
+    if (bodyHTML.includes('batch') || bodyHTML.includes('parallel')) {
+      graphql.hasIssues = true;
+      graphql.issues.push('Potential N+1 query patterns');
+    }
+
+    return graphql;
+  }
+
+  checkInformationGathering() {
+    const recon = {
+      hasFindings: false,
+      findings: [],
+      technologies: [],
+      frameworks: [],
+      comments: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+    const url = window.location.href;
+
+    // Check for technology indicators
+    const techPatterns = [
+      { pattern: /react/gi, name: 'React' },
+      { pattern: /vue/gi, name: 'Vue.js' },
+      { pattern: /angular/gi, name: 'Angular' },
+      { pattern: /jquery/gi, name: 'jQuery' },
+      { pattern: /bootstrap/gi, name: 'Bootstrap' },
+      { pattern: /tailwind/gi, name: 'Tailwind CSS' },
+      { pattern: /express/gi, name: 'Express.js' },
+      { pattern: /django/gi, name: 'Django' },
+      { pattern: /rails/gi, name: 'Ruby on Rails' },
+      { pattern: /laravel/gi, name: 'Laravel' },
+      { pattern: /spring/gi, name: 'Spring' },
+      { pattern: /asp\.net/gi, name: 'ASP.NET' },
+      { pattern: /php/gi, name: 'PHP' },
+      { pattern: /wordpress/gi, name: 'WordPress' },
+      { pattern: /drupal/gi, name: 'Drupal' }
+    ];
+
+    for (const tech of techPatterns) {
+      if (bodyHTML.match(tech.pattern)) {
+        recon.technologies.push(tech.name);
+        recon.hasFindings = true;
+      }
+    }
+
+    // Check for framework indicators
+    const frameworkPatterns = [
+      /next\.js/gi,
+      /nuxt/gi,
+      /gatsby/gi,
+      /nuxt/gi
+    ];
+
+    for (const pattern of frameworkPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        recon.frameworks.push(matches[0]);
+        recon.hasFindings = true;
+      }
+    }
+
+    // Check for revealing comments
+    const commentPatterns = [
+      /<!--.*TODO.*-->/gi,
+      /<!--.*FIXME.*-->/gi,
+      /<!--.*DEBUG.*-->/gi,
+      /<!--.*test.*-->/gi,
+      /<!--.*admin.*-->/gi
+    ];
+
+    for (const pattern of commentPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        recon.comments.push(matches[0].substring(0, 50));
+        recon.hasFindings = true;
+      }
+    }
+
+    return recon;
+  }
+
+  checkSSLTlsAnalysis() {
+    const ssl = {
+      hasIssues: false,
+      issues: [],
+      protocol: window.location.protocol,
+      isHTTPS: window.location.protocol === 'https:',
+      isSecureContext: window.isSecureContext,
+      certificate: {
+        valid: false,
+        issuer: null,
+        subject: null,
+        validUntil: null
+      }
+    };
+
+    if (!ssl.isHTTPS) {
+      ssl.hasIssues = true;
+      ssl.issues.push('Not using HTTPS');
+    }
+
+    if (!ssl.isSecureContext) {
+      ssl.hasIssues = true;
+      ssl.issues.push('Not in secure context');
+    }
+
+    // Check for SSL/TLS related headers (limited in client-side)
+    // This would need to be checked via HTTP response headers
+    const metaTags = document.querySelectorAll('meta');
+    for (const meta of metaTags) {
+      const httpEquiv = meta.getAttribute('http-equiv');
+      const content = meta.getAttribute('content');
+      
+      if (httpEquiv && httpEquiv.toLowerCase() === 'strict-transport-security' && content) {
+        ssl.certificate.valid = true;
+      }
+    }
+
+    return ssl;
+  }
+
+  checkSQLInjection() {
+    const sqli = {
+      hasPatterns: false,
+      patterns: [],
+      forms: [],
+      parameters: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+    const url = window.location.href;
+
+    // Check for SQL injection patterns in JavaScript
+    const sqliPatterns = [
+      /SELECT\s+\*/gi,
+      /UNION\s+SELECT/gi,
+      /OR\s+1\s*=\s*1/gi,
+      /AND\s+1\s*=\s*1/gi,
+      /DROP\s+TABLE/gi,
+      /INSERT\s+INTO/gi,
+      /UPDATE\s+\w+\s+SET/gi,
+      /DELETE\s+FROM/gi,
+      /--/gi,
+      /'/gi,
+      /"/gi
+    ];
+
+    for (const pattern of sqliPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 0) {
+        sqli.hasPatterns = true;
+        sqli.patterns.push(`${matches.length} SQL injection patterns: ${pattern}`);
+      }
+    }
+
+    // Check for form parameters that might be vulnerable
+    const forms = document.querySelectorAll('form');
+    for (const form of forms) {
+      const inputs = form.querySelectorAll('input, select, textarea');
+      for (const input of inputs) {
+        const name = input.name || input.id;
+        if (name) {
+          sqli.parameters.push(name);
+        }
+      }
+    }
+
+    // Check URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    for (const param of urlParams) {
+      sqli.parameters.push(param[0]);
+    }
+
+    return sqli;
+  }
+
+  checkCommandInjection() {
+    const cmdi = {
+      hasPatterns: false,
+      patterns: [],
+      forms: [],
+      parameters: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+
+    // Check for command injection patterns
+    const cmdiPatterns = [
+      /;\s*\w+/g,
+      /\|\s*\w+/g,
+      /&&\s*\w+/g,
+      /\$\(/g,
+      /`[^`]*`/g,
+      /exec\s*\(/gi,
+      /system\s*\(/gi,
+      /passthru\s*\(/gi,
+      /shell_exec\s*\(/gi,
+      /eval\s*\(/gi
+    ];
+
+    for (const pattern of cmdiPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 0) {
+        cmdi.hasPatterns = true;
+        cmdi.patterns.push(`${matches.length} command injection patterns: ${pattern}`);
+      }
+    }
+
+    // Check for form parameters
+    const forms = document.querySelectorAll('form');
+    for (const form of forms) {
+      const inputs = form.querySelectorAll('input, select, textarea');
+      for (const input of inputs) {
+        const name = input.name || input.id;
+        if (name) {
+          cmdi.parameters.push(name);
+        }
+      }
+    }
+
+    return cmdi;
+  }
+
+  checkJWTAnalysis() {
+    const jwt = {
+      hasIssues: false,
+      issues: [],
+      tokens: [],
+      algorithms: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+    const cookies = document.cookie.split(';').filter(c => c.trim());
+
+    // Check for JWT patterns in cookies
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (value && value.match(/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/)) {
+        jwt.tokens.push({
+          name: name,
+          hasToken: true
+        });
+        jwt.hasIssues = true;
+        jwt.issues.push(`JWT token in cookie: ${name}`);
+      }
+    }
+
+    // Check for JWT patterns in JavaScript
+    const jwtPatterns = [
+      /jwt/gi,
+      /jsonwebtoken/gi,
+      /bearer/gi,
+      /authorization\s*[:=]/gi
+    ];
+
+    for (const pattern of jwtPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        jwt.algorithms.push(`${matches.length} JWT patterns: ${pattern}`);
+      }
+    }
+
+    return jwt;
+  }
+
+  checkOAuthAnalysis() {
+    const oauth = {
+      hasIssues: false,
+      issues: [],
+      providers: [],
+      endpoints: []
+    };
+
+    const bodyHTML = document.body.innerHTML;
+    const url = window.location.href;
+
+    // Check for OAuth providers
+    const oauthProviders = [
+      'google',
+      'facebook',
+      'github',
+      'twitter',
+      'linkedin',
+      'microsoft',
+      'apple',
+      'auth0',
+      'okta',
+      'saml'
+    ];
+
+    for (const provider of oauthProviders) {
+      if (bodyHTML.toLowerCase().includes(provider) || url.toLowerCase().includes(provider)) {
+        oauth.providers.push(provider);
+      }
+    }
+
+    // Check for OAuth endpoints
+    const oauthEndpoints = [
+      /\/oauth\/authorize/gi,
+      /\/oauth\/token/gi,
+      /\/auth\/login/gi,
+      /\/callback/gi,
+      /\/redirect/gi,
+      /client_id/gi,
+      /response_type/gi
+    ];
+
+    for (const pattern of oauthEndpoints) {
+      const matches = url.match(pattern);
+      if (matches) {
+        oauth.endpoints.push(matches[0]);
+        oauth.hasIssues = true;
+        oauth.issues.push(`OAuth endpoint detected: ${matches[0]}`);
+      }
+    }
+
+    // Check for redirect_uri parameter
+    if (url.includes('redirect_uri') || bodyHTML.includes('redirect_uri')) {
+      oauth.hasIssues = true;
+      oauth.issues.push('redirect_uri parameter detected - check for open redirect');
+    }
+
+    return oauth;
+  }
+
+  checkMassAssignment() {
+    const massAssign = {
+      hasPatterns: false,
+      patterns: [],
+      forms: [],
+      frameworks: []
+    };
+
+    const bodyHTML = document.bodyHTML;
+
+    // Check for mass assignment patterns
+    const massAssignPatterns = [
+      /mass_assign/gi,
+      /attr_accessible/gi,
+      /permit/gi,
+      /strong_parameters/gi,
+      /whitelist/gi,
+      /blacklist/gi,
+      /fill\s*\(/gi,
+      /assign\s*\(/gi,
+      /merge\s*\(/gi,
+      /update\s*\(/gi
+    ];
+
+    for (const pattern of massAssignPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches && matches.length > 0) {
+        massAssign.hasPatterns = true;
+        massAssign.patterns.push(`${matches.length} mass assignment patterns: ${pattern}`);
+      }
+    }
+
+    // Check for frameworks that are vulnerable to mass assignment
+    const frameworkPatterns = [
+      /rails/gi,
+      /django/gi,
+      /laravel/gi,
+      /express/gi
+    ];
+
+    for (const pattern of frameworkPatterns) {
+      const matches = bodyHTML.match(pattern);
+      if (matches) {
+        massAssign.frameworks.push(matches[0]);
+      }
+    }
+
+    // Check for forms with many fields (potential mass assignment)
+    const forms = document.querySelectorAll('form');
+    for (const form of forms) {
+      const inputs = form.querySelectorAll('input, select, textarea');
+      if (inputs.length > 10) {
+        massAssign.forms.push({
+          action: form.action || 'current',
+          fieldCount: inputs.length
+        });
+        massAssign.hasPatterns = true;
+      }
+    }
+
+    return massAssign;
+  }
+
+  getDeepAnalysisScript() {
+    return `(() => {
+      const r = {
+        behavioralFingerprinting: (() => {
+          const bodyHTML = document.body.innerHTML;
+          const res = {
+            hasIssues: false, issues: [],
+            timers: (bodyHTML.match(/setTimeout/gi)||[]).length+(bodyHTML.match(/setInterval/gi)||[]).length,
+            websockets: (bodyHTML.match(/new\\s+WebSocket/gi)||[]).length,
+            sse: (bodyHTML.match(/new\\s+EventSource/gi)||[]).length,
+            dynamicImports: (bodyHTML.match(/import\\s*\\(/gi)||[]).length,
+            evalUsage: (bodyHTML.match(/eval\\s*\\(/gi)||[]).length,
+            functionConstructor: (bodyHTML.match(/new\\s+Function\\s*\\(/gi)||[]).length,
+            prototypePollutionSinks: (bodyHTML.match(/Object\\.assign\\s*\\(/gi)||[]).length+(bodyHTML.match(/JSON\\.parse\\s*\\(/gi)||[]).length+(bodyHTML.match(/lodash/gi)||[]).length
+          };
+          if (res.dynamicImports>0) { res.hasIssues=true; res.issues.push('Dynamic imports: '+res.dynamicImports); }
+          if (res.evalUsage>0) { res.hasIssues=true; res.issues.push('eval() usage: '+res.evalUsage); }
+          if (res.functionConstructor>0) { res.hasIssues=true; res.issues.push('Function constructor: '+res.functionConstructor); }
+          if (res.prototypePollutionSinks>0) { res.hasIssues=true; res.issues.push('Prototype pollution sinks: '+res.prototypePollutionSinks); }
+          return res;
+        })(),
+        shadowDOM: (() => {
+          const res = { hasIssues:false, issues:[], shadowRoots:0, openShadowRoots:0, closedShadowRoots:0 };
+          document.querySelectorAll('*').forEach(el=>{
+            if (el.shadowRoot) { res.shadowRoots++; if(el.shadowRoot.mode==='open') res.openShadowRoots++; else res.closedShadowRoots++; }
+          });
+          if (res.openShadowRoots>0) { res.hasIssues=true; res.issues.push(res.openShadowRoots+' open shadow roots'); }
+          return res;
+        })(),
+        webComponents: (() => {
+          const res = { hasIssues:false, issues:[], customElements:0, definedElements:[], unregisteredElements:[] };
+          const bodyHTML = document.body.innerHTML;
+          const m = bodyHTML.match(/<([a-z]+-[a-z-]+)/gi);
+          if (m) {
+            m.forEach(tag=>{ const t=tag.slice(1); res.customElements++; if(window.customElements && window.customElements.get(t)) res.definedElements.push(t); else res.unregisteredElements.push(t); });
+          }
+          if (res.unregisteredElements.length>0) { res.hasIssues=true; res.issues.push('Unregistered: '+res.unregisteredElements.join(',')); }
+          return res;
+        })(),
+        serviceWorkers: {
+          serviceWorkerSupported: 'serviceWorker' in navigator,
+          pushManagerSupported: 'PushManager' in window,
+          cacheStorage: 'caches' in window,
+          backgroundFetchSupported: 'BackgroundFetchManager' in window
+        },
+        crossOriginCommunication: (() => {
+          const bodyHTML = document.body.innerHTML;
+          const res = { hasIssues:false, issues:[], postMessageSenders:(bodyHTML.match(/postMessage/gi)||[]).length, broadcastChannels:(bodyHTML.match(/new\\s+BroadcastChannel/gi)||[]).length, wildcardOrigin:!!bodyHTML.match(/postMessage\\s*\\(\\s*[^,]+,\\s*['"]?\\*/gi) };
+          if (res.wildcardOrigin) { res.hasIssues=true; res.issues.push('postMessage wildcard origin'); }
+          if (res.broadcastChannels>0) { res.hasIssues=true; res.issues.push('BroadcastChannel: '+res.broadcastChannels); }
+          return res;
+        })(),
+        cryptography: (() => {
+          const bodyHTML = document.body.innerHTML;
+          const res = { hasIssues:false, issues:[], webCryptoSupported:'crypto' in window && 'subtle' in window.crypto, mathRandomUsage:(bodyHTML.match(/Math\\.random\\s*\\(/gi)||[]).length, dateNowUsage:(bodyHTML.match(/Date\\.now\\s*\\(/gi)||[]).length+(bodyHTML.match(/new\\s+Date\\s*\\(/gi)||[]).length, customCrypto:false };
+          if (res.mathRandomUsage>0) { res.hasIssues=true; res.issues.push('Math.random(): '+res.mathRandomUsage); }
+          if (res.dateNowUsage>5) { res.hasIssues=true; res.issues.push('Date usage: '+res.dateNowUsage); }
+          if (bodyHTML.match(/md5|sha1\\s*\\(|custom.*encrypt|rot13/gi)) { res.customCrypto=true; res.hasIssues=true; res.issues.push('Custom/weak crypto'); }
+          return res;
+        })(),
+        memoryLeaks: (() => {
+          const bodyHTML = document.body.innerHTML;
+          const res = { hasIssues:false, issues:[], intervalLeaks:(bodyHTML.match(/setInterval/gi)||[]).length-(bodyHTML.match(/clearInterval/gi)||[]).length };
+          if (res.intervalLeaks>2) { res.hasIssues=true; res.issues.push('Interval leaks: '+res.intervalLeaks); }
+          if (bodyHTML.includes('addEventListener') && !bodyHTML.includes('removeEventListener')) { res.hasIssues=true; res.issues.push('Event listeners without removal'); }
+          return res;
+        })(),
+        performanceTiming: (() => {
+          const bodyHTML = document.body.innerHTML;
+          const res = { hasIssues:false, issues:[], performanceEntries:0, timingAttacks:!!(bodyHTML.includes('performance.now')||bodyHTML.includes('Date.now')) };
+          if (window.performance && window.performance.getEntries) { res.performanceEntries = window.performance.getEntries().length; }
+          if (res.timingAttacks) { res.hasIssues=true; res.issues.push('High-res timing APIs'); }
+          return res;
+        })(),
+        resourceTiming: (() => {
+          const res = { hasIssues:false, issues:[], thirdPartyResources:[], internalEndpoints:[] };
+          if (window.performance && window.performance.getEntriesByType) {
+            window.performance.getEntriesByType('resource').forEach(r=>{
+              try { const u=new URL(r.name); if(u.hostname!==window.location.hostname){res.thirdPartyResources.push(u.hostname);} if(u.pathname.includes('/api/')||u.pathname.includes('/internal/')){res.internalEndpoints.push(u.pathname);} } catch(e){}
+            });
+          }
+          if (res.thirdPartyResources.length>5) { res.hasIssues=true; res.issues.push('Third-party: '+res.thirdPartyResources.length); }
+          return res;
+        })(),
+        requestInterception: (() => {
+          const bodyHTML = document.body.innerHTML;
+          const res = { hasIssues:false, issues:[], fetchOverridden:!!bodyHTML.match(/fetch\\s*=/gi), xhrOverridden:!!bodyHTML.match(/XMLHttpRequest\\.prototype/gi), interceptors:0 };
+          ['axios.interceptors','.interceptors.request','.interceptors.response','middleware','interceptor'].forEach(p=>{ if(bodyHTML.includes(p)) res.interceptors++; });
+          if (res.fetchOverridden) { res.hasIssues=true; res.issues.push('fetch overridden'); }
+          if (res.xhrOverridden) { res.hasIssues=true; res.issues.push('XHR prototype modified'); }
+          return res;
+        })(),
+        credentialManagement: {
+          credentialAPI: 'credentials' in navigator,
+          passwordInputs: document.querySelectorAll('input[type="password"]').length,
+          autocompleteEnabled: [...document.querySelectorAll('input')].some(i=>['on','username','current-password'].includes(i.getAttribute('autocomplete')))
+        },
+        beaconAPI: { hasIssues:false, issues:[], beaconUsage:(document.body.innerHTML.match(/sendBeacon/gi)||[]).length },
+        webRTC: { hasIssues:false, issues:[], supported:'RTCPeerConnection' in window, peerConnections:(document.body.innerHTML.match(/new\\s+RTCPeerConnection/gi)||[]).length },
+        paymentAPI: { supported: 'PaymentRequest' in window },
+        permissionsAPI: { supported: 'permissions' in navigator, requestedPermissions: ['geolocation','mediaDevices','notifications','clipboard'].filter(p=>document.body.innerHTML.includes(p)) },
+        trustedTypes: { supported: 'trustedTypes' in window },
+        speculationRules: { hasIssues:false, issues:[], rules:document.querySelectorAll('script[type="speculationrules"]').length },
+        webAppManifest: { present: !!document.querySelector('link[rel="manifest"]') },
+        sensors: { accelerometer:'Accelerometer' in window, gyroscope:'Gyroscope' in window, magnetometer:'Magnetometer' in window, proximity:'ProximitySensor' in window },
+        speechAPI: { speechRecognition:'SpeechRecognition' in window||'webkitSpeechRecognition' in window, speechSynthesis:'speechSynthesis' in window },
+        fileSystemAccess: { supported: 'showOpenFilePicker' in window },
+        webSerial: { supported: 'serial' in navigator },
+        webUSB: { supported: 'usb' in navigator },
+        webBluetooth: { supported: 'bluetooth' in navigator },
+        webNFC: { supported: 'NDEFReader' in window },
+        webHID: { supported: 'hid' in navigator },
+        idleDetection: { supported: 'IdleDetector' in window },
+        screenWakeLock: { supported: 'wakeLock' in navigator },
+        webShare: { supported: 'share' in navigator },
+        appCache: { supported: 'applicationCache' in window, deprecated:true },
+        backgroundSync: { supported: 'sync' in (navigator.serviceWorker||{}) },
+        periodicBackgroundSync: { supported: 'periodicSync' in (navigator.serviceWorker||{}) },
+        paymentHandlers: { supported: 'paymentManager' in (navigator.serviceWorker||{}) },
+        protocolHandlers: { supported: 'registerProtocolHandler' in navigator },
+        relatedApps: { supported: 'getInstalledRelatedApps' in navigator },
+        fontAccess: { supported: 'queryLocalFonts' in window },
+        multiScreen: { supported: 'getScreenDetails' in window },
+        computePressure: { supported: 'PressureObserver' in window },
+        contactPicker: { supported: 'contacts' in navigator && 'ContactsManager' in window },
+        webOTP: { supported: 'OTPCredential' in window },
+        digitalGoods: { supported: 'getDigitalGoodsService' in window },
+        attributionReporting: { supported: 'AttributionReporting' in window },
+        topicsAPI: { supported: 'browsingTopics' in document },
+        privateStateTokens: { supported: 'PrivateStateToken' in window },
+        sharedStorage: { supported: 'sharedStorage' in window },
+        fencedFrames: { supported: 'HTMLFencedFrameElement' in window },
+        reportingAPI: { supported: 'ReportingObserver' in window },
+        windowControlsOverlay: { supported: 'windowControlsOverlay' in (navigator||{}) },
+        notificationTriggers: { supported: 'showNotification' in navigator && 'NotificationTrigger' in window },
+        badging: { supported: 'setAppBadge' in navigator },
+        contentIndex: { supported: 'index' in (navigator.serviceWorker||{}) },
+        gamepadAPI: { supported: 'getGamepads' in navigator },
+        captureLinks: { supported: false },
+        shareTarget: { supported: false },
+        shortcuts: { supported: false },
+        urlHandlers: { supported: 'URLPattern' in window }
+      };
+      return r;
+    })()`;
   }
 }

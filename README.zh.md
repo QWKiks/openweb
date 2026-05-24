@@ -112,6 +112,64 @@ npm run setup-mcp -- --remove
 | `dialog` | 处理 JS 对话框（alert、confirm、prompt） |
 | `emulate` | 模拟移动设备、地理位置、用户代理 |
 | `session` | 保存和恢复浏览器会话状态 |
+| `speech_to_text` | 使用本地 Whisper 转录视频/音频（离线，无需 API 密钥） |
+
+## 语音转文字 (Local Whisper)
+
+从任何网站转录视频和音频 **离线** — 无需 API 密钥。
+
+**支持的平台：** YouTube、X/Twitter、TikTok、Instagram、Vimeo 以及通过 `yt-dlp` 支持的 100+ 网站。
+
+### 安装
+
+```bash
+# 1. Python 依赖
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install faster-whisper flask
+
+# 2. 系统依赖 (macOS)
+brew install ffmpeg yt-dlp
+
+# Linux
+# sudo apt install ffmpeg yt-dlp
+```
+
+### 启动 Whisper 服务器
+
+```bash
+# 终端 1: 启动守护进程
+npm start
+
+# 终端 2: 启动本地 Whisper 服务器
+python whisper-server.py
+
+# 或使用特定模型
+WHISPER_MODEL=small python whisper-server.py
+```
+
+服务器默认运行在 `http://127.0.0.1:5001`。
+
+### 使用方法
+
+```bash
+# 打开视频页面
+navigate url: "https://x.com/username/status/1234567890"
+
+# 转录视频
+speech_to_text tabId: <tab_id> language: "zh"
+```
+
+**参数：**
+- `tabId` — 包含视频的标签页（可选，自动检测活动标签页）
+- `videoUrl` — 直接视频链接（可选，从页面自动检测）
+- `language` — 转录语言代码（例如 `"en"`、`"ru"`、`"zh"`）
+
+**可用模型：** `tiny`、`base`（默认）、`small`、`medium`、`large` — 越大越准确但越慢。
+
+**M1 Mac 性能：**
+- `base` 模型：25分钟音频约 70 秒
+- `small` 模型：25分钟音频约 2 分钟（推荐）
 
 ## 守护进程 REPL
 
@@ -162,6 +220,7 @@ openweb/
 ├── background.js          # Service Worker 入口
 ├── daemon.js              # WebSocket 守护进程 + REPL
 ├── mcp-server.js          # MCP 服务器 (stdio/SSE)
+├── whisper-server.py      # 本地 Whisper 语音转文字服务器
 ├── setup-mcp.js           # MCP 注册脚本
 ├── package.json
 ├── _locales/              # 国际化 (en, ru, zh_CN)

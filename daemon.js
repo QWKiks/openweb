@@ -18,6 +18,10 @@ import { isRecording, startSession, recordToolCall, recordToolResult, stopSessio
 const PORT = 10086;
 const PATH = "/ws";
 const DBG = debug("daemon");
+const DEBUG = process.env.WEBBRIDGE_DEBUG === "1" || process.env.WEBBRIDGE_DEBUG === "true";
+
+// Override debug function to respect WEBBRIDGE_DEBUG
+const daemonDebug = DEBUG ? DBG : () => {};
 
 // ── Security Configuration ────────────────────────────────────────────────
 
@@ -65,7 +69,7 @@ function checkRateLimit(ip) {
 const AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
 
 // #7: Reject ws:// connections when auth token is configured (token exposed on unencrypted ws://)
-const BIND_HOST = AUTH_TOKEN ? "127.0.0.1" : undefined; // Only bind localhost when auth is active
+const BIND_HOST = "127.0.0.1"; // Always bind to IPv4 localhost for compatibility
 const REQUIRE_TLS = AUTH_TOKEN;
 
 const wss = new WebSocketServer({ port: PORT, host: BIND_HOST, path: PATH, perMessageDeflate: false, maxPayload: 50 * 1024 * 1024 });

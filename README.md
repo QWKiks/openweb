@@ -139,6 +139,7 @@ Restart your AI tool after registration.
 | `bookmark` | Manage Chrome bookmarks (list, create, update, delete, search) |
 | `extension` | Manage Chrome extensions (list, enable, disable, info) |
 | `security_scan` | Comprehensive security assessment (headers, XSS, mixed content, SSL/TLS) |
+| `speech_to_text` | Transcribe video/audio from any page using local Whisper (offline, no API key) |
 
 ## AI-Native Semantic Selectors
 
@@ -156,6 +157,63 @@ Resolution strategy (tried in order):
 3. Text content match on buttons, links, labels
 4. Role + name match
 5. Input type + label association
+
+## Speech-to-Text (Local Whisper)
+
+Transcribe video and audio from any website **offline** — no API key required.
+
+**Supported platforms:** YouTube, X/Twitter, TikTok, Instagram, Vimeo, and 100+ sites via `yt-dlp`.
+
+### Setup
+
+```bash
+# 1. Install Python dependencies
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install faster-whisper flask
+
+# 2. Install system dependencies (macOS)
+brew install ffmpeg yt-dlp
+
+# Linux
+# sudo apt install ffmpeg yt-dlp
+```
+
+### Start the Whisper Server
+
+```bash
+# Terminal 1: Start daemon
+npm start
+
+# Terminal 2: Start local Whisper server
+python whisper-server.py
+
+# Or with specific model
+WHISPER_MODEL=small python whisper-server.py
+```
+
+The server runs on `http://127.0.0.1:5001` by default.
+
+### Usage
+
+```bash
+# Navigate to a video page
+navigate url: "https://x.com/username/status/1234567890"
+
+# Transcribe the video
+speech_to_text tabId: <tab_id> language: "en"
+```
+
+**Parameters:**
+- `tabId` — Tab with the video (optional, auto-detects active tab)
+- `videoUrl` — Direct video URL (optional, auto-detected from page)
+- `language` — Language code for transcription (e.g. `"en"`, `"ru"`, `"zh"`)
+
+**Models available:** `tiny`, `base` (default), `small`, `medium`, `large` — larger = more accurate but slower.
+
+**Performance on M1 Mac:**
+- `base` model: ~70s for 25min audio
+- `small` model: ~2min for 25min audio (recommended)
 
 ## Recording & Playback
 
@@ -233,10 +291,68 @@ security_scan  detailed: true
 - **Prototype Pollution** - __proto__, constructor.prototype, Object.assign, JSON.parse
 - **SSRF Patterns** - fetch with user input, location assignment, API endpoint patterns
 
+**Bug Bounty Top Findings (HIGH PRIORITY):**
+- **IDOR Pattern Detection** - /api/users/{id}, sequential IDs, UUID predictability
+- **CSRF Token Analysis** - token presence, length, entropy, predictability
+- **Session Cookie Security** - Secure, HttpOnly, SameSite, session ID length
+- **Authentication Flow Analysis** - login forms, MFA, password reset, autocomplete
+- **Authorization Patterns** - admin endpoints, role-based access, API key exposure
+- **Parameter Tampering** - hidden fields, cookie parameters, sensitive data
+
+**Additional Security Checks (MEDIUM/LOW PRIORITY):**
+- **Cache Headers** - Cache-Control, cache poisoning vectors
+- **Advanced Clickjacking** - pointer events, drag-and-drop
+- **API Endpoint Discovery** - REST API, GraphQL introspection
+- **Race Conditions** - async operations, timing analysis
+- **Business Logic Patterns** - price/discount manipulation, cart abuse
+- **Supply Chain Analysis** - CDN usage, external library fingerprinting
+- **Error Handling** - debug statements, information disclosure
+- **File Upload Security** - upload forms, file type validation, multiple uploads
+- **Rate Limiting** - rate limit indicators, throttling patterns
+- **DOM XSS Advanced** - location.hash, postMessage, self-XSS
+- **Web Cache Poisoning** - header-based poisoning, cache key confusion
+- **GraphQL Security** - introspection, query depth, N+1 patterns
+
+**OWASP WSTG Coverage:**
+- **Information Gathering** - technology detection, framework identification, comment analysis
+- **SSL/TLS Analysis** - protocol check, secure context, HSTS validation
+- **SQL Injection Detection** - pattern matching, form parameter analysis
+- **Command Injection Detection** - shell execution patterns, form field analysis
+- **JWT Token Analysis** - token detection in cookies, algorithm patterns
+- **OAuth/OpenID Analysis** - provider detection, endpoint analysis, redirect_uri validation
+- **Mass Assignment Detection** - framework patterns, form field count analysis
+
+**Logical Chain Analysis (NEW):**
+- **Vulnerability Chaining** - Identifies how vulnerabilities connect and amplify each other
+- **Step-by-Step Attack Paths** - Generates detailed attack paths from entry to impact (up to 5+ steps)
+- **Correlation Engine** - Finds relationships between different security issues
+- **Context-Aware Scoring** - Adjusts risk based on site context and business logic
+- **Neural Network Output** - Structured format optimized for AI/ML analysis
+- **Defense-in-Depth Assessment** - Evaluates security layer effectiveness
+- **Cascading Effects Analysis** - Traces how one vulnerability triggers others
+
+**Deep Behavioral Analysis (NEW):**
+- **Behavioral Fingerprinting** - Event listeners, timers, dynamic imports, eval usage
+- **Shadow DOM / Web Components** - Open shadow roots, unregistered custom elements
+- **Cross-Origin Communication** - postMessage validation, BroadcastChannel, wildcard origins
+- **Cryptographic Analysis** - Math.random() usage, custom crypto, WebCrypto detection
+- **Memory Leak Detection** - Interval leaks, event listener leaks
+- **Request Interception** - fetch/XHR override detection
+- **Resource Timing** - Third-party resource enumeration, internal endpoint discovery
+- **Performance Timing** - High-resolution timing attack vectors
+- **Modern Web APIs** - WebRTC, Beacon API, Payment API, Permissions API, Trusted Types
+- **PWA / Background APIs** - Service workers, background sync, periodic sync, push notifications
+- **Hardware APIs** - WebSerial, WebUSB, WebBluetooth, WebNFC, sensors, gamepad
+- **Privacy Sandbox APIs** - Topics API, Attribution Reporting, Private State Tokens, Fenced Frames
+
 **Output includes:**
-- Risk level and score
+- Risk level and score (with chain analysis context)
 - Detailed findings by category
+- Vulnerability chains and attack paths
+- Correlations between issues
+- Step-by-step exploitation analysis
 - Prioritized recommendations with examples
+- Neural network friendly feature vectors
 
 ## Security
 
@@ -343,6 +459,7 @@ openweb/
 ├── mcp-server.js             # MCP server (stdio/SSE)
 ├── replay.js                 # Session replay script
 ├── cloud.js                  # Remote browser cloud connector
+├── whisper-server.py         # Local Whisper server for speech-to-text
 ├── cli.js                    # CLI (setup, daemon, mcp, doctor)
 ├── setup-mcp.js              # MCP registration script
 ├── package.json

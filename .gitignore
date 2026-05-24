@@ -4,3 +4,4 @@ package-lock.json
 .windsurf/
 *.png.bak
 _tmp.*
+.env

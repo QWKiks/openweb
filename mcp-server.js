@@ -22,12 +22,53 @@
  *   }
  */
 
+import "dotenv/config";
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import WebSocket from "ws";
+import { appendFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { execSync } from "child_process";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TRANSCRIPTIONS_DIR = join(__dirname, "transcriptions");
+
+// File-based logger for debugging startup issues (Windsurf captures stderr via stdio)
+function startupLog(...args) {
+  const line = `[${new Date().toISOString()}] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
+  try { appendFileSync('/tmp/mcp-startup.log', line); } catch {}
+}
+startupLog('MCP server starting...');
+process.on('uncaughtException', (err) => { startupLog('UNCAUGHT EXCEPTION:', err.message, err.stack); throw err; });
+process.on('unhandledRejection', (err) => { startupLog('UNHANDLED REJECTION:', err); });
 
 const DAEMON_URL = process.env.WEBBRIDGE_WS_URL || "ws://127.0.0.1:10086/ws";
+const DEBUG = process.env.WEBBRIDGE_DEBUG === "1" || process.env.WEBBRIDGE_DEBUG === "true";
+
+function log(level, ...args) {
+  const timestamp = new Date().toISOString();
+  const prefix = `[mcp:${level}] ${timestamp}`;
+  if (level === "error" || DEBUG) {
+    console.error(prefix, ...args);
+  } else {
+    console.error(prefix, ...args);
+  }
+}
+
+function logDebug(...args) {
+  if (DEBUG) log("debug", ...args);
+}
+
+function logInfo(...args) {
+  log("info", ...args);
+}
+
+function logError(...args) {
+  log("error", ...args);
+}
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
 const TOOLS = [
@@ -467,6 +508,18 @@ const TOOLS = [
       required: ["cmd"],
     },
   },
+  {
+    name: "speech_to_text",
+    description: "Transcribe audio from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Requires whisper-server.py to be running locally.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+        videoUrl: { type: "string", description: "Direct video URL (optional — auto-detected from page if omitted)" },
+        language: { type: "string", description: "Language code for transcription, e.g. 'en', 'ru' (optional)" },
+      },
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────
@@ -498,59 +551,96 @@ function resetReconnect() {
 
 function connectToDaemon() {
   return new Promise((resolve, reject) => {
+    logInfo("Connecting to daemon at", DAEMON_URL);
+    logDebug("DEBUG mode enabled");
+    
     ws = new WebSocket(DAEMON_URL);
 
+    const timeout = setTimeout(() => {
+      logError("Connection timeout (5s) to", DAEMON_URL);
+      if (ws) ws.close();
+      reject(new Error("Connection timeout (5s)"));
+    }, 5000);
+
     ws.on("open", () => {
+      clearTimeout(timeout);
+      logInfo("WebSocket connected to daemon");
       resetReconnect();
       const registerMsg = { type: "register", timestamp: Date.now() };
       // Add random nonce for replay protection
       registerMsg.nonce = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, "0")).join("");
       // Pass auth token if configured via env
       const token = process.env.WEBBRIDGE_TOKEN;
-      if (token) registerMsg.token = token;
+      if (token) {
+        registerMsg.token = token;
+        logDebug("Using auth token for registration");
+      }
+      logDebug("Sending register message", { nonce: registerMsg.nonce });
       ws.send(JSON.stringify(registerMsg));
       resolve();
     });
 
     ws.on("message", (raw, isBinary) => {
+      logDebug("Received message from daemon", { isBinary, length: raw.length });
+      
       // Handle binary frames (for screenshots)
       if (isBinary) {
         // Binary frame: first 4 bytes = requestId (uint32 LE), rest = binary data
-        if (raw.length < 4) return;
+        if (raw.length < 4) {
+          logError("Invalid binary frame: too short", raw.length);
+          return;
+        }
         const reqId = raw.readUInt32LE(0);
+        logDebug("Binary frame for request", reqId);
         const resolver = pendingCalls.get(String(reqId));
         if (resolver) {
           pendingCalls.delete(String(reqId));
           resolver({ data: raw.slice(4), binary: true });
+        } else {
+          logError("No resolver for binary request", reqId);
         }
         return;
       }
 
-      const msg = JSON.parse(raw.toString());
+      let msg;
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch (e) {
+        logError("Failed to parse message from daemon", e.message);
+        return;
+      }
+
+      logDebug("Parsed message from daemon", msg.type);
 
       if (msg.type === "ping") {
+        logDebug("Received ping, sending pong");
         ws.send(JSON.stringify({ type: "pong" }));
         return;
       }
 
       if (msg.type === "register_nack") {
-        console.error(`[mcp] auth failed: ${msg.error}`);
+        logError("Registration failed", msg.error);
         reject(new Error(msg.error || "Auth failed"));
         return;
       }
 
       if (msg.type === "tool_result" && msg.responseToRequestId) {
+        logDebug("Tool result for request", msg.responseToRequestId);
         const resolver = pendingCalls.get(msg.responseToRequestId);
         if (resolver) {
           pendingCalls.delete(msg.responseToRequestId);
           resolver(msg.payload);
+        } else {
+          logError("No resolver for tool result", msg.responseToRequestId);
         }
       }
     });
 
     ws.on("close", () => {
+      logError("WebSocket connection closed");
       ws = null;
       for (const [id, resolver] of pendingCalls) {
+        logDebug("Rejecting pending call", id);
         pendingCalls.delete(id);
         resolver({ error: "WebSocket disconnected" });
       }
@@ -559,46 +649,228 @@ function connectToDaemon() {
     });
 
     ws.on("error", (err) => {
+      logError("WebSocket error", err.message);
       reject(err);
     });
-
-    setTimeout(() => reject(new Error("Connection timeout")), 10000);
   });
 }
 
 function sendToolCall(name, args) {
   return new Promise(async (resolve) => {
+    logInfo("Tool call requested", name);
+    logDebug("Tool args", args);
+    
     if (!ws || ws.readyState !== WebSocket.OPEN) {
+      logError("WebSocket not connected, state:", ws?.readyState);
       try {
+        logInfo("Attempting to connect to daemon...");
         await connectToDaemon();
       } catch (e) {
+        logError("Failed to connect to daemon", e.message);
         resolve({ error: `Cannot connect to daemon: ${e.message}. Make sure daemon.js is running.` });
         return;
       }
     }
 
     const requestId = String(++requestIdCounter);
-    console.error(`[mcp] → tool_call: ${name} (req ${requestId})`);
+    logInfo("Sending tool call", { name, requestId });
+    
     const timeout = setTimeout(() => {
       pendingCalls.delete(requestId);
-      console.error(`[mcp] ✗ timeout: ${name} (req ${requestId})`);
+      logError("Tool call timeout", { name, requestId });
       resolve({ error: `Tool call timed out (30s): ${name}` });
     }, 30000);
 
     pendingCalls.set(requestId, (payload) => {
       clearTimeout(timeout);
-      console.error(`[mcp] ← result: ${name} (req ${requestId}) ${payload?.error ? "ERROR" : "OK"}`);
+      if (payload?.error) {
+        logError("Tool call returned error", { name, requestId, error: payload.error });
+      } else {
+        logInfo("Tool call succeeded", { name, requestId });
+      }
       resolve(payload);
     });
 
-    ws.send(
-      JSON.stringify({
-        type: "tool_call",
-        requestId,
-        payload: { name, args },
-      })
-    );
+    try {
+      ws.send(
+        JSON.stringify({
+          type: "tool_call",
+          requestId,
+          payload: { name, args },
+        })
+      );
+      logDebug("Message sent to daemon", { requestId, name });
+    } catch (e) {
+      logError("Failed to send message to daemon", e.message);
+      clearTimeout(timeout);
+      pendingCalls.delete(requestId);
+      resolve({ error: `Failed to send to daemon: ${e.message}` });
+    }
   });
+}
+
+// ── Speech-to-Text Helper ───────────────────────────────────────────────────
+async function handleSpeechToText(args) {
+  logInfo("speech_to_text called", args);
+  
+  logDebug("Using local Whisper server at http://127.0.0.1:5001");
+
+  let videoUrl = args.videoUrl;
+
+  if (!videoUrl) {
+    logInfo("No video URL provided, attempting to auto-detect from page");
+    const evalResult = await sendToolCall("evaluate", {
+      tabId: args.tabId,
+      code: `(function() {
+        const video = document.querySelector('video');
+        if (!video) return { error: 'No video element found on page' };
+
+        const sources = Array.from(video.querySelectorAll('source'))
+          .map(s => s.src).filter(Boolean);
+        const directUrl = video.currentSrc || video.src;
+
+        let mediaUrls = [];
+        const scripts = document.querySelectorAll('script');
+        for (let script of scripts) {
+          const text = script.textContent;
+          if (text) {
+            const matches = text.match(/https?:\\/\\/video\\.twimg\\.com\\/[^\\s\"]+?\\.(mp4|m3u8)/g);
+            if (matches) mediaUrls.push(...matches);
+          }
+        }
+
+        const allUrls = [...new Set([directUrl, ...sources, ...mediaUrls])]
+          .filter(u => u && !u.startsWith('blob:'));
+        const mp4Urls = allUrls.filter(u => u.includes('.mp4'));
+        const otherUrls = allUrls.filter(u => !u.includes('.mp4'));
+
+        return {
+          urls: [...mp4Urls, ...otherUrls],
+          duration: video.duration,
+          poster: video.poster
+        };
+      })()`,
+    });
+
+    if (evalResult.error) {
+      logError("Failed to locate video via evaluate", evalResult.error);
+      return { error: `Failed to locate video: ${evalResult.error}` };
+    }
+
+    const value = evalResult.data?.value;
+    if (value?.error) {
+      logError("Video detection returned error", value.error);
+      return { error: value.error };
+    }
+    if (!value?.urls?.length) {
+      logError("No video URLs found on page");
+      return { error: "No downloadable video URL found. The video may be DRM-protected or use temporary blob URLs." };
+    }
+    videoUrl = value.urls[0];
+    logInfo("Auto-detected video URL", videoUrl);
+    logDebug("Video metadata", { duration: value.duration, poster: value.poster, totalUrls: value.urls.length });
+  } else {
+    logInfo("Using provided video URL", videoUrl);
+  }
+
+  let tempPath = null;
+  try {
+    let buffer;
+    let filename = "video.mp4";
+
+    if (videoUrl.startsWith("blob:") || videoUrl.includes("x.com") || videoUrl.includes("twitter.com")) {
+      // Try yt-dlp for sites with blob/protected URLs
+      logInfo("Using yt-dlp to download audio from", videoUrl);
+      const tmpFile = `/tmp/mcp-audio-${Date.now()}.mp4`;
+      try {
+        execSync(`yt-dlp -f ba -o "${tmpFile}" "${videoUrl}"`, { timeout: 120000, stdio: "ignore" });
+        if (!require("fs").existsSync(tmpFile)) {
+          throw new Error("yt-dlp failed to download audio");
+        }
+        tempPath = tmpFile;
+        buffer = require("fs").readFileSync(tmpFile);
+        filename = "audio.mp4";
+        logInfo("Audio downloaded via yt-dlp", { sizeMB: Math.round(buffer.length / 1024 / 1024) });
+      } catch (ydlErr) {
+        logError("yt-dlp failed", ydlErr.message);
+        // Fallback: try direct fetch anyway
+        const response = await fetch(videoUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        buffer = Buffer.from(await response.arrayBuffer());
+      }
+    } else {
+      logInfo("Downloading video from", videoUrl);
+      const response = await fetch(videoUrl);
+      if (!response.ok) {
+        logError("Video download failed", response.status);
+        throw new Error(`HTTP ${response.status}`);
+      }
+      buffer = Buffer.from(await response.arrayBuffer());
+    }
+
+    const sizeMB = Math.round(buffer.length / 1024 / 1024);
+    logInfo("Media ready", { sizeMB, bytes: buffer.length });
+
+    if (buffer.length > 100 * 1024 * 1024) {
+      logError("Media too large for local Whisper", sizeMB);
+      return { error: `Media too large (${sizeMB}MB). Local Whisper limit is ~100MB.` };
+    }
+
+    logInfo("Sending to local Whisper for transcription");
+    const form = new FormData();
+    const blob = new Blob([buffer], { type: "video/mp4" });
+    form.append("file", blob, filename);
+    if (args.language) {
+      form.append("language", args.language);
+      logDebug("Using language", args.language);
+    }
+
+    const whisperRes = await fetch("http://127.0.0.1:5001/transcribe", {
+      method: "POST",
+      body: form,
+    });
+
+    if (!whisperRes.ok) {
+      const errText = await whisperRes.text();
+      logError("Whisper API error", { status: whisperRes.status, error: errText });
+      throw new Error(`Whisper API ${whisperRes.status}: ${errText}`);
+    }
+
+    const whisperData = await whisperRes.json();
+    logInfo("Whisper transcription completed", { textLength: whisperData.text?.length });
+    
+    // Save transcription to local project directory
+    try {
+      if (!existsSync(TRANSCRIPTIONS_DIR)) {
+        mkdirSync(TRANSCRIPTIONS_DIR, { recursive: true });
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeUrl = videoUrl.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
+      const txtFile = join(TRANSCRIPTIONS_DIR, `${timestamp}_${safeUrl}.txt`);
+      const jsonFile = join(TRANSCRIPTIONS_DIR, `${timestamp}_${safeUrl}.json`);
+      
+      writeFileSync(txtFile, whisperData.text, "utf8");
+      writeFileSync(jsonFile, JSON.stringify({
+        text: whisperData.text,
+        videoUrl,
+        language: args.language || "auto",
+        timestamp: new Date().toISOString(),
+      }, null, 2), "utf8");
+      
+      logInfo("Transcription saved to", { txtFile, jsonFile });
+    } catch (saveErr) {
+      logError("Failed to save transcription", saveErr.message);
+    }
+    
+    return { text: whisperData.text, videoUrl };
+  } catch (e) {
+    logError("speech_to_text error", e.message);
+    return { error: e.message };
+  } finally {
+    if (tempPath) {
+      try { require("fs").unlinkSync(tempPath); } catch {}
+    }
+  }
 }
 
 // ── MCP Server ───────────────────────────────────────────────────────────────
@@ -620,10 +892,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
+  logInfo("MCP tool call received", { name, args });
+
+  if (name === "speech_to_text") {
+    logInfo("Routing to speech_to_text handler");
+    const result = await handleSpeechToText(args || {});
+    if (result.error) {
+      logError("speech_to_text handler returned error", result.error);
+      return {
+        content: [{ type: "text", text: `Error: ${result.error}` }],
+        isError: true,
+      };
+    }
+    logInfo("speech_to_text handler succeeded");
+    return {
+      content: [{ type: "text", text: result.text }],
+    };
+  }
 
   const result = await sendToolCall(name, args || {});
 
   if (result.error) {
+    logError("Tool call returned error", { name, error: result.error });
     return {
       content: [{ type: "text", text: `Error: ${result.error}` }],
       isError: true,
