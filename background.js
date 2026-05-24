@@ -53,6 +53,7 @@ import { A11yAuditTool } from "./tools/a11y-audit.js";
 import { RedirectChainTool } from "./tools/redirect-chain.js";
 import { ShadowDomTool } from "./tools/shadow-dom.js";
 import { IframeTool } from "./tools/iframe-tool.js";
+import { DesignCloneTool } from "./tools/design-clone.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -101,6 +102,7 @@ register(new A11yAuditTool());
 register(new RedirectChainTool());
 register(new ShadowDomTool());
 register(new IframeTool());
+register(new DesignCloneTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";
