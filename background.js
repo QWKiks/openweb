@@ -42,6 +42,7 @@ import { BookmarkTool } from "./tools/bookmark.js";
 import { ExtensionTool } from "./tools/extension.js";
 import { SecurityScanTool } from "./tools/security-scan.js";
 import { GetSourceTool } from "./tools/get-source.js";
+import { PerformanceAuditTool } from "./tools/performance-audit.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -79,6 +80,7 @@ register(new BookmarkTool());
 register(new ExtensionTool());
 register(new SecurityScanTool());
 register(new GetSourceTool());
+register(new PerformanceAuditTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";

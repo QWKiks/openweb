@@ -550,6 +550,17 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "performance_audit",
+    description: "Run a performance audit on the active page. Returns Core Web Vitals (LCP, FCP, CLS, TTFB), resource breakdown, memory usage, slowest and largest resources.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        detailed: { type: "boolean", description: "Include full resource list (default: false)", default: false },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
 ];
 
 // ── WebSocket connection to daemon ───────────────────────────────────────────
