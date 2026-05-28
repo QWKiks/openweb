@@ -5,3 +5,5 @@ package-lock.json
 *.png.bak
 _tmp.*
 .env
+.vscode/
+.antigravity/

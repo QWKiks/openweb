@@ -1,6 +1,6 @@
 /**
  * Click Tool
- * Clicks an element by CSS selector or @e ref via DOM-level click().
+ * Clicks an element by CSS selector or @e ref via DOM-level click() or physical CDP input events.
  */
 
 import { attach, sendCommand } from "../lib/cdp.js";
@@ -15,10 +15,148 @@ export class ClickTool {
     const selector = args.selector;
     if (!selector) throw new Error("click: selector is required (CSS selector or @e ref)");
 
+    const physical = args.physical === true;
+
     const tab = await getActiveTab();
     await attach(tab.id);
 
+    if (physical) {
+      return this.clickPhysical(selector);
+    }
+
     return isRef(selector) ? this.clickByRef(selector) : this.clickBySelector(selector, args);
+  }
+
+  async clickPhysical(selector) {
+    const { objectId, resolvedWith } = await this.resolveObjectId(selector);
+
+    // Scroll into view
+    await sendCommand("Runtime.callFunctionOn", {
+      objectId,
+      functionDeclaration: `function() { this.scrollIntoView({ block: 'center', inline: 'center' }); }`,
+    });
+
+    // Get box model
+    let boxModel;
+    try {
+      boxModel = await sendCommand("DOM.getBoxModel", { objectId });
+    } catch (err) {
+      try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
+      throw new Error(
+        `click (physical): element has no layout box (display:none / detached / zero-size). Use DOM-level fallback click. (CDP: ${err.message})`
+      );
+    }
+
+    const content = boxModel.model?.content;
+    if (!content || content.length < 8) {
+      try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
+      throw new Error(
+        "click (physical): element has no layout box (display:none / detached / zero-size). Use DOM-level fallback click."
+      );
+    }
+
+    // Calculate center point
+    let x = (content[0] + content[2] + content[4] + content[6]) / 4;
+    let y = (content[1] + content[3] + content[5] + content[7]) / 4;
+
+    // Apply devicePixelRatio correction for Retina displays
+    const dprResult = await sendCommand("Runtime.evaluate", {
+      expression: "window.devicePixelRatio",
+      returnByValue: true,
+    });
+    const dpr = dprResult.result?.value || 1;
+    x = x / dpr;
+    y = y / dpr;
+
+    // Dispatch mouse events
+    await sendCommand("Input.dispatchMouseEvent", {
+      type: "mouseMoved", x, y, button: "none", buttons: 0,
+    });
+    await sendCommand("Input.dispatchMouseEvent", {
+      type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1,
+    });
+    await sendCommand("Input.dispatchMouseEvent", {
+      type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1,
+    });
+
+    // Get element info
+    const info = await sendCommand("Runtime.callFunctionOn", {
+      objectId,
+      functionDeclaration: `function() { return { tag: this.tagName, text: (this.textContent || '').slice(0, 100) }; }`,
+      returnByValue: true,
+    });
+
+    // Clean up remote object to avoid leaking
+    try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
+
+    const result = {
+      success: true,
+      physical: true,
+      x: Math.round(x),
+      y: Math.round(y),
+      tag: info.result.value?.tag ?? "",
+      text: info.result.value?.text ?? "",
+    };
+
+    if (resolvedWith) {
+      result.resolvedWith = resolvedWith;
+    }
+
+    return result;
+  }
+
+  async resolveObjectId(selector) {
+    if (isRef(selector)) {
+      const objectId = await this.objectIdFromRef(selector);
+      return { objectId };
+    }
+
+    if (isSemanticSelector(selector)) {
+      const candidates = resolveSelector(selector);
+      for (const css of candidates) {
+        const objectId = await this.objectIdFromSelector(css);
+        if (objectId) {
+          return { objectId, resolvedWith: css };
+        }
+      }
+      throw new Error(`click (physical): semantic selector "${selector}" — no matching element found`);
+    }
+
+    const objectId = await this.objectIdFromSelector(selector);
+    if (!objectId) {
+      throw new Error(`click (physical): element not found: ${selector}`);
+    }
+    return { objectId };
+  }
+
+  async objectIdFromRef(ref) {
+    const nodeInfo = resolveRef(ref);
+    if (!nodeInfo) throw new Error(`click (physical): unknown ref "${ref}". Run snapshot first to get refs.`);
+
+    let object;
+    try {
+      ({ object } = await sendCommand("DOM.resolveNode", {
+        backendNodeId: nodeInfo.backendDOMNodeId,
+      }));
+    } catch (err) {
+      throw new Error(
+        `click (physical): element "${ref}" was recreated by the page (SPA update). Run snapshot again to get updated @e refs.`
+      );
+    }
+    if (!object?.objectId) throw new Error(`click (physical): could not resolve ref "${ref}" to DOM element`);
+    return object.objectId;
+  }
+
+  async objectIdFromSelector(selector) {
+    const result = await sendCommand("Runtime.evaluate", {
+      expression: `document.querySelector(${JSON.stringify(selector)})`,
+      returnByValue: false,
+    });
+    if (result.exceptionDetails) throw new Error(`click (physical): ${result.exceptionDetails.text}`);
+    if (result.result.subtype === "null" || !result.result.objectId) {
+      return null;
+    }
+    return result.result.objectId;
   }
 
   async clickByRef(ref) {
@@ -94,3 +232,4 @@ export class ClickTool {
     return value || { success: true };
   }
 }
+

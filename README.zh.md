@@ -88,21 +88,20 @@ npm run setup-mcp -- --remove
 | `navigate` | 打开 URL（新标签页或当前标签页） |
 | `snapshot` | 捕获无障碍树，返回元素引用（`@e1`、`@e2`...） |
 | `screenshot` | 截取 PNG 截图 |
-| `click` | 通过 CSS 选择器或 `@e` 引用点击元素 |
+| `click` | 点击元素（CSS 选择器、`@e` 引用、语义化选择器）。支持合成（默认）或物理 CDP 点击 |
 | `fill` | 通过 CSS 选择器或 `@e` 引用填写表单字段 |
 | `hover` | 悬停在元素上（触发 mouseover/mouseenter） |
 | `select` | 在 `<select>` 下拉框中选择选项 |
 | `scroll` | 滚动页面或元素（下/上/顶部/底部） |
-| `get_text` | 提取页面或元素的文本内容 |
+| `get_text` | 提取纯文本、原始 HTML 或结构化页面源码与元数据 |
 | `key_type` | 在焦点元素中输入文本 |
-| `send_keys` | 发送组合键（Enter、Ctrl+A、Tab 等） |
+| `send_keys` | 发送组合键（Enter、Ctrl+A, Tab 等） |
 | `drag_drop` | 拖拽元素到另一个元素上 |
 | `wait` | 等待选择器、导航完成或网络空闲 |
 | `evaluate` | 在页面上执行 JavaScript |
 | `list_tabs` | 列出所有打开的浏览器标签页 |
 | `find_tab` | 通过 URL 模式查找标签页 |
 | `close_tab` | 通过 ID 关闭标签页 |
-| `mouse_click` | 通过 CDP 模拟物理鼠标点击 |
 | `network` | 捕获/列出/检查 HTTP 请求 |
 | `intercept` | 阻止、重定向、修改或模拟 HTTP 请求 |
 | `cookie` | 获取、设置或删除 Cookie |
@@ -267,7 +266,6 @@ openweb/
     ├── evaluate.js
     ├── key-type.js
     ├── send-keys.js
-    ├── mouse-click.js
     ├── drag-drop.js
     ├── wait.js
     ├── list-tabs.js

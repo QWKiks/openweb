@@ -112,12 +112,12 @@ Restart your AI tool after registration.
 | `navigate` | Open a URL (new tab or current tab) |
 | `snapshot` | Capture the accessibility tree with element refs (`@e1`, `@e2`...) |
 | `screenshot` | Take a PNG screenshot |
-| `click` | Click an element by CSS selector, `@e` ref, or **semantic selector** |
+| `click` | Click an element (CSS, `@e` ref, semantic selector). Supports synthetic (default) or physical CDP click |
 | `fill` | Fill a form field by CSS selector, `@e` ref, or **semantic selector** |
 | `hover` | Hover over an element (triggers mouseover/mouseenter) |
 | `select` | Select an option in a `<select>` dropdown |
 | `scroll` | Scroll page or element (down/up/top/bottom) |
-| `get_text` | Extract text content from page or element |
+| `get_text` | Extract text, raw HTML, or structured page source / metadata |
 | `key_type` | Type text into the focused element |
 | `send_keys` | Send key combos (Enter, Ctrl+A, Tab, etc.) |
 | `drag_drop` | Drag an element and drop onto another |
@@ -126,7 +126,6 @@ Restart your AI tool after registration.
 | `list_tabs` | List all open browser tabs |
 | `find_tab` | Find a tab by URL pattern |
 | `close_tab` | Close a tab by ID |
-| `mouse_click` | Physical mouse click via CDP |
 | `network` | Capture/list/inspect HTTP requests |
 | `intercept` | Block, redirect, modify, or mock HTTP requests |
 | `cookie` | Get, set, or delete cookies |

@@ -185,6 +185,14 @@ async function main() {
       return text && text.length > 0 ? { data: { length: text.length } } : { error: "empty text" };
     }, { detail: "returns page text" });
 
+    await runTest("get_text (structured format)", async () => {
+      const r = await callTool("get_text", { format: "structured" });
+      if (r.error) return r;
+      const data = r.data;
+      const ok = data && data.title && data.url && data.html;
+      return ok ? { data: { ok: true } } : { error: "invalid structured source response" };
+    }, { detail: "returns structured source/metadata" });
+
     await runTest("evaluate", async () => {
       const r = await callTool("evaluate", { code: "document.title + ' — ' + location.href" });
       if (r.error) return r;
@@ -229,8 +237,8 @@ async function main() {
       return r.error ? r : { data: { ok: true } };
     });
 
-    await runTest("mouse_click", async () => {
-      const r = await callTool("mouse_click", { selector: "body" });
+    await runTest("click (physical)", async () => {
+      const r = await callTool("click", { selector: "body", physical: true });
       return r.error ? r : { data: { ok: true } };
     });
 

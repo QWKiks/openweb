@@ -117,11 +117,12 @@ const TOOLS = [
   },
   {
     name: "click",
-    description: "Click an element on the page by CSS selector or snapshot ref (e.g. @e1).",
+    description: "Click an element on the page by CSS selector, semantic description, or snapshot ref (e.g. @e1). Supports DOM-level synthetic click or CDP-level physical click.",
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector or @e ref of the element to click" },
+        selector: { type: "string", description: "CSS selector, @e ref, or semantic selector (e.g. 'semantic:login button') of the element to click" },
+        physical: { type: "boolean", description: "Perform a physical mouse click using CDP input events instead of a DOM-level synthetic click. Useful for pages with complex click interceptors or canvas elements." },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
@@ -203,18 +204,6 @@ const TOOLS = [
     },
   },
   {
-    name: "mouse_click",
-    description: "Perform a physical mouse click at the center of an element using CDP Input events.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        selector: { type: "string", description: "CSS selector or @e ref" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-      required: ["selector"],
-    },
-  },
-  {
     name: "network",
     description: "Capture, list, or inspect HTTP network requests.",
     inputSchema: {
@@ -252,11 +241,17 @@ const TOOLS = [
   },
   {
     name: "get_text",
-    description: "Extract text content from the page or a specific element. Returns clean text without HTML markup.",
+    description: "Extract text, HTML source, or structured page information. Returns clean text, raw HTML, or metadata.",
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector or @e ref (optional — returns full page text if omitted)" },
+        selector: { type: "string", description: "CSS selector or @e ref (optional — returns full page text/HTML if omitted)" },
+        format: {
+          type: "string",
+          description: "Output format: 'text' (default clean text), 'html' (raw HTML source), 'structured' (JSON metadata + HTML), 'full', 'head_only', 'body_only'",
+          enum: ["text", "html", "structured", "full", "head_only", "body_only"],
+          default: "text",
+        },
         maxLength: { type: "number", description: "Maximum text length to return (default: 50000)" },
         includeHidden: { type: "boolean", description: "Include hidden/invisible elements (default: false)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
@@ -532,22 +527,6 @@ const TOOLS = [
         to: { type: "string", description: "Target language code (default: 'ru')" },
       },
       required: ["text"],
-    },
-  },
-  {
-    name: "get_source",
-    description: "Extract full page source (HTML, CSS/JS metadata) for AI analysis. Returns structured or raw HTML.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        format: {
-          type: "string",
-          description: "Output format: 'full' (raw HTML), 'head_only', 'body_only', or 'structured' (default)",
-          enum: ["full", "head_only", "body_only", "structured"],
-          default: "structured",
-        },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
     },
   },
   {
