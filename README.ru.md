@@ -281,8 +281,8 @@ openweb/
     ├── emulate.js
     ├── session.js
     ├── save-as-pdf.js
-    ├── upload.js
-    └── close-session.js
+    ├── audit.js
+    └── upload.js
 ```
 
 ## Лицензия

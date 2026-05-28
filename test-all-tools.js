@@ -329,16 +329,12 @@ async function main() {
     // ── Category H: Advanced ────────────────────────────────────────────
     heading("H. Advanced / Misc");
 
-    await runTest("content_script (evaluate)", async () => {
-      // content_script is a fallback for chrome:// pages; test on a safe page
-      await callTool("navigate", { url: "https://example.com", newTab: false });
-      await new Promise(r => setTimeout(r, 500));
-      const r = await callTool("content_script", { action: "evaluate", code: "document.title" });
-      if (r.error && r.error.includes("Use CDP tools")) {
-        // Expected on normal pages — content_script is fallback only
-        return { data: { ok: true, note: "fallback for chrome:// pages" } };
-      }
-      return r.error ? r : { data: { ok: true } };
+    await runTest("audit (seo)", async () => {
+      const r = await callTool("audit", { type: "seo" });
+      if (r.error) return r;
+      const data = r.data;
+      const ok = data && (data.title || data.meta || data.headings);
+      return ok ? { data: { ok: true } } : { error: "invalid audit response" };
     });
 
     await runTest("drag_drop", async () => {

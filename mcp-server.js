@@ -195,11 +195,12 @@ const TOOLS = [
   },
   {
     name: "close_tab",
-    description: "Close a browser tab by ID.",
+    description: "Close a specific browser tab or all tabs (session).",
     inputSchema: {
       type: "object",
       properties: {
-        tabId: { type: "number", description: "Tab ID to close" },
+        tabId: { type: "number", description: "Tab ID to close (optional if closing all)" },
+        all: { type: "boolean", description: "Close all tabs in the current session (default: false)" },
       },
     },
   },
@@ -334,7 +335,8 @@ const TOOLS = [
       type: "object",
       properties: {
         cmd: { type: "string", description: "Action: start, stop, list, or clear", enum: ["start", "stop", "list", "clear"] },
-        type: { type: "string", description: "Filter by log type: log, warn, error, info, debug" },
+        filter: { type: "string", description: "Filter entries: 'all' (default) or 'errors'", enum: ["all", "errors"], default: "all" },
+        type: { type: "string", description: "Filter by specific log type: log, warn, error, info, debug" },
         limit: { type: "number", description: "Max entries to return (default: 100)" },
         offset: { type: "number", description: "Offset for pagination (default: 0)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
@@ -460,20 +462,6 @@ const TOOLS = [
     },
   },
   {
-    name: "content_script",
-    description: "Fallback automation for pages where CDP is unavailable (chrome://, PDF viewer). Executes JS via content script injection.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: { type: "string", description: "Action: evaluate, click, fill, get_text", enum: ["evaluate", "click", "fill", "get_text"] },
-        code: { type: "string", description: "JavaScript code to execute (for action=evaluate)" },
-        selector: { type: "string", description: "CSS selector for click/fill/get_text" },
-        value: { type: "string", description: "Value to fill (for action=fill)" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
     name: "bookmark",
     description: "Manage Chrome bookmarks: list, create, update, delete, or search bookmarks and folders.",
     inputSchema: {
@@ -530,33 +518,19 @@ const TOOLS = [
     },
   },
   {
-    name: "performance_audit",
-    description: "Run a performance audit on the active page. Returns Core Web Vitals (LCP, FCP, CLS, TTFB), resource breakdown, memory usage, slowest and largest resources.",
+    name: "audit",
+    description: "Run website audits: SEO, accessibility (a11y), performance, forms, or broken links.",
     inputSchema: {
       type: "object",
       properties: {
-        detailed: { type: "boolean", description: "Include full resource list (default: false)", default: false },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "seo_audit",
-    description: "Extract SEO metadata: title, meta tags, Open Graph, Twitter Cards, canonical, hreflang, JSON-LD structured data, headings, images, links.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "broken_links",
-    description: "Check all <a href> links on the page for 404/500/redirects. Returns broken, redirecting, and OK links.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        maxChecks: { type: "number", description: "Maximum number of links to check (default: 50)", default: 50 },
+        type: {
+          type: "string",
+          description: "Type of audit to run: 'seo' (default), 'accessibility' (or 'a11y'), 'performance', 'forms', 'links'",
+          enum: ["seo", "accessibility", "a11y", "performance", "forms", "links"],
+          default: "seo",
+        },
+        maxChecks: { type: "number", description: "Maximum number of links to check (for type=links, default: 50)" },
+        detailed: { type: "boolean", description: "Include detailed resource list (for type=performance, default: false)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
@@ -609,16 +583,6 @@ const TOOLS = [
     },
   },
   {
-    name: "a11y_audit",
-    description: "Run an accessibility audit: checks alt texts, labels, contrast, ARIA, landmarks, skip links, and focusability.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
     name: "redirect_chain",
     description: "Trace the full redirect chain for a given URL with status codes for each hop.",
     inputSchema: {
@@ -664,17 +628,6 @@ const TOOLS = [
     },
   },
   {
-    name: "console_errors",
-    description: "Collect JavaScript errors, warnings, exceptions, and unhandled promise rejections from the active page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: { type: "string", description: "Action: read (get collected errors) or install (setup interceptors)", enum: ["read", "install"], default: "read" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
     name: "dom_mutations",
     description: "Observe and track dynamic DOM changes in SPAs via MutationObserver.",
     inputSchema: {
@@ -688,36 +641,6 @@ const TOOLS = [
   {
     name: "service_worker",
     description: "Check service worker registration, status, cache, and push subscription for the active page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "security_headers",
-    description: "Audit security response headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, etc.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "cookie_audit",
-    description: "Extended cookie analysis: count, sizes, and preview values (flags require the cookie tool for full details).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "form_audit",
-    description: "Analyze all forms: fields, types, validation, CSRF tokens, and autofill attributes.",
     inputSchema: {
       type: "object",
       properties: {

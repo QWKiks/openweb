@@ -81,7 +81,10 @@ export class ConsoleTool {
     const tabId = getActiveTabId();
     let entries = consoleStore.get(tabId) || [];
 
-    if (args.type) {
+    const filter = args.filter || "all";
+    if (filter === "errors" || args.type === "error") {
+      entries = entries.filter((e) => e.type === "error");
+    } else if (args.type) {
       entries = entries.filter((e) => e.type === args.type);
     }
 
@@ -89,7 +92,7 @@ export class ConsoleTool {
     const offset = args.offset || 0;
     const sliced = entries.slice(offset, offset + limit);
 
-    return { count: entries.length, entries: sliced };
+    return { total: entries.length, filter, count: sliced.length, entries: sliced };
   }
 
   clear() {
