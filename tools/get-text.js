@@ -70,12 +70,19 @@ export class GetTextTool {
 
   async getTextByRef(ref, maxLength) {
     const nodeInfo = resolveRef(ref);
-    if (!nodeInfo) throw new Error(`get_text: unknown ref "${ref}". Run snapshot first to get refs.`);
+    if (!nodeInfo) throw new Error(`get_text: unknown ref "${ref}". RECOMMENDATION: The page may have performed an SPA update or navigated away. Run 'snapshot' first to get the latest updated @e refs.`);
 
-    const { object } = await sendCommand("DOM.resolveNode", {
-      backendNodeId: nodeInfo.backendDOMNodeId,
-    });
-    if (!object?.objectId) throw new Error(`get_text: could not resolve ref "${ref}" to DOM element`);
+    let object;
+    try {
+      ({ object } = await sendCommand("DOM.resolveNode", {
+        backendNodeId: nodeInfo.backendDOMNodeId,
+      }));
+    } catch (err) {
+      throw new Error(
+        `get_text: element "${ref}" was recreated by the page (SPA update). RECOMMENDATION: Run 'snapshot' again to get updated @e refs.`
+      );
+    }
+    if (!object?.objectId) throw new Error(`get_text: could not resolve ref "${ref}" to DOM element. RECOMMENDATION: The element might have been removed from the DOM. Run 'snapshot' again to verify.`);
 
     const result = await sendCommand("Runtime.callFunctionOn", {
       objectId: object.objectId,
@@ -104,7 +111,7 @@ export class GetTextTool {
 
     if (result.exceptionDetails) throw new Error(`get_text: ${result.exceptionDetails.text}`);
     const val = result.result.value;
-    if (val?.error) throw new Error(val.error);
+    if (val?.error) throw new Error(`get_text: ${val.error}. RECOMMENDATION: If using a snapshot ref, ensure it is written as "@e12" (with an '@'). If using CSS, check if selector matches a valid element on the page.`);
 
     const text = val.text || "";
     return {
@@ -128,12 +135,19 @@ export class GetTextTool {
 
   async getHtmlByRef(ref) {
     const nodeInfo = resolveRef(ref);
-    if (!nodeInfo) throw new Error(`get_text (html): unknown ref "${ref}". Run snapshot first to get refs.`);
+    if (!nodeInfo) throw new Error(`get_text (html): unknown ref "${ref}". RECOMMENDATION: The page may have performed an SPA update or navigated away. Run 'snapshot' first to get the latest updated @e refs.`);
 
-    const { object } = await sendCommand("DOM.resolveNode", {
-      backendNodeId: nodeInfo.backendDOMNodeId,
-    });
-    if (!object?.objectId) throw new Error(`get_text (html): could not resolve ref "${ref}" to DOM element`);
+    let object;
+    try {
+      ({ object } = await sendCommand("DOM.resolveNode", {
+        backendNodeId: nodeInfo.backendDOMNodeId,
+      }));
+    } catch (err) {
+      throw new Error(
+        `get_text (html): element "${ref}" was recreated by the page (SPA update). RECOMMENDATION: Run 'snapshot' again to get updated @e refs.`
+      );
+    }
+    if (!object?.objectId) throw new Error(`get_text (html): could not resolve ref "${ref}" to DOM element. RECOMMENDATION: The element might have been removed from the DOM. Run 'snapshot' again to verify.`);
 
     const result = await sendCommand("Runtime.callFunctionOn", {
       objectId: object.objectId,
@@ -161,7 +175,7 @@ export class GetTextTool {
 
     if (result.exceptionDetails) throw new Error(`get_text (html): ${result.exceptionDetails.text}`);
     const val = result.result.value;
-    if (val?.error) throw new Error(val.error);
+    if (val?.error) throw new Error(`get_text (html): ${val.error}. RECOMMENDATION: If using a snapshot ref, ensure it is written as "@e12" (with an '@'). If using CSS, check if selector matches a valid element on the page.`);
     return val || {};
   }
 

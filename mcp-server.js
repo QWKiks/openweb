@@ -117,12 +117,12 @@ const TOOLS = [
   },
   {
     name: "click",
-    description: "Click an element on the page by CSS selector, semantic description, or snapshot ref (e.g. @e1). Supports DOM-level synthetic click or CDP-level physical click.",
+    description: "Click an element on the page by CSS selector, semantic description, or snapshot ref (e.g. @e1). RECOMMENDATION: Try standard DOM click first (default). Use 'physical: true' ONLY if synthetic click fails to trigger events, for Canvas/WebGL elements, or if event blockers are active.",
     inputSchema: {
       type: "object",
       properties: {
         selector: { type: "string", description: "CSS selector, @e ref, or semantic selector (e.g. 'semantic:login button') of the element to click" },
-        physical: { type: "boolean", description: "Perform a physical mouse click using CDP input events instead of a DOM-level synthetic click. Useful for pages with complex click interceptors or canvas elements." },
+        physical: { type: "boolean", description: "Perform a physical mouse click using CDP input events instead of a DOM-level synthetic click. (default: false)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
@@ -242,7 +242,7 @@ const TOOLS = [
   },
   {
     name: "get_text",
-    description: "Extract text, HTML source, or structured page information. Returns clean text, raw HTML, or metadata.",
+    description: "Extract text, HTML source, or structured page information. RECOMMENDATION: Use default 'text' format for reading plain readable page text. Use 'structured' format ONLY when you need to inspect page meta tags, loaded script lists, or CSS files. Avoid loading raw 'html' unless you specifically need to analyze raw DOM nodes.",
     inputSchema: {
       type: "object",
       properties: {
@@ -396,7 +396,7 @@ const TOOLS = [
   },
   {
     name: "scroll",
-    description: "Scroll the page or a specific element in a given direction by viewport heights.",
+    description: "Scroll the page or a specific element in a given direction by viewport heights. RECOMMENDATION: Scroll 'down' to trigger lazy loading of page assets, or scroll 'bottom'/'top' to skip page sections.",
     inputSchema: {
       type: "object",
       properties: {
@@ -409,7 +409,7 @@ const TOOLS = [
   },
   {
     name: "wait",
-    description: "Wait for a condition on the page: element to appear (selector), navigation to complete, or network idle.",
+    description: "Wait for a condition on the page. RECOMMENDATION: Wait for 'network_idle' after clicking form submits to ensure the request is processed, or wait for 'selector' to verify dynamic element rendering.",
     inputSchema: {
       type: "object",
       properties: {

@@ -43,7 +43,7 @@ export class ClickTool {
     } catch (err) {
       try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
       throw new Error(
-        `click (physical): element has no layout box (display:none / detached / zero-size). Use DOM-level fallback click. (CDP: ${err.message})`
+        `click (physical): element has no layout box (display:none / detached / zero-size). RECOMMENDATION: Fall back to standard DOM click (omit 'physical' or set 'physical: false') or hover over parent element first to trigger visibility. (CDP: ${err.message})`
       );
     }
 
@@ -51,7 +51,7 @@ export class ClickTool {
     if (!content || content.length < 8) {
       try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
       throw new Error(
-        "click (physical): element has no layout box (display:none / detached / zero-size). Use DOM-level fallback click."
+        "click (physical): element has no layout box (display:none / detached / zero-size). RECOMMENDATION: Fall back to standard DOM click (omit 'physical' or set 'physical: false') or hover over parent element first to trigger visibility."
       );
     }
 
@@ -124,14 +124,14 @@ export class ClickTool {
 
     const objectId = await this.objectIdFromSelector(selector);
     if (!objectId) {
-      throw new Error(`click (physical): element not found: ${selector}`);
+      throw new Error(`click (physical): element not found: "${selector}". RECOMMENDATION: If using a snapshot ref, ensure it is written as "@e12" (with an '@'). If using CSS, check if selector matches a valid visible element on the page.`);
     }
     return { objectId };
   }
 
   async objectIdFromRef(ref) {
     const nodeInfo = resolveRef(ref);
-    if (!nodeInfo) throw new Error(`click (physical): unknown ref "${ref}". Run snapshot first to get refs.`);
+    if (!nodeInfo) throw new Error(`click (physical): unknown ref "${ref}". RECOMMENDATION: The page may have performed an SPA update or navigated away. Run 'snapshot' first to get the latest updated @e refs.`);
 
     let object;
     try {
@@ -140,10 +140,10 @@ export class ClickTool {
       }));
     } catch (err) {
       throw new Error(
-        `click (physical): element "${ref}" was recreated by the page (SPA update). Run snapshot again to get updated @e refs.`
+        `click (physical): element "${ref}" was recreated by the page (SPA update). RECOMMENDATION: Run 'snapshot' again to get updated @e refs.`
       );
     }
-    if (!object?.objectId) throw new Error(`click (physical): could not resolve ref "${ref}" to DOM element`);
+    if (!object?.objectId) throw new Error(`click (physical): could not resolve ref "${ref}" to DOM element. RECOMMENDATION: The element might have been removed from the DOM. Run 'snapshot' again to verify.`);
     return object.objectId;
   }
 
@@ -161,7 +161,7 @@ export class ClickTool {
 
   async clickByRef(ref) {
     const nodeInfo = resolveRef(ref);
-    if (!nodeInfo) throw new Error(`click: unknown ref "${ref}". Run snapshot first to get refs.`);
+    if (!nodeInfo) throw new Error(`click: unknown ref "${ref}". RECOMMENDATION: The page may have performed an SPA update or navigated away. Run 'snapshot' first to get the latest updated @e refs.`);
 
     let object;
     try {
@@ -170,10 +170,10 @@ export class ClickTool {
       }));
     } catch (err) {
       throw new Error(
-        `click: element "${ref}" was recreated by the page (SPA update). Run snapshot again to get updated @e refs.`
+        `click: element "${ref}" was recreated by the page (SPA update). RECOMMENDATION: Run 'snapshot' again to get updated @e refs.`
       );
     }
-    if (!object?.objectId) throw new Error(`click: could not resolve ref "${ref}" to DOM element`);
+    if (!object?.objectId) throw new Error(`click: could not resolve ref "${ref}" to DOM element. RECOMMENDATION: The element might have been removed from the DOM. Run 'snapshot' again to verify.`);
 
     const result = await sendCommand("Runtime.callFunctionOn", {
       objectId: object.objectId,
