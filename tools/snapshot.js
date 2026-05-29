@@ -11,27 +11,85 @@ export class SnapshotTool {
   name = "snapshot";
 
   async execute(args) {
+    const selector = args.selector;
+    const interactiveOnly = args.interactiveOnly !== false; // defaults to true for maximum token savings
+
     const tab = await getActiveTab();
     await attach(tab.id);
     clearRefs();
 
+    let allowedBackendIds = null;
+    if (selector) {
+      try {
+        const doc = await sendCommand("DOM.getDocument", { depth: -1, pierce: true });
+        let targetNodeId;
+        try {
+          const queryRes = await sendCommand("DOM.querySelector", { nodeId: doc.root.nodeId, selector });
+          targetNodeId = queryRes.nodeId;
+        } catch (err) {
+          throw new Error(`snapshot: element matching selector "${selector}" was not found on the page`);
+        }
+
+        if (targetNodeId) {
+          const descRes = await sendCommand("DOM.describeNode", { nodeId: targetNodeId });
+          const targetBackendId = descRes.node?.backendNodeId;
+
+          if (targetBackendId) {
+            const flatDoc = await sendCommand("DOM.getFlattenedDocument", { depth: -1, pierce: true });
+            const childrenMap = new Map();
+            
+            for (const node of flatDoc.nodes) {
+              if (node.parentId) {
+                const parentNode = flatDoc.nodes.find(n => n.nodeId === node.parentId);
+                if (parentNode) {
+                  const arr = childrenMap.get(parentNode.backendNodeId) || [];
+                  arr.push(node.backendNodeId);
+                  childrenMap.set(parentNode.backendNodeId, arr);
+                }
+              }
+            }
+
+            const descendants = new Set();
+            const collect = (backendId) => {
+              descendants.add(backendId);
+              const children = childrenMap.get(backendId) || [];
+              for (const childId of children) {
+                if (!descendants.has(childId)) collect(childId);
+              }
+            };
+            
+            collect(targetBackendId);
+            allowedBackendIds = descendants;
+          }
+        }
+      } catch (err) {
+        // Fallback if DOM tree traversal fails, just skip filtering and capture full tree
+        console.warn(`[Snapshot Filter] Traversal failed: ${err.message}. Capturing full tree.`);
+      }
+    }
+
     const result = await sendCommand("Accessibility.getFullAXTree");
-    const tree = this.buildTree(result.nodes);
+    const tree = this.buildTree(result.nodes, allowedBackendIds, interactiveOnly);
 
     return { url: tab.url, title: tab.title, tree };
   }
 
-  buildTree(nodes) {
+  buildTree(nodes, allowedBackendIds, interactiveOnly) {
     const nodeMap = new Map();
     for (const node of nodes) nodeMap.set(node.nodeId, node);
     if (nodes.length === 0) return [];
-    return this.formatChildren(nodes[0], nodeMap);
+    return this.formatChildren(nodes[0], nodeMap, allowedBackendIds, interactiveOnly);
   }
 
-  formatChildren(root, nodeMap) {
+  formatChildren(root, nodeMap, allowedBackendIds, interactiveOnly) {
     const results = [];
 
     const format = (node) => {
+      // 1. Prune nodes outside of our target selector subtree
+      if (allowedBackendIds && node.backendDOMNodeId != null && !allowedBackendIds.has(node.backendDOMNodeId)) {
+        return null;
+      }
+
       const role = node.role?.value;
       if (!role || role === "none" || role === "generic") {
         if (node.childIds?.length) {
@@ -40,7 +98,10 @@ export class SnapshotTool {
             const child = nodeMap.get(childId);
             if (child) {
               const formatted = format(child);
-              if (formatted) children.push(formatted);
+              if (formatted) {
+                if (Array.isArray(formatted)) children.push(...formatted);
+                else children.push(formatted);
+              }
             }
           }
           return children.length === 1 ? children[0] : children.length > 0 ? children : null;
@@ -54,8 +115,10 @@ export class SnapshotTool {
       if (node.value?.value) entry.value = node.value.value;
       if (node.description?.value) entry.description = node.description.value;
 
+      let isInteractive = false;
       if (INTERACTIVE_ROLES.has(role) && node.backendDOMNodeId != null) {
         entry.ref = `@${createRef(node.backendDOMNodeId, role, node.name?.value ?? "")}`;
+        isInteractive = true;
       }
 
       if (node.childIds?.length) {
@@ -71,6 +134,14 @@ export class SnapshotTool {
           }
         }
         if (children.length > 0) entry.children = children;
+      }
+
+      // 2. Token economy pruning: Exclude non-interactive static text nodes and branches
+      if (interactiveOnly) {
+        if (isInteractive || entry.children?.length > 0) {
+          return entry;
+        }
+        return null;
       }
 
       return entry;

@@ -89,9 +89,12 @@ const TOOLS = [
     name: "snapshot",
     description: "Capture the accessibility tree of the active page. RECOMMENDATION: Run this tool *first* on every new page load. It returns stable element references (like @e1, @e2) which you MUST use with 'click' and 'fill' tools to prevent selector errors and ensure 100% correct selector targeting.",
     inputSchema: {
-      type: "object", properties: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref of a target subtree to capture (optional — captures full page AXTree if omitted)" },
+        interactiveOnly: { type: "boolean", description: "Filter out non-interactive static text nodes and branches to maximize token economy (default: true)", default: true },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      }
+      },
     },
   },
   {
