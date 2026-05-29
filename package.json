@@ -16,7 +16,8 @@
     "build:firefox": "node build.js firefox",
     "build:edge": "node build.js edge",
     "test": "node --test test/unit/**/*.test.js",
-    "test:e2e": "node test-all-tools.js",
+    "test:e2e": "node test/e2e/test-all-tools.js",
+    "test:e2e:simple": "node test/e2e/test-e2e.js",
     "test:all": "npm test && npm run test:e2e"
   },
   "dependencies": {
