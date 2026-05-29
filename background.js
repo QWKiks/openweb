@@ -53,11 +53,13 @@ import { ApiDiscoveryTool } from "./tools/api-discovery.js";
 import { SwaggerParserTool } from "./tools/swagger-parser.js";
 import { ResponsiveTestTool } from "./tools/responsive-test.js";
 import { ColorPaletteTool } from "./tools/color-palette.js";
+import { GetMarkdownTool } from "./tools/get-markdown.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
 register(new FindTabTool());
 register(new EvaluateTool());
+register(new GetMarkdownTool());
 register(new NetworkTool());
 register(new SnapshotTool());
 register(new ClickTool());

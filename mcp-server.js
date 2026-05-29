@@ -253,6 +253,17 @@ const TOOLS = [
     },
   },
   {
+    name: "get_markdown",
+    description: "Extract the active page or a targeted element's content as clean, semantic Markdown. Highly recommended for reading articles, manuals, or standard page content because Markdown retains headers, lists, links, tables, and formatting perfectly while saving massive amounts of context token size.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref to convert to Markdown (default: 'body')", default: "body" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
     name: "cookie",
     description: "Get, set, or delete cookies for the current page.",
     inputSchema: {
