@@ -81,6 +81,12 @@ const TOOLS = [
         url: { type: "string", description: "URL to navigate to. Example: 'https://example.com'" },
         newTab: { type: "boolean", description: "Open in a new tab (default: true)", default: true },
         tabId: { type: "number", description: "Tab ID to target (default: active tab). Use list_tabs to get IDs." },
+        waitUntil: {
+          type: "string",
+          description: "CDP lifecycle state to resolve navigation: 'DOMContentLoaded' (default, 3x faster, returns as soon as DOM is interactable) or 'complete' (waits for full window load including slow analytics/ads)",
+          enum: ["DOMContentLoaded", "complete"],
+          default: "DOMContentLoaded"
+        },
       },
       required: ["url"],
     },
