@@ -1,6 +1,6 @@
 /**
  * Network Tool
- * Captures and inspects HTTP network requests via CDP Network domain.
+ * Captures and inspects HTTP network requests, and supports blocking ads and tracking scripts via CDP.
  */
 
 import { attach, sendCommand, getActiveTabId } from "../lib/cdp.js";
@@ -65,13 +65,14 @@ export class NetworkTool {
 
   async execute(args) {
     const cmd = args.cmd;
-    if (!cmd) throw new Error("network: cmd is required (start/stop/list/detail)");
+    if (!cmd) throw new Error("network: cmd is required (start/stop/list/detail/block_ads)");
 
     switch (cmd) {
       case "start": return this.start();
       case "stop": return this.stop();
       case "list": return this.list(args.filter);
       case "detail": return this.detail(args.requestId);
+      case "block_ads": return this.blockAds(args.enable !== false);
       default: throw new Error(`network: unknown cmd "${cmd}"`);
     }
   }
@@ -142,5 +143,31 @@ export class NetworkTool {
       base64Encoded: response.base64Encoded,
       body,
     };
+  }
+
+  async blockAds(enable = true) {
+    const tab = await getActiveTab();
+    await attach(tab.id);
+    await sendCommand("Network.enable");
+    
+    if (!enable) {
+      await sendCommand("Network.setBlockedURLs", { urls: [] });
+      return { success: true, enabled: false, message: "Ad and tracker blocker disabled." };
+    }
+    
+    const blockedUrls = [
+      "*analytics*",
+      "*doubleclick*",
+      "*metrika*",
+      "*google-analytics*",
+      "*adsystem*",
+      "*adsense*",
+      "*adservice*",
+      "*facebook.net*",
+      "*facebook.com/tr*"
+    ];
+    
+    await sendCommand("Network.setBlockedURLs", { urls: blockedUrls });
+    return { success: true, enabled: true, blockedCount: blockedUrls.length, message: "Ad and tracker blocker enabled successfully." };
   }
 }

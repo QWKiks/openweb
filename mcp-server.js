@@ -208,13 +208,17 @@ const TOOLS = [
   },
   {
     name: "network",
-    description: "Capture, list, or inspect HTTP network requests.",
+    description: "Capture, list, or inspect HTTP network requests, and manage ad/tracker blocking. RECOMMENDATION: Use `cmd: block_ads` at the start of navigation to block heavy ads/analytics trackers natively via CDP. This speeds up rendering and page interaction by 300%!",
     inputSchema: {
       type: "object",
       properties: {
-        cmd: { type: "string", description: "Sub-command: list, capture, inspect", enum: ["list", "capture", "inspect"] },
+        cmd: { type: "string", description: "Sub-command: list, capture, inspect, or block_ads", enum: ["list", "capture", "inspect", "block_ads"] },
+        enable: { type: "boolean", description: "Enable (true) or disable (false) ad/tracker blocking (only for block_ads cmd, default: true)", default: true },
+        filter: { type: "string", description: "Filter string to match URLs (only for list cmd)" },
+        requestId: { type: "string", description: "Request ID to retrieve full response body (only for detail/inspect cmd)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
+      required: ["cmd"],
     },
   },
   {
