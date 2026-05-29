@@ -39,7 +39,7 @@ const TRANSCRIPTIONS_DIR = join(__dirname, "transcriptions");
 // File-based logger for debugging startup issues (Windsurf captures stderr via stdio)
 function startupLog(...args) {
   const line = `[${new Date().toISOString()}] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
-  try { appendFileSync('/tmp/mcp-startup.log', line); } catch {}
+  try { appendFileSync('/tmp/mcp-startup.log', line); } catch { }
 }
 startupLog('MCP server starting...');
 process.on('uncaughtException', (err) => { startupLog('UNCAUGHT EXCEPTION:', err.message, err.stack); throw err; });
@@ -88,9 +88,11 @@ const TOOLS = [
   {
     name: "snapshot",
     description: "Capture the accessibility tree of the active page. Returns element refs (like @e1) for use with click/fill tools.",
-    inputSchema: { type: "object", properties: {
-      tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-    } },
+    inputSchema: {
+      type: "object", properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      }
+    },
   },
   {
     name: "screenshot",
@@ -671,7 +673,7 @@ function scheduleReconnect() {
   console.error(`[mcp] reconnecting to daemon in ${delay}ms...`);
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
-    connectToDaemon().catch(() => {}); // scheduleReconnect will be called again on close
+    connectToDaemon().catch(() => { }); // scheduleReconnect will be called again on close
   }, delay);
 }
 
@@ -687,7 +689,7 @@ function connectToDaemon() {
   return new Promise((resolve, reject) => {
     logInfo("Connecting to daemon at", DAEMON_URL);
     logDebug("DEBUG mode enabled");
-    
+
     ws = new WebSocket(DAEMON_URL);
 
     const timeout = setTimeout(() => {
@@ -716,7 +718,7 @@ function connectToDaemon() {
 
     ws.on("message", (raw, isBinary) => {
       logDebug("Received message from daemon", { isBinary, length: raw.length });
-      
+
       // Handle binary frames (for screenshots)
       if (isBinary) {
         // Binary frame: first 4 bytes = requestId (uint32 LE), rest = binary data
@@ -793,7 +795,7 @@ function sendToolCall(name, args) {
   return new Promise(async (resolve) => {
     logInfo("Tool call requested", name);
     logDebug("Tool args", args);
-    
+
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       logError("WebSocket not connected, state:", ws?.readyState);
       try {
@@ -808,7 +810,7 @@ function sendToolCall(name, args) {
 
     const requestId = String(++requestIdCounter);
     logInfo("Sending tool call", { name, requestId });
-    
+
     const timeout = setTimeout(() => {
       pendingCalls.delete(requestId);
       logError("Tool call timeout", { name, requestId });
@@ -846,7 +848,7 @@ function sendToolCall(name, args) {
 // ── Speech-to-Text Helper ───────────────────────────────────────────────────
 async function handleSpeechToText(args) {
   logInfo("speech_to_text called", args);
-  
+
   logDebug("Using local Whisper server at http://127.0.0.1:5001");
 
   let videoUrl = args.videoUrl;
@@ -972,7 +974,7 @@ async function handleSpeechToText(args) {
 
     const whisperData = await whisperRes.json();
     logInfo("Whisper transcription completed", { textLength: whisperData.text?.length });
-    
+
     // Save transcription to local project directory
     try {
       if (!existsSync(TRANSCRIPTIONS_DIR)) {
@@ -982,7 +984,7 @@ async function handleSpeechToText(args) {
       const safeUrl = videoUrl.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
       const txtFile = join(TRANSCRIPTIONS_DIR, `${timestamp}_${safeUrl}.txt`);
       const jsonFile = join(TRANSCRIPTIONS_DIR, `${timestamp}_${safeUrl}.json`);
-      
+
       writeFileSync(txtFile, whisperData.text, "utf8");
       writeFileSync(jsonFile, JSON.stringify({
         text: whisperData.text,
@@ -990,12 +992,12 @@ async function handleSpeechToText(args) {
         language: args.language || "auto",
         timestamp: new Date().toISOString(),
       }, null, 2), "utf8");
-      
+
       logInfo("Transcription saved to", { txtFile, jsonFile });
     } catch (saveErr) {
       logError("Failed to save transcription", saveErr.message);
     }
-    
+
     // Auto-translate if requested
     if (args.translateTo && whisperData.text) {
       logInfo("Auto-translating transcript to", args.translateTo);
@@ -1009,14 +1011,14 @@ async function handleSpeechToText(args) {
         logInfo("Translation completed", { length: translateResult.text.length });
       }
     }
-    
+
     return { text: whisperData.text, translated: whisperData.translated, videoUrl };
   } catch (e) {
     logError("speech_to_text error", e.message);
     return { error: e.message };
   } finally {
     if (tempPath) {
-      try { require("fs").unlinkSync(tempPath); } catch {}
+      try { require("fs").unlinkSync(tempPath); } catch { }
     }
   }
 }
@@ -1024,15 +1026,15 @@ async function handleSpeechToText(args) {
 // ── Translate Helper ────────────────────────────────────────────────────────
 async function handleTranslate(args) {
   logInfo("translate called", args);
-  
+
   const text = args.text;
   if (!text) {
     return { error: "text is required" };
   }
-  
+
   const fromLang = args.from || "en";
   const toLang = args.to || "ru";
-  
+
   try {
     logInfo("Translating", { from: fromLang, to: toLang, length: text.length });
     const res = await fetch("http://127.0.0.1:5001/translate", {
@@ -1040,13 +1042,13 @@ async function handleTranslate(args) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, from: fromLang, to: toLang }),
     });
-    
+
     if (!res.ok) {
       const errText = await res.text();
       logError("Translate API error", { status: res.status, error: errText });
       return { error: `Translate API ${res.status}: ${errText}` };
     }
-    
+
     const data = await res.json();
     logInfo("Translation completed", { length: data.text?.length });
     return { text: data.text };
@@ -1088,7 +1090,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
     logInfo("speech_to_text handler succeeded");
-    const output = result.translated 
+    const output = result.translated
       ? `=== Original ===\n${result.text}\n\n=== Translated ===\n${result.translated}`
       : result.text;
     return {
