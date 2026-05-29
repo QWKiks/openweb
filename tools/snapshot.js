@@ -13,6 +13,8 @@ export class SnapshotTool {
   async execute(args) {
     const selector = args.selector;
     const interactiveOnly = args.interactiveOnly !== false; // defaults to true for maximum token savings
+    const format = args.format || "text";
+
 
     const tab = await getActiveTab();
     await attach(tab.id);
@@ -69,7 +71,11 @@ export class SnapshotTool {
     }
 
     const result = await sendCommand("Accessibility.getFullAXTree");
-    const tree = this.buildTree(result.nodes, allowedBackendIds, interactiveOnly);
+    let tree = this.buildTree(result.nodes, allowedBackendIds, interactiveOnly);
+
+    if (format === "text") {
+      tree = this.formatToIndentedText(tree);
+    }
 
     return { url: tab.url, title: tab.title, tree };
   }
@@ -161,5 +167,35 @@ export class SnapshotTool {
     }
 
     return results;
+  }
+
+  formatToIndentedText(nodes, depth = 0) {
+    if (!nodes || nodes.length === 0) return "";
+    let result = "";
+    const indent = "  ".repeat(depth);
+    for (const node of nodes) {
+      if (Array.isArray(node)) {
+        result += this.formatToIndentedText(node, depth);
+        continue;
+      }
+      
+      const parts = [];
+      parts.push(`[${node.role}`);
+      if (node.ref) parts.push(` ${node.ref}`);
+      parts.push(`]`);
+      
+      const extra = [];
+      if (node.name) extra.push(`name="${node.name}"`);
+      if (node.value) extra.push(`value="${node.value}"`);
+      if (node.description) extra.push(`desc="${node.description}"`);
+      
+      const extraStr = extra.length > 0 ? " " + extra.join(" ") : "";
+      result += `${indent}- ${parts.join("")}${extraStr}\n`;
+      
+      if (node.children && node.children.length > 0) {
+        result += this.formatToIndentedText(node.children, depth + 1);
+      }
+    }
+    return result;
   }
 }
