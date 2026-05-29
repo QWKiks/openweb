@@ -185,17 +185,6 @@ const TOOLS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
-    name: "find_tab",
-    description: "Find a tab by URL pattern.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        url: { type: "string", description: "URL pattern to search for" },
-      },
-      required: ["url"],
-    },
-  },
-  {
     name: "close_tab",
     description: "Close a specific browser tab or all tabs (session).",
     inputSchema: {
@@ -276,19 +265,6 @@ const TOOLS = [
         httpOnly: { type: "boolean", description: "HttpOnly flag (for set)" },
         sameSite: { type: "string", description: "SameSite policy (for set): Strict, Lax, None" },
         expires: { type: "number", description: "Expiration timestamp in seconds since epoch (for set)" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-      required: ["cmd"],
-    },
-  },
-  {
-    name: "history",
-    description: "Navigate browser history: go back, go forward, or refresh the current page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cmd: { type: "string", description: "Action: back, forward, or refresh", enum: ["back", "forward", "refresh"] },
-        ignoreCache: { type: "boolean", description: "Bypass cache on refresh (default: false)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
@@ -464,36 +440,6 @@ const TOOLS = [
     },
   },
   {
-    name: "bookmark",
-    description: "Manage Chrome bookmarks: list, create, update, delete, or search bookmarks and folders.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cmd: { type: "string", description: "Action: list, create, update, delete, search", enum: ["list", "create", "update", "delete", "search"] },
-        parentId: { type: "string", description: "Parent folder ID (for list, create). Default: root." },
-        title: { type: "string", description: "Bookmark/folder title (for create, update)" },
-        url: { type: "string", description: "Bookmark URL (for create, update)" },
-        index: { type: "number", description: "Position index in folder (for create)" },
-        id: { type: "string", description: "Bookmark ID (for update, delete)" },
-        query: { type: "string", description: "Search query (for search)" },
-      },
-      required: ["cmd"],
-    },
-  },
-  {
-    name: "extension",
-    description: "Manage Chrome extensions: list, enable, disable, or get info about installed extensions.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cmd: { type: "string", description: "Action: list, enable, disable, info", enum: ["list", "enable", "disable", "info"] },
-        id: { type: "string", description: "Extension ID (for enable, disable, info)" },
-        type: { type: "string", description: "Filter by type (for list): extension, theme, hosted_app, etc." },
-      },
-      required: ["cmd"],
-    },
-  },
-  {
     name: "speech_to_text",
     description: "Transcribe audio from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Optional: auto-translate to target language. Requires local Whisper server to be running (services/whisper/whisper-server.py).",
     inputSchema: {
@@ -544,20 +490,6 @@ const TOOLS = [
       type: "object",
       properties: {
         detailed: { type: "boolean", description: "Include detailed behavioral and vulnerability chaining assessment (default: false)", default: false },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "local_storage",
-    description: "Read, write, delete, or clear localStorage and sessionStorage on the active page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: { type: "string", description: "Action: read, write, delete, clear", enum: ["read", "write", "delete", "clear"], default: "read" },
-        storage: { type: "string", description: "Storage type: localStorage or sessionStorage", enum: ["localStorage", "sessionStorage"], default: "localStorage" },
-        key: { type: "string", description: "Storage key (required for write/delete)" },
-        value: { type: "string", description: "Value to write (required for write action)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
@@ -678,16 +610,6 @@ const TOOLS = [
       type: "object",
       properties: {
         url: { type: "string", description: "Optional: direct URL to swagger.json" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "responsive_test",
-    description: "Quick responsive check at mobile (375x667), tablet (768x1024), and desktop (1440x900) breakpoints.",
-    inputSchema: {
-      type: "object",
-      properties: {
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
