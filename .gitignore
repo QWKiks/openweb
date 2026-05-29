@@ -10,3 +10,4 @@ _tmp.*
 !.antigravity/rules.md
 dist/
 .venv 
+.DS_Store
