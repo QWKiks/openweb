@@ -106,10 +106,12 @@ const TOOLS = [
           type: "string",
           description: "Image format: jpeg (default, smaller) or png",
           enum: ["jpeg", "png"],
+          default: "jpeg",
         },
         quality: {
           type: "number",
           description: "JPEG quality 0-100 (default: 60)",
+          default: 60,
         },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
@@ -117,12 +119,12 @@ const TOOLS = [
   },
   {
     name: "click",
-    description: "Click an element on the page by CSS selector, semantic description, or snapshot ref (e.g. @e1). RECOMMENDATION: Try standard DOM click first (default). Use 'physical: true' ONLY if synthetic click fails to trigger events, for Canvas/WebGL elements, or if event blockers are active.",
+    description: "Click an element. RECOMMENDATION: Try standard DOM click first (default). Use 'physical: true' ONLY if synthetic click fails to trigger an event, for Canvas elements, or when custom event listeners block standard clicks.",
     inputSchema: {
       type: "object",
       properties: {
         selector: { type: "string", description: "CSS selector, @e ref, or semantic selector (e.g. 'semantic:login button') of the element to click" },
-        physical: { type: "boolean", description: "Perform a physical mouse click using CDP input events instead of a DOM-level synthetic click. (default: false)" },
+        physical: { type: "boolean", description: "Perform a physical mouse click using CDP input events instead of a DOM-level synthetic click. (default: false)", default: false },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
@@ -242,7 +244,7 @@ const TOOLS = [
   },
   {
     name: "get_text",
-    description: "Extract text, HTML source, or structured page information. RECOMMENDATION: Use default 'text' format for reading plain readable page text. Use 'structured' format ONLY when you need to inspect page meta tags, loaded script lists, or CSS files. Avoid loading raw 'html' unless you specifically need to analyze raw DOM nodes.",
+    description: "Extract page content. RECOMMENDATION: Use default 'text' format to read articles/content. Use 'structured' format ONLY when you need to analyze page meta tags, loaded scripts, or stylesheets. Avoid loading raw 'html' unless you specifically need to analyze raw DOM nodes.",
     inputSchema: {
       type: "object",
       properties: {
@@ -253,8 +255,8 @@ const TOOLS = [
           enum: ["text", "html", "structured", "full", "head_only", "body_only"],
           default: "text",
         },
-        maxLength: { type: "number", description: "Maximum text length to return (default: 50000)" },
-        includeHidden: { type: "boolean", description: "Include hidden/invisible elements (default: false)" },
+        maxLength: { type: "number", description: "Maximum text length to return (default: 50000)", default: 50000 },
+        includeHidden: { type: "boolean", description: "Include hidden/invisible elements (default: false)", default: false },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
@@ -400,8 +402,8 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        direction: { type: "string", description: "Direction: down, up, left, right, top, bottom", enum: ["down", "up", "left", "right", "top", "bottom"] },
-        amount: { type: "number", description: "Number of viewport heights to scroll (default: 3)" },
+        direction: { type: "string", description: "Direction: down, up, left, right, top, bottom", enum: ["down", "up", "left", "right", "top", "bottom"], default: "down" },
+        amount: { type: "number", description: "Number of viewport heights to scroll (default: 3)", default: 3 },
         selector: { type: "string", description: "CSS selector to scroll a specific element (optional — scrolls page if omitted)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
@@ -413,9 +415,9 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        type: { type: "string", description: "Wait type: selector, navigation, or network_idle", enum: ["selector", "navigation", "network_idle"] },
+        type: { type: "string", description: "Wait type: selector, navigation, or network_idle", enum: ["selector", "navigation", "network_idle"], default: "selector" },
         selector: { type: "string", description: "CSS selector to wait for (for type=selector)" },
-        timeout: { type: "number", description: "Maximum wait time in ms (default: 10000)" },
+        timeout: { type: "number", description: "Maximum wait time in ms (default: 10000)", default: 10000 },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
@@ -529,8 +531,19 @@ const TOOLS = [
           enum: ["seo", "accessibility", "a11y", "performance", "forms", "links"],
           default: "seo",
         },
-        maxChecks: { type: "number", description: "Maximum number of links to check (for type=links, default: 50)" },
-        detailed: { type: "boolean", description: "Include detailed resource list (for type=performance, default: false)" },
+        maxChecks: { type: "number", description: "Maximum number of links to check (for type=links, default: 50)", default: 50 },
+        detailed: { type: "boolean", description: "Include detailed resource list (for type=performance, default: false)", default: false },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "security_scan",
+    description: "Run website security scan: checks headers, XSS vulnerabilities, mixed content, and SSL/TLS. RECOMMENDATION: Set detailed: true for comprehensive assessment.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        detailed: { type: "boolean", description: "Include detailed behavioral and vulnerability chaining assessment (default: false)", default: false },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
