@@ -26,7 +26,7 @@ import "dotenv/config";
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { ListToolsRequestSchema, CallToolRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import WebSocket from "ws";
 import { appendFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { execSync } from "child_process";
@@ -125,7 +125,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector, @e ref, or semantic selector (e.g. 'semantic:login button') of the element to click" },
+        selector: { type: "string", description: "CSS selector, @e ref, or semantic selector of the element to click. Examples: '@e5' (snapshot reference), 'button#submit' (standard CSS), 'semantic:Log In button' (semantic)" },
         physical: { type: "boolean", description: "Perform a physical mouse click using CDP input events instead of a DOM-level synthetic click. (default: false)", default: false },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
@@ -138,7 +138,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector or @e ref of the form field" },
+        selector: { type: "string", description: "CSS selector or @e ref of the form field to populate. Examples: '@e12' (snapshot reference), 'input[type=email]' (CSS)" },
         value: { type: "string", description: "Value to fill in" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
@@ -175,7 +175,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        code: { type: "string", description: "JavaScript code to execute" },
+        code: { type: "string", description: "JavaScript code to execute. Examples: 'document.title' (read state), 'window.scrollTo(0, 1000)' (scroll page), 'document.querySelector(\"input\").focus()' (focus input)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["code"],
@@ -214,7 +214,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector or @e ref of the element to hover over" },
+        selector: { type: "string", description: "CSS selector or @e ref of the element to hover over. Examples: '@e4' (snapshot reference), 'li.menu-item' (CSS)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
@@ -226,7 +226,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector or @e ref of the <select> element" },
+        selector: { type: "string", description: "CSS selector or @e ref of the <select> element. Examples: '@e15' (snapshot reference), 'select#country' (CSS)" },
         value: { type: "string", description: "Option value or text content to select. Use a number for index." },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
@@ -434,7 +434,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector or @e ref of the file input element" },
+        selector: { type: "string", description: "CSS selector or @e ref of the file input element. Examples: '@e8' (snapshot reference), 'input[type=file]' (CSS)" },
         files: { type: "array", items: { type: "string" }, description: "Array of local file paths to set on the input" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
@@ -1059,6 +1059,20 @@ async function handleTranslate(args) {
 }
 
 // ── MCP Server ───────────────────────────────────────────────────────────────
+// Self-Healing: Automatically correct missing '@' prefix in snapshot refs (e.g. 'e12' -> '@e12')
+function healSnapshotRefs(args) {
+  if (!args || typeof args !== "object") return;
+  const keys = ["selector", "source", "target"];
+  const refPattern = /^e\d+$/; // matches 'e1', 'e12', but not 'email' or 'enter'
+  for (const key of keys) {
+    if (typeof args[key] === "string" && refPattern.test(args[key].trim())) {
+      const healed = `@${args[key].trim()}`;
+      startupLog(`[Self-Healing] Automatically corrected snapshot ref typo: "${args[key]}" -> "${healed}"`);
+      args[key] = healed;
+    }
+  }
+}
+
 const server = new Server(
   {
     name: "webbridge-open",
@@ -1067,6 +1081,7 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      resources: {},
     },
   }
 );
@@ -1075,9 +1090,49 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: TOOLS,
 }));
 
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+  resources: [
+    {
+      uri: "openweb://docs/automation-guide",
+      name: "OpenWeb Automation Guide & Cheat Sheet",
+      mimeType: "text/markdown",
+      description: "A comprehensive, AI-native guide detailing browser automation decision-making, visual priorities, and coordinate self-healing recovery strategies."
+    }
+  ]
+}));
+
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const uri = request.params.uri;
+  if (uri === "openweb://docs/automation-guide") {
+    let guideContent = "";
+    try {
+      const fs = await import("fs");
+      guideContent = fs.readFileSync(join(__dirname, ".cursorrules"), "utf-8");
+    } catch {
+      guideContent = `# OpenWeb Automation Guide\n\nRun 'snapshot' first to get element refs (@e1, @e2). Then call click/fill on those refs!`;
+    }
+
+    return {
+      contents: [
+        {
+          uri: "openweb://docs/automation-guide",
+          mimeType: "text/markdown",
+          text: guideContent,
+        }
+      ]
+    };
+  }
+  throw new Error(`Resource not found: ${uri}`);
+});
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   logInfo("MCP tool call received", { name, args });
+
+  // Self-Healing: Automatically correct missing '@' prefix in snapshot refs (e.g. 'e12' -> '@e12')
+  if (args) {
+    healSnapshotRefs(args);
+  }
 
   if (name === "speech_to_text") {
     logInfo("Routing to speech_to_text handler");

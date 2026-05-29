@@ -82,3 +82,12 @@ If a tool execution throws an error, analyze the message and apply the following
 * **Error: "click (physical): element has no layout box"**
   * *Cause*: Element is invisible (`display: none`), detached, or zero-sized.
   * *Remedy*: Try DOM-level synthetic click (`click` with `physical: false`), or hover over the parent element first to trigger visibility.
+
+---
+
+## 5. Sensory-Motor Verification Loop (CRITICAL)
+
+To prevent blind actions and endless loops, you MUST strictly adhere to the sensory-motor verification feedback loop:
+* **The Mandatory Verification Rule**: After submitting a form, clicking a link, or triggering navigation, you **MUST immediately run `wait(type: 'network_idle')` or take a `screenshot`** to verify that the action succeeded and the page state has updated.
+* **No Blind Runs**: Never execute more than **2 consecutive action tools (click / fill / hover / select / upload / key_type)** without calling either `snapshot` or `screenshot` to observe the page state changes.
+* **Self-Healing Refs**: If you get a ref resolution failure, do not guess selector variations. Simply run `snapshot` again to get the healed, updated `@e` refs.
