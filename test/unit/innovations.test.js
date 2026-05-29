@@ -44,6 +44,7 @@ globalThis.chrome = {
 const { SnapshotTool } = await import("../../tools/snapshot.js");
 const { NavigateTool } = await import("../../tools/navigate.js");
 const { NetworkTool } = await import("../../tools/network.js");
+const { ScreenshotTool } = await import("../../tools/screenshot.js");
 
 describe("Phase 6 Innovations & Optimizations", () => {
   
@@ -215,4 +216,94 @@ describe("Phase 6 Innovations & Optimizations", () => {
     });
   });
 
+  describe("Phase 7 Token Economy & SOTA Low-Latency Optimization", () => {
+    
+    describe("Snapshot Minified Text Format", () => {
+      it("should return tree formatted as compressed indented text when format='text'", async () => {
+        const originalSendCommand = chrome.debugger.sendCommand;
+        chrome.debugger.sendCommand = async (target, method, params) => {
+          if (method === "Accessibility.getFullAXTree") {
+            return {
+              nodes: [
+                { nodeId: "1", role: { value: "root" }, childIds: ["2"] },
+                { nodeId: "2", role: { value: "button" }, backendDOMNodeId: 201, name: { value: "Submit Form" } },
+              ],
+            };
+          }
+          return {};
+        };
+
+        try {
+          const snapshot = new SnapshotTool();
+          const res = await snapshot.execute({ format: "text", interactiveOnly: true });
+          
+          assert.ok(res.tree);
+          assert.strictEqual(typeof res.tree, "string");
+          assert.ok(res.tree.includes("[button"));
+          assert.ok(res.tree.includes("name=\"Submit Form\""));
+        } finally {
+          chrome.debugger.sendCommand = originalSendCommand;
+        }
+      });
+    });
+
+    describe("Adaptive Screenshot Crops and Scaling", () => {
+      it("should scale down overview screenshots to 800px width by default (lowRes=true)", async () => {
+        const originalSendCommand = chrome.debugger.sendCommand;
+        let captureParams = null;
+        chrome.debugger.sendCommand = async (target, method, params) => {
+          if (method === "Page.getLayoutMetrics") {
+            return {
+              cssVisualViewport: { clientWidth: 1600, clientHeight: 900 }
+            };
+          }
+          if (method === "Page.captureScreenshot") {
+            captureParams = params;
+            return { data: "mockImageData" };
+          }
+          return {};
+        };
+
+        try {
+          const screenshot = new ScreenshotTool();
+          const res = await screenshot.execute({ lowRes: true });
+          assert.ok(captureParams);
+          assert.ok(captureParams.clip);
+          assert.strictEqual(captureParams.clip.scale, 0.5); // 800 / 1600 = 0.5
+          assert.strictEqual(captureParams.clip.width, 1600);
+        } finally {
+          chrome.debugger.sendCommand = originalSendCommand;
+        }
+      });
+
+      it("should support precise coordinate cropping without scaling down", async () => {
+        const originalSendCommand = chrome.debugger.sendCommand;
+        let captureParams = null;
+        chrome.debugger.sendCommand = async (target, method, params) => {
+          if (method === "Page.captureScreenshot") {
+            captureParams = params;
+            return { data: "mockImageData" };
+          }
+          return {};
+        };
+
+        try {
+          const screenshot = new ScreenshotTool();
+          await screenshot.execute({ x: 100, y: 150, width: 300, height: 200 });
+          assert.ok(captureParams);
+          assert.ok(captureParams.clip);
+          assert.strictEqual(captureParams.clip.x, 100);
+          assert.strictEqual(captureParams.clip.y, 150);
+          assert.strictEqual(captureParams.clip.width, 300);
+          assert.strictEqual(captureParams.clip.height, 200);
+          assert.strictEqual(captureParams.clip.scale, 1);
+        } finally {
+          chrome.debugger.sendCommand = originalSendCommand;
+        }
+      });
+    });
+
+  });
+
 });
+
