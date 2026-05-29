@@ -27,7 +27,7 @@ export class NavigateTool {
       await attach(tab.id);
       try { await sendCommand("Page.enable"); } catch {}
       await this.waitForLoad(tab.id, waitUntil);
-      return { success: true, url, tabId: tab.id };
+      return { success: true, url, tabId: tab.id, suggestedNextTool: "snapshot" };
     }
 
     tab = await getActiveTab();
@@ -39,7 +39,7 @@ export class NavigateTool {
       await attach(tab.id);
       try { await sendCommand("Page.enable"); } catch {}
       await this.waitForLoad(tab.id, waitUntil);
-      return { success: true, url, tabId: tab.id };
+      return { success: true, url, tabId: tab.id, suggestedNextTool: "snapshot" };
     }
 
     await attach(tab.id);
@@ -57,7 +57,7 @@ export class NavigateTool {
     }
 
     await this.waitForLoad(tab.id, waitUntil);
-    return { success: true, url, tabId: tab.id, frameId };
+    return { success: true, url, tabId: tab.id, frameId, suggestedNextTool: "snapshot" };
   }
 
   /**

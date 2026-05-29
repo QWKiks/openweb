@@ -59,6 +59,9 @@ import { HumanizeTool } from "./tools/humanize.js";
 import { SessionManagerTool } from "./tools/session-manager.js";
 import { TableExtractTool } from "./tools/table-extract.js";
 import { FormFillTool } from "./tools/form-fill.js";
+import { DismissOverlayTool } from "./tools/dismiss-overlay.js";
+import { WaitStaleTool } from "./tools/wait-stale.js";
+import { FindByTextTool } from "./tools/find-by-text.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -113,6 +116,9 @@ register(new ResponsiveTestTool());
 register(new ColorPaletteTool());
 register(new TableExtractTool());
 register(new FormFillTool());
+register(new DismissOverlayTool());
+register(new WaitStaleTool());
+register(new FindByTextTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";

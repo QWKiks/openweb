@@ -11,7 +11,7 @@ Whenever you need to interact with a website, always follow this step-by-step pr
 ```mermaid
 graph TD
     A[Start] --> B[navigate - open URL]
-    B --> C[snapshot - capture無障碍树]
+    B --> C[snapshot - capture AX tree]
     C --> D{Need Action?}
     D -- Click/Fill --> E[click/fill using @e ref]
     D -- Read Content --> F[get_text format: 'text']

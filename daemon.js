@@ -32,6 +32,14 @@ const RATE_LIMIT_MAX_BURST = 20;      // max messages in a single second
 /** @type {Map<string, { count: number, reset: number, burst: number, burstReset: number }>} */
 const rateLimits = new Map();
 
+/** Clean up stale rate limit entries every 5 minutes */
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, rl] of rateLimits) {
+    if (now > rl.reset) rateLimits.delete(ip);
+  }
+}, 300000);
+
 /** @type {Set<string>} recent nonces to prevent replay */
 const recentNonces = new Set();
 setInterval(() => recentNonces.clear(), 120000); // clear every 2 min
@@ -169,8 +177,10 @@ wss.on("connection", (ws, req) => {
     }
 
     let msg;
+    let rawText;
     try {
-      msg = JSON.parse(raw.toString());
+      rawText = raw.toString();
+      msg = JSON.parse(rawText);
     } catch {
       console.log("[!] invalid JSON:", log.truncate(raw.toString()));
       return;
@@ -307,7 +317,6 @@ wss.on("connection", (ws, req) => {
           requestToExtension.set(rid, targetExt);
           extActiveRequests.set(targetExt, (extActiveRequests.get(targetExt) || 0) + 1);
           // Forward as TEXT (raw is a Buffer from ws — sending Buffer makes it binary!)
-          const rawText = raw.toString();
           targetExt.send(rawText);
           recordToolCall(msg);
           console.log(`[forward→ext] ${msg.payload?.name || msg.type} (req ${rid})`);
@@ -341,7 +350,6 @@ wss.on("connection", (ws, req) => {
         }
 
         // Transparent proxy: forward raw to all controllers (as TEXT)
-        const rawText = raw.toString();
         let fwdCount = 0;
         for (const ctrl of controllers) {
           if (ctrl.readyState === ctrl.OPEN) { ctrl.send(rawText); fwdCount++; }

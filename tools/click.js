@@ -6,7 +6,7 @@
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
-import { isSemanticSelector, resolveSelector } from "../lib/semantic-selector.js";
+import { isSemanticSelector, resolveSelector, parseSemanticSelector, buildTextSearchExpression } from "../lib/semantic-selector.js";
 
 export class ClickTool {
   name = "click";
@@ -113,10 +113,10 @@ export class ClickTool {
 
     if (isSemanticSelector(selector)) {
       const candidates = resolveSelector(selector);
-      for (const css of candidates) {
-        const objectId = await this.objectIdFromSelector(css);
+      for (const candidate of candidates) {
+        const objectId = await this.objectIdFromSelector(candidate);
         if (objectId) {
-          return { objectId, resolvedWith: css };
+          return { objectId, resolvedWith: candidate };
         }
       }
       throw new Error(`click (physical): semantic selector "${selector}" — no matching element found`);
@@ -148,11 +148,29 @@ export class ClickTool {
   }
 
   async objectIdFromSelector(selector) {
+    // Handle js: prefixed selectors (text content search fallback from semantic-selector)
+    let expression;
+    if (selector.startsWith('js:')) {
+      // Extract the JS expression params: js:findByTextContent("text", "scope")
+      const match = selector.match(/^js:findByTextContent\("([^"]+)",\s*"([^"]+)"\)$/);
+      if (match) {
+        expression = buildTextSearchExpression(match[1], match[2]);
+      } else {
+        return null; // Malformed js: selector
+      }
+    } else {
+      expression = `document.querySelector(${JSON.stringify(selector)})`;
+    }
+
     const result = await sendCommand("Runtime.evaluate", {
-      expression: `document.querySelector(${JSON.stringify(selector)})`,
+      expression,
       returnByValue: false,
     });
-    if (result.exceptionDetails) throw new Error(`click (physical): ${result.exceptionDetails.text}`);
+    if (result.exceptionDetails) {
+      // Don't throw on js: selectors — just return null to try next candidate
+      if (selector.startsWith('js:')) return null;
+      throw new Error(`click (physical): ${result.exceptionDetails.text}`);
+    }
     if (result.result.subtype === "null" || !result.result.objectId) {
       return null;
     }
@@ -193,17 +211,25 @@ export class ClickTool {
   }
 
   async clickBySelector(selector, args = {}) {
-    // If semantic selector, resolve to CSS candidates and try each
+    // If semantic selector, resolve to CSS/JS candidates and try each
     if (isSemanticSelector(selector)) {
       const candidates = resolveSelector(selector);
-      for (const css of candidates) {
+      for (const candidate of candidates) {
+        let findExpression;
+        if (candidate.startsWith('js:')) {
+          const match = candidate.match(/^js:findByTextContent\("([^"]+)",\s*"([^"]+)"\)$/);
+          if (!match) continue;
+          findExpression = buildTextSearchExpression(match[1], match[2]);
+        } else {
+          findExpression = `document.querySelector(${JSON.stringify(candidate)})`;
+        }
         const result = await sendCommand("Runtime.evaluate", {
           expression: `(() => {
-            const el = document.querySelector(${JSON.stringify(css)});
+            const el = ${findExpression};
             if (!el) return null;
             el.scrollIntoView({ block: 'center' });
             el.click();
-            return { success: true, tag: el.tagName, text: el.textContent?.slice(0, 100), resolvedWith: ${JSON.stringify(css)} };
+            return { success: true, tag: el.tagName, text: el.textContent?.slice(0, 100), resolvedWith: ${JSON.stringify(candidate)} };
           })()`,
           returnByValue: true,
           awaitPromise: false,

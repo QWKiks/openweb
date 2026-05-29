@@ -30,8 +30,8 @@ export class GetMarkdownTool {
           return node.nodeType === 1 && (blockTags.has(node.tagName) || window.getComputedStyle(node).display === 'block');
         }
 
-        function toMarkdown(node) {
-          if (!node) return '';
+        function toMarkdown(node, depth = 0) {
+          if (!node || depth > 50) return '';
 
           // Text node
           if (node.nodeType === 3) {
@@ -53,31 +53,30 @@ export class GetMarkdownTool {
             }
 
             // Convert children recursively
-            const getChildrenText = () => {
-              let text = '';
-              for (const child of node.childNodes) {
-                text += toMarkdown(child);
-              }
-              return text;
-            };
+            const childParts = [];
+            for (const child of node.childNodes) {
+              const text = toMarkdown(child, depth + 1);
+              if (text) childParts.push(text);
+            }
+            const childrenText = childParts.join('');
 
             switch (tag) {
-              case 'H1': return '\\n\\n# ' + getChildrenText().trim() + '\\n\\n';
-              case 'H2': return '\\n\\n## ' + getChildrenText().trim() + '\\n\\n';
-              case 'H3': return '\\n\\n### ' + getChildrenText().trim() + '\\n\\n';
-              case 'H4': return '\\n\\n#### ' + getChildrenText().trim() + '\\n\\n';
-              case 'H5': return '\\n\\n##### ' + getChildrenText().trim() + '\\n\\n';
-              case 'H6': return '\\n\\n###### ' + getChildrenText().trim() + '\\n\\n';
-              case 'P': return '\\n\\n' + getChildrenText().trim() + '\\n\\n';
+              case 'H1': return '\\n\\n# ' + childrenText.trim() + '\\n\\n';
+              case 'H2': return '\\n\\n## ' + childrenText.trim() + '\\n\\n';
+              case 'H3': return '\\n\\n### ' + childrenText.trim() + '\\n\\n';
+              case 'H4': return '\\n\\n#### ' + childrenText.trim() + '\\n\\n';
+              case 'H5': return '\\n\\n##### ' + childrenText.trim() + '\\n\\n';
+              case 'H6': return '\\n\\n###### ' + childrenText.trim() + '\\n\\n';
+              case 'P': return '\\n\\n' + childrenText.trim() + '\\n\\n';
               case 'BR': return '\\n';
               case 'STRONG':
               case 'B': {
-                const text = getChildrenText().trim();
+                const text = childrenText.trim();
                 return text ? '**' + text + '**' : '';
               }
               case 'EM':
               case 'I': {
-                const text = getChildrenText().trim();
+                const text = childrenText.trim();
                 return text ? '*' + text + '*' : '';
               }
               case 'CODE': {
@@ -93,7 +92,7 @@ export class GetMarkdownTool {
               }
               case 'A': {
                 const href = node.getAttribute('href');
-                const text = getChildrenText().trim();
+                const text = childrenText.trim();
                 if (!href || href.startsWith('javascript:')) return text;
                 // Resolve relative URLs
                 let absoluteUrl = href;
@@ -117,10 +116,10 @@ export class GetMarkdownTool {
                 const index = Array.from(parent?.children || []).indexOf(node) + 1;
                 const isOrdered = parent && parent.tagName === 'OL';
                 const prefix = isOrdered ? index + '. ' : '* ';
-                return prefix + getChildrenText().trim() + '\\n';
+                return prefix + childrenText.trim() + '\\n';
               }
               case 'UL':
-              case 'OL': return '\\n\\n' + getChildrenText().trim() + '\\n\\n';
+              case 'OL': return '\\n\\n' + childrenText.trim() + '\\n\\n';
               case 'TABLE': {
                 const rows = Array.from(node.querySelectorAll('tr'));
                 if (rows.length === 0) return '';
@@ -136,7 +135,7 @@ export class GetMarkdownTool {
                 return tableMd + '\\n\\n';
               }
               default: {
-                const text = getChildrenText();
+                const text = childrenText;
                 return isBlock(node) ? '\\n' + text + '\\n' : text;
               }
             }
@@ -159,6 +158,10 @@ export class GetMarkdownTool {
 
     const value = result.result.value;
     if (value?.error) throw new Error(value.error);
+    // Add token estimate for context budget tracking
+    if (value?.markdown) {
+      value.estimatedTokens = Math.round(value.markdown.length / 4);
+    }
     return value;
   }
 }

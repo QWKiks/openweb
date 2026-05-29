@@ -36,7 +36,6 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TRANSCRIPTIONS_DIR = join(__dirname, "transcriptions");
 
-// File-based logger for debugging startup issues (Windsurf captures stderr via stdio)
 function startupLog(...args) {
   const line = `[${new Date().toISOString()}] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
   try { appendFileSync('/tmp/mcp-startup.log', line); } catch { }
@@ -70,7 +69,6 @@ function logError(...args) {
   log("error", ...args);
 }
 
-// ── Tool definitions ─────────────────────────────────────────────────────────
 const TOOLS = [
   {
     name: "navigate",
@@ -759,9 +757,73 @@ const TOOLS = [
       required: ["fields"],
     },
   },
+  {
+    name: "dismiss_overlay",
+    description: "Detect and dismiss overlays such as cookie banners, modals, popups, and interstitial dialogs. RECOMMENDATION: Call dismiss_overlay after navigate() to clear blocking overlays before interacting with page content. Saves 3-5 failed interaction attempts caused by overlaid elements.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "wait_stale",
+    description: "Wait for an element to become stale (removed from DOM) or hidden. RECOMMENDATION: Call wait_stale after click() on close buttons, accept buttons, or any element that triggers overlay dismissal or content removal. Prevents race conditions where the AI attempts to interact with elements that were just removed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref of the element to wait for removal. Examples: '@e15', '.modal', '#cookie-banner'" },
+        timeout: { type: "number", description: "Maximum wait time in ms (default: 10000)", default: 10000 },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["selector"],
+    },
+  },
+  {
+    name: "find_by_text",
+    description: "Find an element in the DOM by its text content, aria-label, or placeholder attribute. Returns a CSS selector usable with click, fill, hover, etc. RECOMMENDATION: Use find_by_text when you know the visible text of an element (e.g. 'Log In', 'Submit', 'Search...') but don't have a CSS selector or @e ref. DIFFERENT FROM: get_text reads page text, find_by_text locates element selectors for targeting.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Text to search for in element content, aria-label, or placeholder. Examples: 'Log In', 'Search products', 'user@email.com'" },
+        tag: { type: "string", description: "Optional HTML tag to restrict search (e.g. 'button', 'a', 'input'). Default: all interactive elements" },
+        exact: { type: "boolean", description: "Require exact match instead of partial (default: false)", default: false },
+        returnMultiple: { type: "boolean", description: "Return up to 10 matching results instead of just the first (default: false)", default: false },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["text"],
+    },
+  },
+  {
+    name: "local_storage",
+    description: "Read, write, delete, or clear localStorage and sessionStorage entries on the active page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action: read (default), write, delete, clear", enum: ["read", "write", "delete", "clear"], default: "read" },
+        storage: { type: "string", description: "Storage type: localStorage (default) or sessionStorage", enum: ["localStorage", "sessionStorage"], default: "localStorage" },
+        key: { type: "string", description: "Storage key (required for write and delete, optional for read — reads all if omitted)" },
+        value: { type: "string", description: "Value to store (for write action)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "history",
+    description: "Navigate browser history: go back, go forward, or reload the page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: back, forward, or refresh", enum: ["back", "forward", "refresh"] },
+        ignoreCache: { type: "boolean", description: "Bypass cache on refresh (default: false)", default: false },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["cmd"],
+    },
+  },
 ];
 
-// ── WebSocket connection to daemon ───────────────────────────────────────────
 let ws = null;
 let requestIdCounter = 0;
 const pendingCalls = new Map();
@@ -770,13 +832,13 @@ let reconnectDelay = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 
 function scheduleReconnect() {
-  if (reconnectTimer) return; // Already scheduled
+  if (reconnectTimer) return
   const delay = reconnectDelay;
   reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
   console.error(`[mcp] reconnecting to daemon in ${delay}ms...`);
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
-    connectToDaemon().catch(() => { }); // scheduleReconnect will be called again on close
+    connectToDaemon().catch(() => { });
   }, delay);
 }
 
@@ -806,9 +868,7 @@ function connectToDaemon() {
       logInfo("WebSocket connected to daemon");
       resetReconnect();
       const registerMsg = { type: "register", timestamp: Date.now() };
-      // Add random nonce for replay protection
       registerMsg.nonce = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, "0")).join("");
-      // Pass auth token if configured via env
       const token = process.env.WEBBRIDGE_TOKEN;
       if (token) {
         registerMsg.token = token;
@@ -822,9 +882,7 @@ function connectToDaemon() {
     ws.on("message", (raw, isBinary) => {
       logDebug("Received message from daemon", { isBinary, length: raw.length });
 
-      // Handle binary frames (for screenshots)
       if (isBinary) {
-        // Binary frame: first 4 bytes = requestId (uint32 LE), rest = binary data
         if (raw.length < 4) {
           logError("Invalid binary frame: too short", raw.length);
           return;
@@ -883,7 +941,6 @@ function connectToDaemon() {
         pendingCalls.delete(id);
         resolver({ error: "WebSocket disconnected" });
       }
-      // Auto-reconnect
       scheduleReconnect();
     });
 
@@ -914,11 +971,25 @@ function sendToolCall(name, args) {
     const requestId = String(++requestIdCounter);
     logInfo("Sending tool call", { name, requestId });
 
+    // Per-tool timeouts — heavy operations get more time, quick interactions get less
+    const TOOL_TIMEOUTS = {
+      speech_to_text: 120000,
+      translate: 120000,
+      security_scan: 60000,
+      audit: 60000,
+      design_clone: 60000,
+      screenshot: 30000,
+      save_as_pdf: 30000,
+      har_export: 30000,
+    };
+    const DEFAULT_TIMEOUT = 15000;
+    const toolTimeout = TOOL_TIMEOUTS[name] || DEFAULT_TIMEOUT;
+
     const timeout = setTimeout(() => {
       pendingCalls.delete(requestId);
-      logError("Tool call timeout", { name, requestId });
-      resolve({ error: `Tool call timed out (30s): ${name}` });
-    }, 30000);
+      logError("Tool call timeout", { name, requestId, timeoutMs: toolTimeout });
+      resolve({ error: `Tool call timed out (${toolTimeout / 1000}s): ${name}` });
+    }, toolTimeout);
 
     pendingCalls.set(requestId, (payload) => {
       clearTimeout(timeout);
@@ -947,8 +1018,6 @@ function sendToolCall(name, args) {
     }
   });
 }
-
-// ── Speech-to-Text Helpers ───────────────────────────────────────────────────
 
 async function detectVideoUrl(args) {
   if (args.videoUrl) return args.videoUrl;
@@ -991,7 +1060,7 @@ async function detectVideoUrl(args) {
   const value = evalResult.data?.value;
   if (value?.error) throw new Error(value.error);
   if (!value?.urls?.length) throw new Error("No downloadable video URL found. The video may be DRM-protected or use temporary blob URLs.");
-  
+
   return value.urls[0];
 }
 
@@ -1115,7 +1184,6 @@ async function handleSpeechToText(args) {
   }
 }
 
-// ── Translate Helper ────────────────────────────────────────────────────────
 async function handleTranslate(args) {
   logInfo("translate called", args);
 
@@ -1150,12 +1218,10 @@ async function handleTranslate(args) {
   }
 }
 
-// ── MCP Server ───────────────────────────────────────────────────────────────
-// Self-Healing: Automatically correct missing '@' prefix in snapshot refs (e.g. 'e12' -> '@e12')
 function healSnapshotRefs(args) {
   if (!args || typeof args !== "object") return;
   const keys = ["selector", "source", "target"];
-  const refPattern = /^e\d+$/; // matches 'e1', 'e12', but not 'email' or 'enter'
+  const refPattern = /^e\d+$/;
   for (const key of keys) {
     if (typeof args[key] === "string" && refPattern.test(args[key].trim())) {
       const healed = `@${args[key].trim()}`;
@@ -1262,7 +1328,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   logInfo("MCP tool call received", { name, args });
 
-  // Self-Healing: Automatically correct missing '@' prefix in snapshot refs (e.g. 'e12' -> '@e12')
   if (args) {
     healSnapshotRefs(args);
   }
@@ -1271,9 +1336,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const category = args.category || "all";
     const sessionTools = ["session_manager", "cookie", "session", "local_storage"];
     const networkTools = ["network", "intercept", "websocket_monitor", "har_export", "redirect_chain"];
-    const diagnosticsTools = ["console", "dialog", "viewport", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations"];
+    const diagnosticsTools = ["console", "dialog", "viewport", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations", "history"];
     const auditsTools = ["audit", "security_scan", "coverage"];
-    const advancedTools = ["get_element_bounds", "humanize", "key_type", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "api_discovery", "swagger_parser", "color_palette"];
+    const advancedTools = ["get_element_bounds", "humanize", "key_type", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "api_discovery", "swagger_parser", "color_palette", "table_extract", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text"];
 
     const categories = {
       session: sessionTools,
@@ -1283,12 +1348,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       advanced: advancedTools
     };
 
-    let targetTools = [];
+    // Compact mode for "all" — saves ~9000 tokens vs full schemas
     if (category === "all") {
-      targetTools = [...sessionTools, ...networkTools, ...diagnosticsTools, ...auditsTools, ...advancedTools];
-    } else {
-      targetTools = categories[category] || [];
+      let responseMarkdown = `### 📂 All Specialized Tools (compact index)\n\nCall \`discover_tools(category: "<name>")\` for full schemas of a specific category.\n\n`;
+      
+      for (const [catName, catTools] of Object.entries(categories)) {
+        responseMarkdown += `#### ${catName}\n`;
+        for (const toolName of catTools) {
+          const toolDef = TOOLS.find(t => t.name === toolName);
+          if (toolDef) {
+            // Extract first sentence of description only
+            const shortDesc = toolDef.description.split(/\.\s/)[0] + '.';
+            responseMarkdown += `- \`${toolDef.name}\` — ${shortDesc}\n`;
+          }
+        }
+        responseMarkdown += `\n`;
+      }
+      
+      return {
+        content: [{ type: "text", text: responseMarkdown }]
+      };
     }
+
+    // Full schema mode for specific categories
+    let targetTools = categories[category] || [];
 
     let responseMarkdown = `### 📂 Exposed Specialized Tools - Category: ${category.toUpperCase()}\n\n`;
     responseMarkdown += `You can directly invoke any of these tools by name using standard CallTool JSON parameters. Their detailed schemas and instructions are outlined below:\n\n`;
@@ -1354,7 +1437,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   const data = result.data;
 
-  // For screenshots, return as image
   if (name === "screenshot" && data?.data) {
     const format = data.format || "jpeg";
     const mimeType = format === "png" ? "image/png" : "image/jpeg";
@@ -1369,7 +1451,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
 
-  // For PDF exports, return as resource
   if (name === "save_as_pdf" && data?.data) {
     return {
       content: [
@@ -1381,7 +1462,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
 
-  // For everything else, return as text
   const text =
     typeof data === "object" && data !== null
       ? JSON.stringify(data, null, 2)
@@ -1392,7 +1472,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   };
 });
 
-// ── Start ────────────────────────────────────────────────────────────────────
 const transport = process.argv.includes("--transport")
   ? process.argv[process.argv.indexOf("--transport") + 1]
   : "stdio";
@@ -1403,10 +1482,9 @@ if (transport === "sse") {
   const port = parseInt(process.argv[process.argv.indexOf("--port") + 1] || "3001", 10);
   const app = express();
 
-  // #10: Bearer auth middleware for SSE transport when token is configured
   const SSE_AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
   function sseAuth(req, res, next) {
-    if (!SSE_AUTH_TOKEN) return next(); // No token configured — open access
+    if (!SSE_AUTH_TOKEN) return next();
     const auth = req.headers.authorization;
     if (auth && auth.startsWith("Bearer ") && auth.slice(7) === SSE_AUTH_TOKEN) {
       return next();
@@ -1431,7 +1509,6 @@ if (transport === "sse") {
     console.error(`[mcp] SSE server listening on http://127.0.0.1:${port}`);
   });
 } else {
-  // stdio transport (default) — for Claude Desktop, Cursor, etc.
   const stdioTransport = new StdioServerTransport();
   server.connect(stdioTransport);
   console.error("[mcp] WebBridge Open MCP server running (stdio transport)");

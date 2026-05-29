@@ -11,6 +11,14 @@ const interceptRules = new Map(); // tabId → Array<{pattern, action, id}>
 let ruleCounter = 0;
 let listenerAdded = false;
 
+// Clean up intercept state when a tab is closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (interceptingTabs.has(tabId)) {
+    interceptingTabs.delete(tabId);
+    interceptRules.delete(tabId);
+  }
+});
+
 function ensureListener() {
   if (listenerAdded) return;
   listenerAdded = true;

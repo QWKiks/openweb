@@ -43,23 +43,23 @@ export class GetTextTool {
   async getPageText(maxLength, includeHidden) {
     const result = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
-        const style = includeHidden => {
-          const all = document.body.querySelectorAll('*');
-          let text = '';
-          const ignoreTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'TEMPLATE']);
-          for (const el of all) {
-            if (ignoreTags.has(el.tagName)) continue;
-            if (!includeHidden) {
-              const s = getComputedStyle(el);
-              if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') continue;
-            }
-            if (el.childElementCount === 0 && el.textContent.trim()) {
-              text += el.textContent.trim() + '\\n';
-            }
+        const root = document.body;
+        if (!root) return '';
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const textParts = [];
+        const ignoreTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'TEMPLATE']);
+        let node;
+        while ((node = walker.nextNode())) {
+          const parent = node.parentElement;
+          if (!parent || ignoreTags.has(parent.tagName)) continue;
+          if (!${includeHidden}) {
+            const s = getComputedStyle(parent);
+            if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') continue;
           }
-          return text;
-        };
-        return style(${includeHidden});
+          const trimmed = node.nodeValue.trim();
+          if (trimmed) textParts.push(trimmed);
+        }
+        return textParts.join('\\n');
       })()`,
       returnByValue: true,
       awaitPromise: false,
@@ -144,17 +144,22 @@ export class GetTextTool {
 
   async getPageHtml() {
     const result = await sendCommand("Runtime.evaluate", {
-      expression: `document.documentElement.outerHTML`,
+      expression: `(() => ({
+        html: document.documentElement.outerHTML,
+        title: document.title,
+        url: location.href
+      }))()`,
       returnByValue: true,
       awaitPromise: false,
     });
+
     if (result.exceptionDetails) throw new Error(`get_text (html): ${result.exceptionDetails.text}`);
-    const html = result.result.value || "";
+    const val = result.result.value || {};
     return { 
-      html, 
-      title: await this.getPageTitle(), 
-      url: await this.getPageUrl(),
-      estimatedTokens: Math.round(html.length / 4)
+      html: val.html || "", 
+      title: val.title || "", 
+      url: val.url || "",
+      estimatedTokens: Math.round((val.html || "").length / 4)
     };
   }
 

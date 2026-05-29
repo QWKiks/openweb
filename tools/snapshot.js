@@ -5,7 +5,7 @@
 
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
-import { clearRefs, createRef, INTERACTIVE_ROLES } from "../lib/snapshot-refs.js";
+import { clearRefs, createRef, INTERACTIVE_ROLES, saveRefs } from "../lib/snapshot-refs.js";
 
 export class SnapshotTool {
   name = "snapshot";
@@ -40,11 +40,16 @@ export class SnapshotTool {
 
           if (targetBackendId) {
             const flatDoc = await sendCommand("DOM.getFlattenedDocument", { depth: -1, pierce: true });
+            const nodeMap = new Map();
+            for (const n of flatDoc.nodes) {
+              nodeMap.set(n.nodeId, n);
+            }
+
             const childrenMap = new Map();
             
             for (const node of flatDoc.nodes) {
               if (node.parentId) {
-                const parentNode = flatDoc.nodes.find(n => n.nodeId === node.parentId);
+                const parentNode = nodeMap.get(node.parentId);
                 if (parentNode) {
                   const arr = childrenMap.get(parentNode.backendNodeId) || [];
                   arr.push(node.backendNodeId);
@@ -74,33 +79,35 @@ export class SnapshotTool {
 
     const result = await sendCommand("Accessibility.getFullAXTree");
     let tree = this.buildTree(result.nodes, allowedBackendIds, interactiveOnly);
-
+    // Batch-save all refs to session storage in one write (instead of per-createRef)
+    saveRefs();
+    let treeStr;
     let isTruncated = false;
     let finalTree = tree;
 
     if (format === "text") {
       finalTree = this.formatToIndentedText(tree, 0, maxDepth);
-      if (finalTree.length > maxLength) {
-        finalTree = finalTree.slice(0, maxLength);
+      treeStr = finalTree;
+      if (treeStr.length > maxLength) {
+        treeStr = treeStr.slice(0, maxLength);
+        finalTree = treeStr;
         isTruncated = true;
       }
     } else {
-      const treeStr = JSON.stringify(tree);
+      treeStr = JSON.stringify(tree);
       if (treeStr.length > maxLength) {
-        // Simple JSON truncation isn't always valid parseable JSON, but we can return truncated string
         finalTree = treeStr.slice(0, maxLength);
         isTruncated = true;
       }
     }
-
-    const treeStr = typeof finalTree === "string" ? finalTree : JSON.stringify(finalTree);
 
     return { 
       url: tab.url, 
       title: tab.title, 
       tree: finalTree,
       truncated: isTruncated,
-      estimatedTokens: Math.round(treeStr.length / 4)
+      estimatedTokens: Math.round(treeStr.length / 4),
+      suggestedNextTool: "click or fill using @e refs from tree"
     };
   }
 
@@ -195,18 +202,18 @@ export class SnapshotTool {
 
   formatToIndentedText(nodes, depth = 0, maxDepth = 8) {
     if (!nodes || nodes.length === 0) return "";
-    let result = "";
+    const parts = [];
     const indent = "  ".repeat(depth);
     for (const node of nodes) {
       if (Array.isArray(node)) {
-        result += this.formatToIndentedText(node, depth, maxDepth);
+        parts.push(this.formatToIndentedText(node, depth, maxDepth));
         continue;
       }
       
-      const parts = [];
-      parts.push(`[${node.role}`);
-      if (node.ref) parts.push(` ${node.ref}`);
-      parts.push(`]`);
+      const nodeParts = [];
+      nodeParts.push(`[${node.role}`);
+      if (node.ref) nodeParts.push(` ${node.ref}`);
+      nodeParts.push(`]`);
       
       const extra = [];
       if (node.name) extra.push(`name="${node.name}"`);
@@ -214,12 +221,12 @@ export class SnapshotTool {
       if (node.description) extra.push(`desc="${node.description}"`);
       
       const extraStr = extra.length > 0 ? " " + extra.join(" ") : "";
-      result += `${indent}- ${parts.join("")}${extraStr}\n`;
+      parts.push(`${indent}- ${nodeParts.join("")}${extraStr}\n`);
       
       if (node.children && node.children.length > 0 && depth < maxDepth) {
-        result += this.formatToIndentedText(node.children, depth + 1, maxDepth);
+        parts.push(this.formatToIndentedText(node.children, depth + 1, maxDepth));
       }
     }
-    return result;
+    return parts.join("");
   }
 }
