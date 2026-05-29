@@ -1149,7 +1149,24 @@ const CORE_TOOL_NAMES = new Set([
 
 const discover_tools_schema = {
   name: "discover_tools",
-  description: "Discover specialized browser automation tools (session management, network interception, diagnostics, audits, and advanced DOM tools). RECOMMENDATION: Run this tool if you need to perform audits, manage active cookies, inspect API traffic, or execute specialized task sequences.",
+  description: `Unlocks specialized browser automation tools hidden from the initial tool list to save tokens.
+
+⚠️ CRITICAL RULE: You start with only 7 core tools. Before calling ANY tool not in your list, call discover_tools first.
+
+WHEN TO CALL (choose the right category):
+- "session"     → save/load browser sessions, manage cookies, localStorage
+- "network"     → intercept requests, monitor WebSocket, export HAR, block ads
+- "diagnostics" → read console errors, emulate mobile device, handle JS dialogs, scroll/wait
+- "audits"      → SEO audit, accessibility check, performance metrics, security scan
+- "advanced"    → element coordinates, keyboard input, hover, drag-drop, save PDF, upload files
+- "all"         → show everything (use only if you don't know which category)
+
+EXAMPLE WORKFLOW:
+  User: "save the session"
+  Wrong ❌: session_manager({action:"save"}) → ERROR: Unknown tool
+  Right  ✅: discover_tools({category:"session"}) → then session_manager({action:"save",name:"my-session"})
+
+After calling discover_tools, you receive full schemas + usage examples for each unlocked tool.`,
   inputSchema: {
     type: "object",
     properties: {
@@ -1162,6 +1179,7 @@ const discover_tools_schema = {
     }
   }
 };
+
 
 const server = new Server(
   {

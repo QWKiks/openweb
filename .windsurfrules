@@ -91,3 +91,39 @@ To prevent blind actions and endless loops, you MUST strictly adhere to the sens
 * **The Mandatory Verification Rule**: After submitting a form, clicking a link, or triggering navigation, you **MUST immediately run `wait(type: 'network_idle')` or take a `screenshot`** to verify that the action succeeded and the page state has updated.
 * **No Blind Runs**: Never execute more than **2 consecutive action tools (click / fill / hover / select / upload / key_type)** without calling either `snapshot` or `screenshot` to observe the page state changes.
 * **Self-Healing Refs**: If you get a ref resolution failure, do not guess selector variations. Simply run `snapshot` again to get the healed, updated `@e` refs.
+
+---
+
+## 6. Tool Discovery — How to Unlock Specialized Tools (CRITICAL)
+
+**IMPORTANT**: At startup, you only see 7 core tools. Many powerful specialized tools are hidden to save tokens. You MUST use `discover_tools` to unlock them when needed.
+
+### When you MUST call `discover_tools` first:
+
+| You want to do... | Call `discover_tools(category: ...)` |
+|---|---|
+| Manage cookies, localStorage, session state | `"session"` |
+| Intercept requests, monitor WebSocket traffic, export HAR | `"network"` |
+| Check console errors, emulate devices, handle dialogs | `"diagnostics"` |
+| Run SEO, accessibility, performance, security audits | `"audits"` |
+| Get element coordinates, use keyboard, hover, drag, PDF | `"advanced"` |
+| Not sure which category | `"all"` |
+
+### Rule: Never try to call a tool that isn't in your current tool list without first calling `discover_tools`.
+
+**Wrong approach** ❌:
+```
+// Trying to call 'session_manager' directly when it's not in your tool list
+→ ERROR: Unknown tool: session_manager
+```
+
+**Correct approach** ✅:
+```
+Step 1: discover_tools(category: "session")
+         → Returns: session_manager, cookie, local_storage schemas + usage examples
+Step 2: session_manager(action: "save", name: "my-session")
+         → Works perfectly
+```
+
+### discover_tools returns full schemas with examples
+When you call `discover_tools`, you receive the **complete schema** (all parameters, types, defaults) + **usage examples** for each unlocked tool. Read them carefully before calling the tool.
