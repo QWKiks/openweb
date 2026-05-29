@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenWeb AI Agent Sandbox & Benchmark</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-surface: rgba(17, 24, 39, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --accent: hsl(250, 85%, 65%);
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --success: #10b981;
+      --error: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      background: var(--bg-surface);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 3rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 80px var(--accent-glow);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 2.5rem;
+      background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      text-align: center;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      text-align: center;
+      margin-bottom: 3rem;
+      font-size: 1rem;
+    }
+
+    .step-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+    .step-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .step-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .step-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 800;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input[type="text"], select, input[type="file"] {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+    }
+
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, var(--accent) 0%, hsl(260, 90%, 60%) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      box-shadow: 0 6px 25px rgba(99, 102, 241, 0.6);
+      transform: translateY(-1px);
+    }
+
+    /* Event-blocked elements styles */
+    .blocked-zone {
+      position: relative;
+      margin-top: 1rem;
+    }
+
+    .invisible-barrier {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 0, 0, 0.0);
+      z-index: 10;
+      cursor: pointer;
+    }
+
+    .blocked-btn {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: none;
+    }
+
+    .blocked-btn:hover {
+      box-shadow: none;
+      transform: none;
+      background: #1e293b;
+    }
+
+    /* Statuses and feedback */
+    .status-msg {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .status-success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+      display: block;
+    }
+
+    .status-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error);
+      color: var(--error);
+      display: block;
+    }
+
+    /* Delay section */
+    .dynamic-result {
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: all 0.5s ease;
+      background: rgba(16, 185, 129, 0.05);
+      border: 1px dashed var(--success);
+      border-radius: 8px;
+      padding: 0;
+      margin-top: 1rem;
+      color: var(--success);
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .dynamic-result.show {
+      opacity: 1;
+      max-height: 100px;
+      padding: 1rem;
+    }
+
+    /* Broken links for audit */
+    .broken-link {
+      color: var(--error);
+      text-decoration: underline;
+      cursor: pointer;
+      display: block;
+      margin-top: 0.5rem;
+    }
+
+    /* Contrast elements for accessibility testing */
+    .low-contrast {
+      color: #2a3447; /* very dark grey on very dark background — fails a11y */
+      background: #0f172a;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>OpenWeb AI Sandbox</h1>
+    <div class="subtitle">Interactive testbench to verify AI Agent capabilities and tools integration</div>
+
+    <!-- Step 1: Standard forms & delay waiting -->
+    <div class="step-card" id="card-form">
+      <div class="step-title"><span class="step-badge">TEST 1</span> Standard Inputs & Wait Timing</div>
+      <div class="form-group">
+        <label for="agent-name">Agent Identity Name</label>
+        <input type="text" id="agent-name" placeholder="e.g. Claude Code, Cursor Agent">
+      </div>
+      <div class="form-group">
+        <label for="agent-tier">Agent Tier Choice</label>
+        <select id="agent-tier">
+          <option value="">-- Choose option --</option>
+          <option value="standard">Standard Autocomplete</option>
+          <option value="advanced">Advanced Agentic Flow</option>
+          <option value="super">Antigravity Level</option>
+        </select>
+      </div>
+      <button class="btn" id="btn-submit-form">Submit Form Elements</button>
+      
+      <div class="dynamic-result" id="form-delayed-result">
+        🎉 Form validation success! State updated dynamically after delay.
+      </div>
+    </div>
+
+    <!-- Step 2: Click Fallback / Event blocker testing -->
+    <div class="step-card" id="card-blocker">
+      <div class="step-title"><span class="step-badge">TEST 2</span> Click Fallback Interceptor (Physical Click)</div>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+        The button below is covered by an invisible blocker. A standard DOM synthetic click will strike the blocker instead of the button. Only a <strong>physical mouse click</strong> (calculating coordinates and shooting CDP events) can trigger the success state!
+      </p>
+      
+      <div class="blocked-zone">
+        <div class="invisible-barrier" id="barrier" onclick="triggerBlockerAlert()"></div>
+        <button class="btn blocked-btn" id="btn-physical-target" onclick="triggerPhysicalSuccess()">Target Click Button</button>
+      </div>
+
+      <div class="status-msg" id="blocker-status"></div>
+    </div>
+
+    <!-- Step 3: Errors and Auditing diagnostics -->
+    <div class="step-card" id="card-audit">
+      <div class="step-title"><span class="step-badge">TEST 3</span> Diagnostics, Console Errors & Audits</div>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+        This card contains intentional diagnostics bugs for testing `console` filters and `audit` tools.
+      </p>
+      <button class="btn" style="background: linear-gradient(135deg, var(--error) 0%, #b91c1c 100%);" onclick="throwConsoleError()">Trigger Uncaught Console Error</button>
+      
+      <div class="form-group" style="margin-top: 1rem;">
+        <label>A11y Contrast Violation (Fails audits):</label>
+        <div class="low-contrast">This text has extremely low contrast and should fail accessibility checks.</div>
+      </div>
+
+      <div class="form-group">
+        <label>Dead Link Violation (Fails broken links check):</label>
+        <a class="broken-link" href="https://httpstat.us/404" target="_blank">broken-links-target-url (returns 404)</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Form action success with dynamic delay
+    document.getElementById('btn-submit-form').addEventListener('click', () => {
+      const name = document.getElementById('agent-name').value;
+      const tier = document.getElementById('agent-tier').value;
+      
+      if (!name || !tier) {
+        alert('Please fill out all fields first!');
+        return;
+      }
+
+      console.log(`[Sandbox] Form submitted. Name: ${name}, Tier: ${tier}. Processing delay...`);
+      
+      // Simulate dynamic loading delay
+      setTimeout(() => {
+        const result = document.getElementById('form-delayed-result');
+        result.classList.add('show');
+        console.log('[Sandbox] Delayed state successfully loaded.');
+      }, 1500);
+    });
+
+    // Blocker clicks
+    function triggerBlockerAlert() {
+      const status = document.getElementById('blocker-status');
+      status.className = 'status-msg status-error';
+      status.innerText = 'FAIL: Standard DOM click hit the barrier instead of the button! RECOMMENDATION: Switch to physical click (physical: true).';
+      status.style.display = 'block';
+      console.warn('[Sandbox] Click intercepted by barrier. Synthetic click failed.');
+    }
+
+    function triggerPhysicalSuccess() {
+      // Prevent event bubbling just in case, though physical coordinate clicks hit the button directly
+      event?.stopPropagation();
+      const status = document.getElementById('blocker-status');
+      status.className = 'status-msg status-success';
+      status.innerText = '🎉 SUCCESS: Physical mouse click successfully triggered the target button through the coordinates pipeline!';
+      status.style.display = 'block';
+      console.log('[Sandbox] Physical click success triggered!');
+    }
+
+    // Trigger explicit console error
+    function throwConsoleError() {
+      console.error('[Sandbox Diagnostics] Uncaught ReferenceError: simulatedAgentFault is not defined at triggerDiagnostics()');
+      alert('Uncaught ReferenceError thrown to console logs successfully!');
+    }
+  </style>
+</body>
+</html>
