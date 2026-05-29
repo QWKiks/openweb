@@ -17,6 +17,13 @@ export class ScreenshotTool {
     const format = args.format || "jpeg";
     const quality = format === "jpeg" ? (args.quality || 60) : undefined;
     const selector = typeof args.selector === "string" ? args.selector : "";
+    const lowRes = args.lowRes !== false;
+
+    const cropX = Number(args.x);
+    const cropY = Number(args.y);
+    const cropW = Number(args.width);
+    const cropH = Number(args.height);
+    const hasCoordsCrop = !isNaN(cropX) && !isNaN(cropY) && !isNaN(cropW) && !isNaN(cropH) && cropW > 0 && cropH > 0;
 
     const options = { format };
 
@@ -60,6 +67,22 @@ export class ScreenshotTool {
       }
 
       options.clip = { x, y, width, height, scale: 1 };
+    } else if (hasCoordsCrop) {
+      options.clip = { x: cropX, y: cropY, width: cropW, height: cropH, scale: 1 };
+    } else if (lowRes) {
+      // Capture full viewport scaled down to max-width 800px
+      try {
+        const layout = await sendCommand("Page.getLayoutMetrics");
+        const viewW = layout.cssVisualViewport?.clientWidth || 1280;
+        const viewH = layout.cssVisualViewport?.clientHeight || 720;
+        if (viewW > 800) {
+          const scale = 800 / viewW;
+          options.clip = { x: 0, y: 0, width: viewW, height: viewH, scale };
+        }
+      } catch (err) {
+        // Fallback to standard full screenshot if metrics call fails
+        console.warn(`[Screenshot Scale] Failed to get layout metrics: ${err.message}. Capturing full resolution.`);
+      }
     }
 
     const result = await sendCommand("Page.captureScreenshot", options);
