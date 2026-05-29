@@ -12,11 +12,11 @@ export class ListTabsTool {
     if (tabIds.length === 0) {
       // No specific tabs requested — list all tabs
       const allTabs = await chrome.tabs.query({});
-      const tabs = allTabs.map((tab) => {
+      const tabs = await Promise.all(allTabs.map(async (tab) => {
         let groupTitle;
         if (tab.groupId != null && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
           try {
-            groupTitle = (async () => (await chrome.tabGroups.get(tab.groupId)).title)();
+            groupTitle = (await chrome.tabGroups.get(tab.groupId)).title;
           } catch {}
         }
         return {
@@ -26,7 +26,7 @@ export class ListTabsTool {
           active: tab.active,
           groupTitle,
         };
-      });
+      }));
       return { success: true, tabs };
     }
 

@@ -177,46 +177,8 @@ export class SecurityScanTool {
         report.xss.hasDocumentWrite = bodyHTML.includes('document.write');
         report.xss.hasOuterHtml = bodyHTML.includes('outerHTML');
         report.xss.hasDangerousMethods = report.xss.hasInnerHtml || report.xss.hasEval || report.xss.hasDocumentWrite || report.xss.hasOuterHtml;
-        
-        // Advanced Security Checks
-        report.advanced = {
-          cspBypass: this.checkCSPBypass(report),
-          corsMisconfig: this.checkCORSMisconfig(),
-          domXssSinks: this.checkDOMXssSinks(),
-          serviceWorker: this.checkServiceWorker(),
-          websockets: this.checkWebSockets(),
-          timingAttacks: this.checkTimingAttacks(),
-          prototypePollution: this.checkPrototypePollution(),
-          ssrfPatterns: this.checkSSRFPatterns(),
-          idorPatterns: this.checkIDORPatterns(),
-          csrfAnalysis: this.checkCSRFAnalysis(),
-          sessionCookieSecurity: this.checkSessionCookieSecurity(),
-          authenticationFlow: this.checkAuthenticationFlow(),
-          authorizationPatterns: this.checkAuthorizationPatterns(),
-          parameterTampering: this.checkParameterTampering(),
-          cacheHeaders: this.checkCacheHeaders(),
-          advancedClickjacking: this.checkAdvancedClickjacking(),
-          apiEndpoints: this.checkAPIEndpoints(),
-          raceConditions: this.checkRaceConditions(),
-          businessLogic: this.checkBusinessLogic(),
-          supplyChain: this.checkSupplyChain(),
-          errorHandling: this.checkErrorHandling(),
-          fileUploadSecurity: this.checkFileUploadSecurity(),
-          rateLimiting: this.checkRateLimiting(),
-          domXssAdvanced: this.checkDOMXssAdvanced(),
-          webCachePoisoning: this.checkWebCachePoisoning(),
-          graphqlSecurity: this.checkGraphQLSecurity(),
-          // OWASP WSTG missing checks
-          informationGathering: this.checkInformationGathering(),
-          sslTlsAnalysis: this.checkSSLTlsAnalysis(),
-          sqlInjection: this.checkSQLInjection(),
-          commandInjection: this.checkCommandInjection(),
-          jwtAnalysis: this.checkJWTAnalysis(),
-          oauthAnalysis: this.checkOAuthAnalysis(),
-          massAssignment: this.checkMassAssignment()
-        };
 
-        // Calculate risk score (including advanced checks)
+        // Calculate basic risk score
         let riskScore = 0;
         let riskLevel = 'LOW';
         
@@ -228,62 +190,16 @@ export class SecurityScanTool {
         if (report.links.javascript > 0) riskScore += 15;
         if (report.links.data > 0) riskScore += 15;
         if (report.cookies.hasCookies) riskScore += 5;
-        if (report.iframe.withoutSandbox > 0) riskScore += 10;
-        
-        // Advanced checks
-        if (report.advanced.cspBypass.hasBypass) riskScore += 15;
-        if (report.advanced.corsMisconfig.hasMisconfig) riskScore += 20;
-        if (report.advanced.domXssSinks.hasSinks) riskScore += 25;
-        if (report.advanced.serviceWorker.hasIssues) riskScore += 10;
-        if (report.advanced.websockets.hasIssues) riskScore += 15;
-        if (report.advanced.timingAttacks.hasTimingLeaks) riskScore += 20;
-        if (report.advanced.prototypePollution.hasPollution) riskScore += 25;
-        if (report.advanced.ssrfPatterns.hasPatterns) riskScore += 20;
-        
-        // HIGH PRIORITY - Bug Bounty top findings
-        if (report.advanced.idorPatterns.hasPatterns) riskScore += 30;
-        if (report.advanced.csrfAnalysis.hasIssues) riskScore += 25;
-        if (report.advanced.sessionCookieSecurity.hasIssues) riskScore += 20;
-        if (report.advanced.authenticationFlow.hasIssues) riskScore += 30;
-        if (report.advanced.authorizationPatterns.hasIssues) riskScore += 25;
-        if (report.advanced.parameterTampering.hasIssues) riskScore += 20;
-        
-        // MEDIUM PRIORITY
-        if (report.advanced.cacheHeaders.hasIssues) riskScore += 15;
-        if (report.advanced.advancedClickjacking.hasIssues) riskScore += 15;
-        if (report.advanced.apiEndpoints.hasEndpoints) riskScore += 10;
-        if (report.advanced.raceConditions.hasIndicators) riskScore += 20;
-        
-        // LOW PRIORITY
-        if (report.advanced.businessLogic.hasPatterns) riskScore += 15;
-        if (report.advanced.supplyChain.hasIssues) riskScore += 10;
-        if (report.advanced.errorHandling.hasLeaks) riskScore += 15;
-        
-        // Additional checks
-        if (report.advanced.fileUploadSecurity.hasIssues) riskScore += 15;
-        if (report.advanced.rateLimiting.hasIndicators) riskScore += 10;
-        if (report.advanced.domXssAdvanced.hasVectors) riskScore += 20;
-        if (report.advanced.webCachePoisoning.hasVectors) riskScore += 15;
-        if (report.advanced.graphqlSecurity.hasIssues) riskScore += 15;
-        
-        // OWASP WSTG missing checks
-        if (report.advanced.informationGathering.hasFindings) riskScore += 10;
-        if (report.advanced.sslTlsAnalysis.hasIssues) riskScore += 20;
-        if (report.advanced.sqlInjection.hasPatterns) riskScore += 30;
-        if (report.advanced.commandInjection.hasPatterns) riskScore += 30;
-        if (report.advanced.jwtAnalysis.hasIssues) riskScore += 25;
-        if (report.advanced.oauthAnalysis.hasIssues) riskScore += 20;
-        if (report.advanced.massAssignment.hasPatterns) riskScore += 20;
-        
-        if (riskScore >= 80) riskLevel = 'CRITICAL';
-        else if (riskScore >= 60) riskLevel = 'HIGH';
-        else if (riskScore >= 30) riskLevel = 'MEDIUM';
+        if (report.iframes.withoutSandbox > 0) riskScore += 10;
         
         report.risk = {
           score: riskScore,
           level: riskLevel
         };
-        
+
+        // Advanced checks and risk score will be calculated server-side
+        report.advanced = {};
+
         return report;
       })()`,
       returnByValue: true,
@@ -295,6 +211,50 @@ export class SecurityScanTool {
     }
 
     const report = result.result.value;
+
+    // Run advanced security checks server-side
+    report.advanced = {
+      cspBypass: this.checkCSPBypass(report),
+      corsMisconfig: this.checkCORSMisconfig(),
+      domXssSinks: this.checkDOMXssSinks(),
+      serviceWorker: this.checkServiceWorker(),
+      websockets: this.checkWebSockets(),
+      timingAttacks: this.checkTimingAttacks(),
+      prototypePollution: this.checkPrototypePollution(),
+      ssrfPatterns: this.checkSSRFPatterns(),
+      idorPatterns: this.checkIDORPatterns(),
+      csrfAnalysis: this.checkCSRFAnalysis(),
+      sessionCookieSecurity: this.checkSessionCookieSecurity(),
+      authenticationFlow: this.checkAuthenticationFlow(),
+      authorizationPatterns: this.checkAuthorizationPatterns(),
+      parameterTampering: this.checkParameterTampering(),
+      cacheHeaders: this.checkCacheHeaders(),
+      advancedClickjacking: this.checkAdvancedClickjacking(),
+      apiEndpoints: this.checkAPIEndpoints(),
+      raceConditions: this.checkRaceConditions(),
+      businessLogic: this.checkBusinessLogic(),
+      supplyChain: this.checkSupplyChain(),
+      errorHandling: this.checkErrorHandling(),
+      fileUploadSecurity: this.checkFileUploadSecurity(),
+      rateLimiting: this.checkRateLimiting(),
+      domXssAdvanced: this.checkDOMXssAdvanced(),
+      webCachePoisoning: this.checkWebCachePoisoning(),
+      graphqlSecurity: this.checkGraphQLSecurity(),
+      informationGathering: this.checkInformationGathering(),
+      sslTlsAnalysis: this.checkSSLTlsAnalysis(),
+      sqlInjection: this.checkSQLInjection(),
+      commandInjection: this.checkCommandInjection(),
+      jwtAnalysis: this.checkJWTAnalysis(),
+      oauthAnalysis: this.checkOAuthAnalysis(),
+      massAssignment: this.checkMassAssignment(),
+    };
+
+    // Full risk score including advanced checks
+    report.risk.score = this.calculateFullRisk(report);
+    if (report.risk.score >= 80) report.risk.level = 'CRITICAL';
+    else if (report.risk.score >= 60) report.risk.level = 'HIGH';
+    else if (report.risk.score >= 30) report.risk.level = 'MEDIUM';
+    else report.risk.level = 'LOW';
 
     // Run deep behavioral analysis (second browser evaluate)
     const deepResult = await sendCommand("Runtime.evaluate", {
@@ -336,6 +296,65 @@ export class SecurityScanTool {
     }
 
     return report;
+  }
+
+  calculateFullRisk(report) {
+    let score = 0;
+    const adv = report.advanced || {};
+
+    // Basic score from page context
+    if (!report.headers?.csp) score += 20;
+    if (!report.headers?.xFrameOptions) score += 15;
+    if (report.mixedContent?.hasMixedContent) score += 25;
+    if (report.xss?.hasDangerousMethods) score += 20;
+    if (report.scripts?.inline > 0 && !report.headers?.csp) score += 10;
+    if (report.links?.javascript > 0) score += 15;
+    if (report.links?.data > 0) score += 15;
+    if (report.cookies?.hasCookies) score += 5;
+    if (report.iframes?.withoutSandbox > 0) score += 10;
+
+    // Advanced checks
+    if (adv.cspBypass?.hasBypass) score += 15;
+    if (adv.corsMisconfig?.hasMisconfig) score += 20;
+    if (adv.domXssSinks?.hasSinks) score += 25;
+    if (adv.serviceWorker?.hasIssues) score += 10;
+    if (adv.websockets?.hasIssues) score += 15;
+    if (adv.timingAttacks?.hasTimingLeaks) score += 20;
+    if (adv.prototypePollution?.hasPollution) score += 25;
+    if (adv.ssrfPatterns?.hasPatterns) score += 20;
+
+    // HIGH PRIORITY
+    if (adv.idorPatterns?.hasPatterns) score += 30;
+    if (adv.csrfAnalysis?.hasIssues) score += 25;
+    if (adv.sessionCookieSecurity?.hasIssues) score += 20;
+    if (adv.authenticationFlow?.hasIssues) score += 30;
+    if (adv.authorizationPatterns?.hasIssues) score += 25;
+    if (adv.parameterTampering?.hasIssues) score += 20;
+
+    // MEDIUM PRIORITY
+    if (adv.cacheHeaders?.hasIssues) score += 15;
+    if (adv.advancedClickjacking?.hasIssues) score += 15;
+    if (adv.apiEndpoints?.hasEndpoints) score += 10;
+    if (adv.raceConditions?.hasIndicators) score += 20;
+
+    // LOW PRIORITY
+    if (adv.businessLogic?.hasPatterns) score += 15;
+    if (adv.supplyChain?.hasIssues) score += 10;
+    if (adv.errorHandling?.hasLeaks) score += 15;
+    if (adv.fileUploadSecurity?.hasIssues) score += 15;
+    if (adv.rateLimiting?.hasIndicators) score += 10;
+    if (adv.domXssAdvanced?.hasVectors) score += 20;
+    if (adv.webCachePoisoning?.hasVectors) score += 15;
+    if (adv.graphqlSecurity?.hasIssues) score += 15;
+    if (adv.informationGathering?.hasFindings) score += 10;
+    if (adv.sslTlsAnalysis?.hasIssues) score += 20;
+    if (adv.sqlInjection?.hasPatterns) score += 30;
+    if (adv.commandInjection?.hasPatterns) score += 30;
+    if (adv.jwtAnalysis?.hasIssues) score += 25;
+    if (adv.oauthAnalysis?.hasIssues) score += 20;
+    if (adv.massAssignment?.hasPatterns) score += 20;
+
+    return score;
   }
 
   generateRecommendations(report) {
@@ -404,12 +423,12 @@ export class SecurityScanTool {
       });
     }
 
-    if (report.iframe.withoutSandbox > 0) {
+    if (report.iframes.withoutSandbox > 0) {
       recommendations.push({
         severity: 'MEDIUM',
         issue: 'Iframes Without Sandbox',
         recommendation: 'Add sandbox attribute to iframes',
-        count: report.iframe.withoutSandbox
+        count: report.iframes.withoutSandbox
       });
     }
 
@@ -1676,7 +1695,7 @@ export class SecurityScanTool {
       frameworks: []
     };
 
-    const bodyHTML = document.bodyHTML;
+    const bodyHTML = document.body?.innerHTML || "";
 
     // Check for mass assignment patterns
     const massAssignPatterns = [

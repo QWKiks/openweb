@@ -28,7 +28,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import WebSocket from "ws";
-import { appendFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { appendFileSync, writeFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
@@ -99,6 +99,8 @@ const TOOLS = [
       properties: {
         selector: { type: "string", description: "CSS selector or @e ref of a target subtree to capture (optional — captures full page AXTree if omitted)" },
         interactiveOnly: { type: "boolean", description: "Filter out non-interactive static text nodes and branches to maximize token economy (default: true)", default: true },
+        maxLength: { type: "number", description: "Maximum tree size in characters (default: 50000). Larger trees are truncated to save tokens.", default: 50000 },
+        maxDepth: { type: "number", description: "Maximum nesting depth for the indented text format (default: 8). Reduces token count on deeply nested pages.", default: 8 },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
@@ -130,7 +132,7 @@ const TOOLS = [
   },
   {
     name: "click",
-    description: "Click an element. RECOMMENDATION: Try standard DOM click first (default). Use 'physical: true' ONLY if synthetic click fails to trigger an event, for Canvas elements, or when custom event listeners block standard clicks.",
+    description: "Click an element. RECOMMENDATION: Always use standard DOM click (physical: false, default) first. Switch to 'physical: true' ONLY if synthetic click fails to trigger an event, for Canvas/SVG elements, or when custom event listeners block standard clicks. For anti-bot protected pages, use humanize(cmd: mouse_move, click: true) instead of click(physical: true).",
     inputSchema: {
       type: "object",
       properties: {
@@ -143,7 +145,7 @@ const TOOLS = [
   },
   {
     name: "fill",
-    description: "Fill a form field with a value by CSS selector or snapshot ref. RECOMMENDATION: Use the stable snapshot `@e` ref (e.g. '@e5') obtained from the 'snapshot' tool to target the input. If the element is hidden or protected by anti-bot typing checks, consider using 'humanize(cmd: type)'.",
+    description: "Fill a form field with a value by CSS selector or snapshot ref. RECOMMENDATION: Use the stable snapshot @e ref (e.g. '@e5') obtained from the 'snapshot' tool to target the input. PREFER fill over humanize for standard form inputs (no anti-bot). Switch to 'humanize(cmd: type)' ONLY if the input rejects standard fill (hidden, anti-bot, React-controlled, or Cloudflare protected).",
     inputSchema: {
       type: "object",
       properties: {
@@ -156,7 +158,7 @@ const TOOLS = [
   },
   {
     name: "key_type",
-    description: "Type text into the currently focused element.",
+    description: "Type text into the currently focused element. RECOMMENDATION: Prefer fill or humanize(cmd: type) over key_type for form inputs. Use key_type ONLY when the input is already focused (e.g., after clicking into a contenteditable div, textarea, or terminal-like input) and you need character-by-character typing.",
     inputSchema: {
       type: "object",
       properties: {
@@ -248,7 +250,7 @@ const TOOLS = [
   },
   {
     name: "get_text",
-    description: "Extract page content. RECOMMENDATION: Use default 'text' format to read articles/content. Use 'structured' format ONLY when you need to analyze page meta tags, loaded scripts, or stylesheets. Avoid loading raw 'html' unless you specifically need to analyze raw DOM nodes.",
+    description: "Extract page content. RECOMMENDATION: Use default 'text' format to read articles/content. Use 'structured' format ONLY when you need to analyze page meta tags, loaded scripts, or stylesheets. Avoid loading raw 'html' unless you specifically need to analyze raw DOM nodes. Response includes 'estimatedTokens' to help manage context budget.",
     inputSchema: {
       type: "object",
       properties: {
@@ -267,7 +269,7 @@ const TOOLS = [
   },
   {
     name: "get_markdown",
-    description: "Extract the active page or a targeted element's content as clean, semantic Markdown. RECOMMENDATION: Use this tool *instead* of get_text(format: 'text') or get_text(format: 'html') when you need to read structured content (articles, documentation, tables, manuals) while keeping list formatting, headers, table grids, and image/link targets perfectly preserved. This saves up to 80% tokens compared to raw HTML while giving high reading comprehension for the model.",
+    description: "Extract the active page or a targeted element's content as clean, semantic Markdown. RECOMMENDATION: Use this tool *instead* of get_text(format: 'text') or get_text(format: 'html') when you need to read structured content (articles, documentation, tables, manuals) while keeping list formatting, headers, table grids, and image/link targets perfectly preserved. This saves up to 80% tokens compared to raw HTML while giving high reading comprehension for the model. PREFER get_markdown over get_text for ANY structured content; use get_text ONLY for plain text extraction or when you need raw HTML.",
     inputSchema: {
       type: "object",
       properties: {
@@ -288,7 +290,7 @@ const TOOLS = [
   },
   {
     name: "humanize",
-    description: "Anti-bot human-like inputs emulator. RECOMMENDATION: Use this tool *instead* of standard 'click' or 'fill' when interacting with pages protected by strict firewalls/anti-bot systems (Cloudflare, Datadome, Akamai). It bypasses detection by simulating natural mouse movements along cubic Bezier curves and key-by-key typing with randomized human intervals (50ms-150ms).",
+    description: "Anti-bot human-like inputs emulator. RECOMMENDATION: Use this tool *instead* of standard 'click' or 'fill' when interacting with pages protected by strict firewalls/anti-bot systems (Cloudflare, Datadome, Akamai). It bypasses detection by simulating natural mouse movements along cubic Bezier curves and key-by-key typing with randomized human intervals (50ms-150ms). PREFERED ORDER for typing: 1) fill (fastest, works on most inputs), 2) humanize(cmd: type) (for anti-bot inputs), 3) key_type (for already-focused custom elements). PREFERED ORDER for clicking: 1) click(physical: false) (DOM click), 2) click(physical: true) (CDP click), 3) humanize(cmd: mouse_move, click: true) (for anti-bot).",
     inputSchema: {
       type: "object",
       properties: {
@@ -308,7 +310,7 @@ const TOOLS = [
   },
   {
     name: "session_manager",
-    description: "Save and restore browser authentication session contexts (cookies, localStorage, sessionStorage). RECOMMENDATION: Use this tool to serialize the authentication context to a local JSON file in your workspace after logging in, and load it back during subsequent runs to instantly bypass repeated logins, MFA prompts, or CAPTCHAs.",
+    description: "Save and restore browser authentication session contexts (cookies, localStorage, sessionStorage). RECOMMENDATION: Use this tool to serialize the authentication context to a local JSON file in your workspace after logging in, and load it back during subsequent runs to instantly bypass repeated logins, MFA prompts, or CAPTCHAs. DIFFERENT FROM session: session_manager saves AUTH/cookies/localStorage, while session saves/restores OPEN TABS (navigation state).",
     inputSchema: {
       type: "object",
       properties: {
@@ -324,7 +326,7 @@ const TOOLS = [
   },
   {
     name: "cookie",
-    description: "Get, set, or delete cookies for the current page.",
+    description: "Get, set, or delete cookies for the current page. DIFFERENT FROM session_manager: cookie manipulates individual cookies (get/set/delete one at a time), while session_manager saves/restores the FULL cookie jar + localStorage together for auth persistence.",
     inputSchema: {
       type: "object",
       properties: {
@@ -364,7 +366,7 @@ const TOOLS = [
   },
   {
     name: "viewport",
-    description: "Change the browser viewport size, device scale factor, and touch mode. Useful for responsive testing.",
+    description: "Change the browser viewport size, device scale factor, and touch mode. Useful for responsive testing. DIFFERENT FROM emulate: viewport only changes WINDOW SIZE and touch settings. For full device emulation (with user agent, device presets, geolocation), use emulate instead.",
     inputSchema: {
       type: "object",
       properties: {
@@ -411,7 +413,7 @@ const TOOLS = [
   },
   {
     name: "emulate",
-    description: "Emulate a mobile device, set geolocation, or change user agent. Includes device presets.",
+    description: "Emulate a mobile device, set geolocation, or change user agent. Includes device presets. RECOMMENDATION: Prefer emulate over viewport for full device emulation (device presets like iphone_14 include correct UA, viewport, touch, and DPR). Use viewport ONLY when you need to resize the window without changing the user agent or device signature.",
     inputSchema: {
       type: "object",
       properties: {
@@ -435,7 +437,7 @@ const TOOLS = [
   },
   {
     name: "session",
-    description: "Save and restore browser session state (open tabs). Persists across service worker restarts.",
+    description: "Save and restore browser session state (open tabs). Persists across service worker restarts. DIFFERENT FROM session_manager: session saves/restores OPEN TABS (navigation state), while session_manager saves/restores AUTHENTICATION context (cookies, localStorage) for passing logins between runs.",
     inputSchema: {
       type: "object",
       properties: {
@@ -569,7 +571,7 @@ const TOOLS = [
   },
   {
     name: "audit",
-    description: "Run website audits: SEO, accessibility (a11y), performance, forms, or broken links.",
+    description: "Run website audits: SEO, accessibility (a11y), performance, forms, or broken links. DIFFERENT FROM security_scan: audit checks WEBSITE QUALITY (SEO, performance, accessibility, forms, broken links). security_scan checks SECURITY (headers, XSS, SSL/TLS, mixed content, vulnerabilities). Use audit for quality checks, security_scan for security checks.",
     inputSchema: {
       type: "object",
       properties: {
@@ -587,7 +589,7 @@ const TOOLS = [
   },
   {
     name: "security_scan",
-    description: "Run website security scan: checks headers, XSS vulnerabilities, mixed content, and SSL/TLS. RECOMMENDATION: Set detailed: true for comprehensive assessment.",
+    description: "Run website security scan: checks headers, XSS vulnerabilities, mixed content, and SSL/TLS. RECOMMENDATION: Set detailed: true for comprehensive assessment. DIFFERENT FROM audit: security_scan checks SECURITY (headers, XSS, SSL/TLS, mixed content, vulnerabilities). audit checks WEBSITE QUALITY (SEO, forms, performance, accessibility, broken links).",
     inputSchema: {
       type: "object",
       properties: {
@@ -724,6 +726,37 @@ const TOOLS = [
       properties: {
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
+    },
+  },
+  {
+    name: "table_extract",
+    description: "Extract structured data from HTML tables on the page. Returns JSON array of rows with column headers as keys. RECOMMENDATION: Prefer table_extract over get_text or get_markdown when you need to analyze tabular data (prices, schedules, stats, comparison tables). Use format='csv' for spreadsheet-ready output. Specify a CSS selector to target a specific table if multiple exist.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector for the table (default: 'table'). Examples: 'table.pricing', '#schedule', 'table:first-of-type'", default: "table" },
+        format: { type: "string", description: "Output format: 'json' (default, structured objects) or 'csv' (comma-separated)", enum: ["json", "csv"], default: "json" },
+        maxRows: { type: "number", description: "Maximum rows to extract (default: 500)", default: 500 },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "form_fill",
+    description: "Fill a complete form with multiple fields in one call. Handles text inputs, selects, checkboxes, radio buttons, date pickers. RECOMMENDATION: Prefer form_fill over calling fill/select/click separately for each form field. Pass all field values as a JSON object in 'fields' parameter. The tool automatically finds fields by name, id, aria-label, or placeholder.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector for the form element (default: 'form'). Examples: '#login-form', 'form:first-of-type'", default: "form" },
+        fields: {
+          type: "object",
+          description: "Key-value pairs of field names/IDs to values. Examples: {\"email\": \"user@example.com\", \"password\": \"mypass\", \"remember\": true, \"country\": \"US\"}",
+          additionalProperties: { type: "string" },
+        },
+        submit: { type: "boolean", description: "Automatically click the submit button after filling (default: true)", default: true },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["fields"],
     },
   },
 ];
@@ -915,160 +948,149 @@ function sendToolCall(name, args) {
   });
 }
 
-// ── Speech-to-Text Helper ───────────────────────────────────────────────────
-async function handleSpeechToText(args) {
-  logInfo("speech_to_text called", args);
+// ── Speech-to-Text Helpers ───────────────────────────────────────────────────
 
-  logDebug("Using local Whisper server at http://127.0.0.1:5001");
+async function detectVideoUrl(args) {
+  if (args.videoUrl) return args.videoUrl;
 
-  let videoUrl = args.videoUrl;
+  logInfo("No video URL provided, attempting to auto-detect from page");
+  const evalResult = await sendToolCall("evaluate", {
+    tabId: args.tabId,
+    code: `(function() {
+      const video = document.querySelector('video');
+      if (!video) return { error: 'No video element found on page' };
 
-  if (!videoUrl) {
-    logInfo("No video URL provided, attempting to auto-detect from page");
-    const evalResult = await sendToolCall("evaluate", {
-      tabId: args.tabId,
-      code: `(function() {
-        const video = document.querySelector('video');
-        if (!video) return { error: 'No video element found on page' };
+      const sources = Array.from(video.querySelectorAll('source'))
+        .map(s => s.src).filter(Boolean);
+      const directUrl = video.currentSrc || video.src;
 
-        const sources = Array.from(video.querySelectorAll('source'))
-          .map(s => s.src).filter(Boolean);
-        const directUrl = video.currentSrc || video.src;
-
-        let mediaUrls = [];
-        const scripts = document.querySelectorAll('script');
-        for (let script of scripts) {
-          const text = script.textContent;
-          if (text) {
-            const matches = text.match(/https?:\\/\\/video\\.twimg\\.com\\/[^\\s\"]+?\\.(mp4|m3u8)/g);
-            if (matches) mediaUrls.push(...matches);
-          }
+      let mediaUrls = [];
+      const scripts = document.querySelectorAll('script');
+      for (let script of scripts) {
+        const text = script.textContent;
+        if (text) {
+          const matches = text.match(/https?:\\/\\/video\\.twimg\\.com\\/[^\\s\"]+?\\.(mp4|m3u8)/g);
+          if (matches) mediaUrls.push(...matches);
         }
+      }
 
-        const allUrls = [...new Set([directUrl, ...sources, ...mediaUrls])]
-          .filter(u => u && !u.startsWith('blob:'));
-        const mp4Urls = allUrls.filter(u => u.includes('.mp4'));
-        const otherUrls = allUrls.filter(u => !u.includes('.mp4'));
+      const allUrls = [...new Set([directUrl, ...sources, ...mediaUrls])]
+        .filter(u => u && !u.startsWith('blob:'));
+      const mp4Urls = allUrls.filter(u => u.includes('.mp4'));
+      const otherUrls = allUrls.filter(u => !u.includes('.mp4'));
 
-        return {
-          urls: [...mp4Urls, ...otherUrls],
-          duration: video.duration,
-          poster: video.poster
-        };
-      })()`,
-    });
+      return {
+        urls: [...mp4Urls, ...otherUrls],
+        duration: video.duration,
+        poster: video.poster
+      };
+    })()`,
+  });
 
-    if (evalResult.error) {
-      logError("Failed to locate video via evaluate", evalResult.error);
-      return { error: `Failed to locate video: ${evalResult.error}` };
-    }
+  if (evalResult.error) throw new Error(`Failed to locate video: ${evalResult.error}`);
+  const value = evalResult.data?.value;
+  if (value?.error) throw new Error(value.error);
+  if (!value?.urls?.length) throw new Error("No downloadable video URL found. The video may be DRM-protected or use temporary blob URLs.");
+  
+  return value.urls[0];
+}
 
-    const value = evalResult.data?.value;
-    if (value?.error) {
-      logError("Video detection returned error", value.error);
-      return { error: value.error };
-    }
-    if (!value?.urls?.length) {
-      logError("No video URLs found on page");
-      return { error: "No downloadable video URL found. The video may be DRM-protected or use temporary blob URLs." };
-    }
-    videoUrl = value.urls[0];
-    logInfo("Auto-detected video URL", videoUrl);
-    logDebug("Video metadata", { duration: value.duration, poster: value.poster, totalUrls: value.urls.length });
-  } else {
-    logInfo("Using provided video URL", videoUrl);
-  }
-
+async function downloadMedia(videoUrl) {
+  let buffer;
+  let filename = "video.mp4";
   let tempPath = null;
-  try {
-    let buffer;
-    let filename = "video.mp4";
 
-    if (videoUrl.startsWith("blob:") || videoUrl.includes("x.com") || videoUrl.includes("twitter.com")) {
-      // Try yt-dlp for sites with blob/protected URLs
-      logInfo("Using yt-dlp to download audio from", videoUrl);
-      const tmpFile = `/tmp/mcp-audio-${Date.now()}.mp4`;
-      try {
-        execSync(`yt-dlp -f ba -o "${tmpFile}" "${videoUrl}"`, { timeout: 120000, stdio: "ignore" });
-        if (!require("fs").existsSync(tmpFile)) {
-          throw new Error("yt-dlp failed to download audio");
-        }
-        tempPath = tmpFile;
-        buffer = require("fs").readFileSync(tmpFile);
-        filename = "audio.mp4";
-        logInfo("Audio downloaded via yt-dlp", { sizeMB: Math.round(buffer.length / 1024 / 1024) });
-      } catch (ydlErr) {
-        logError("yt-dlp failed", ydlErr.message);
-        // Fallback: try direct fetch anyway
-        const response = await fetch(videoUrl);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        buffer = Buffer.from(await response.arrayBuffer());
-      }
-    } else {
-      logInfo("Downloading video from", videoUrl);
+  if (videoUrl.startsWith("blob:") || videoUrl.includes("x.com") || videoUrl.includes("twitter.com")) {
+    logInfo("Using yt-dlp to download audio from", videoUrl);
+    tempPath = `/tmp/mcp-audio-${Date.now()}.mp4`;
+    try {
+      execSync(`yt-dlp -f ba -o "${tempPath}" "${videoUrl}"`, { timeout: 120000, stdio: "ignore" });
+      if (!existsSync(tempPath)) throw new Error("yt-dlp failed to download audio");
+      buffer = readFileSync(tempPath);
+      filename = "audio.mp4";
+      logInfo("Audio downloaded via yt-dlp", { sizeMB: Math.round(buffer.length / 1024 / 1024) });
+    } catch (ydlErr) {
+      logError("yt-dlp failed", ydlErr.message);
       const response = await fetch(videoUrl);
-      if (!response.ok) {
-        logError("Video download failed", response.status);
-        throw new Error(`HTTP ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       buffer = Buffer.from(await response.arrayBuffer());
     }
+  } else {
+    logInfo("Downloading video from", videoUrl);
+    const response = await fetch(videoUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    buffer = Buffer.from(await response.arrayBuffer());
+  }
 
-    const sizeMB = Math.round(buffer.length / 1024 / 1024);
-    logInfo("Media ready", { sizeMB, bytes: buffer.length });
+  return { buffer, filename, tempPath };
+}
 
-    if (buffer.length > 100 * 1024 * 1024) {
-      logError("Media too large for local Whisper", sizeMB);
-      return { error: `Media too large (${sizeMB}MB). Local Whisper limit is ~100MB.` };
+async function transcribeMedia(buffer, filename, language) {
+  if (buffer.length > 100 * 1024 * 1024) {
+    throw new Error(`Media too large (${Math.round(buffer.length / 1024 / 1024)}MB). Local Whisper limit is ~100MB.`);
+  }
+
+  logInfo("Sending to local Whisper for transcription");
+  const form = new FormData();
+  const blob = new Blob([buffer], { type: "video/mp4" });
+  form.append("file", blob, filename);
+  if (language) {
+    form.append("language", language);
+    logDebug("Using language", language);
+  }
+
+  const whisperRes = await fetch("http://127.0.0.1:5001/transcribe", {
+    method: "POST",
+    body: form,
+  });
+
+  if (!whisperRes.ok) {
+    const errText = await whisperRes.text();
+    throw new Error(`Whisper API ${whisperRes.status}: ${errText}`);
+  }
+
+  return await whisperRes.json();
+}
+
+function saveTranscription(text, videoUrl, language) {
+  try {
+    if (!existsSync(TRANSCRIPTIONS_DIR)) {
+      mkdirSync(TRANSCRIPTIONS_DIR, { recursive: true });
     }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const safeUrl = videoUrl.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
+    const txtFile = join(TRANSCRIPTIONS_DIR, `${timestamp}_${safeUrl}.txt`);
+    const jsonFile = join(TRANSCRIPTIONS_DIR, `${timestamp}_${safeUrl}.json`);
 
-    logInfo("Sending to local Whisper for transcription");
-    const form = new FormData();
-    const blob = new Blob([buffer], { type: "video/mp4" });
-    form.append("file", blob, filename);
-    if (args.language) {
-      form.append("language", args.language);
-      logDebug("Using language", args.language);
-    }
+    writeFileSync(txtFile, text, "utf8");
+    writeFileSync(jsonFile, JSON.stringify({
+      text,
+      videoUrl,
+      language: language || "auto",
+      timestamp: new Date().toISOString(),
+    }, null, 2), "utf8");
 
-    const whisperRes = await fetch("http://127.0.0.1:5001/transcribe", {
-      method: "POST",
-      body: form,
-    });
+    logInfo("Transcription saved to", { txtFile, jsonFile });
+  } catch (saveErr) {
+    logError("Failed to save transcription", saveErr.message);
+  }
+}
 
-    if (!whisperRes.ok) {
-      const errText = await whisperRes.text();
-      logError("Whisper API error", { status: whisperRes.status, error: errText });
-      throw new Error(`Whisper API ${whisperRes.status}: ${errText}`);
-    }
+async function handleSpeechToText(args) {
+  logInfo("speech_to_text called", args);
+  let tempPath = null;
+  try {
+    const videoUrl = await detectVideoUrl(args);
+    logInfo("Video URL resolved", videoUrl);
 
-    const whisperData = await whisperRes.json();
+    const { buffer, filename, tempPath: tPath } = await downloadMedia(videoUrl);
+    tempPath = tPath;
+
+    const whisperData = await transcribeMedia(buffer, filename, args.language);
     logInfo("Whisper transcription completed", { textLength: whisperData.text?.length });
 
-    // Save transcription to local project directory
-    try {
-      if (!existsSync(TRANSCRIPTIONS_DIR)) {
-        mkdirSync(TRANSCRIPTIONS_DIR, { recursive: true });
-      }
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const safeUrl = videoUrl.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
-      const txtFile = join(TRANSCRIPTIONS_DIR, `${timestamp}_${safeUrl}.txt`);
-      const jsonFile = join(TRANSCRIPTIONS_DIR, `${timestamp}_${safeUrl}.json`);
+    saveTranscription(whisperData.text, videoUrl, args.language);
 
-      writeFileSync(txtFile, whisperData.text, "utf8");
-      writeFileSync(jsonFile, JSON.stringify({
-        text: whisperData.text,
-        videoUrl,
-        language: args.language || "auto",
-        timestamp: new Date().toISOString(),
-      }, null, 2), "utf8");
-
-      logInfo("Transcription saved to", { txtFile, jsonFile });
-    } catch (saveErr) {
-      logError("Failed to save transcription", saveErr.message);
-    }
-
-    // Auto-translate if requested
     if (args.translateTo && whisperData.text) {
       logInfo("Auto-translating transcript to", args.translateTo);
       const translateResult = await handleTranslate({
@@ -1088,7 +1110,7 @@ async function handleSpeechToText(args) {
     return { error: e.message };
   } finally {
     if (tempPath) {
-      try { require("fs").unlinkSync(tempPath); } catch { }
+      try { unlinkSync(tempPath); } catch { }
     }
   }
 }

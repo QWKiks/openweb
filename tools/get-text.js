@@ -46,7 +46,9 @@ export class GetTextTool {
         const style = includeHidden => {
           const all = document.body.querySelectorAll('*');
           let text = '';
+          const ignoreTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'TEMPLATE']);
           for (const el of all) {
+            if (ignoreTags.has(el.tagName)) continue;
             if (!includeHidden) {
               const s = getComputedStyle(el);
               if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') continue;
@@ -65,7 +67,13 @@ export class GetTextTool {
 
     if (result.exceptionDetails) throw new Error(`get_text: ${result.exceptionDetails.text}`);
     const text = result.result.value || "";
-    return { text: text.slice(0, maxLength), length: text.length, truncated: text.length > maxLength };
+    const truncatedText = text.slice(0, maxLength);
+    return { 
+      text: truncatedText, 
+      length: text.length, 
+      truncated: text.length > maxLength,
+      estimatedTokens: Math.round(truncatedText.length / 4)
+    };
   }
 
   async getTextByRef(ref, maxLength) {
@@ -92,9 +100,18 @@ export class GetTextTool {
       returnByValue: true,
     });
 
+    try { await sendCommand("Runtime.releaseObject", { objectId: object.objectId }); } catch {}
+
     if (result.exceptionDetails) throw new Error(`get_text: ${result.exceptionDetails.text}`);
     const text = result.result.value || "";
-    return { text: text.slice(0, maxLength), length: text.length, truncated: text.length > maxLength, ref };
+    const truncatedText = text.slice(0, maxLength);
+    return { 
+      text: truncatedText, 
+      length: text.length, 
+      truncated: text.length > maxLength, 
+      ref,
+      estimatedTokens: Math.round(truncatedText.length / 4)
+    };
   }
 
   async getTextBySelector(selector, maxLength) {
@@ -114,12 +131,14 @@ export class GetTextTool {
     if (val?.error) throw new Error(`get_text: ${val.error}. RECOMMENDATION: If using a snapshot ref, ensure it is written as "@e12" (with an '@'). If using CSS, check if selector matches a valid element on the page.`);
 
     const text = val.text || "";
+    const truncatedText = text.slice(0, maxLength);
     return {
-      text: text.slice(0, maxLength),
+      text: truncatedText,
       length: text.length,
       truncated: text.length > maxLength,
       selector,
       tag: val.tag,
+      estimatedTokens: Math.round(truncatedText.length / 4)
     };
   }
 
@@ -130,7 +149,13 @@ export class GetTextTool {
       awaitPromise: false,
     });
     if (result.exceptionDetails) throw new Error(`get_text (html): ${result.exceptionDetails.text}`);
-    return { html: result.result.value || "", title: await this.getPageTitle(), url: await this.getPageUrl() };
+    const html = result.result.value || "";
+    return { 
+      html, 
+      title: await this.getPageTitle(), 
+      url: await this.getPageUrl(),
+      estimatedTokens: Math.round(html.length / 4)
+    };
   }
 
   async getHtmlByRef(ref) {
@@ -159,7 +184,11 @@ export class GetTextTool {
     try { await sendCommand("Runtime.releaseObject", { objectId: object.objectId }); } catch {}
 
     if (result.exceptionDetails) throw new Error(`get_text (html): ${result.exceptionDetails.text}`);
-    return result.result.value || {};
+    const val = result.result.value || {};
+    if (val.html) {
+      val.estimatedTokens = Math.round(val.html.length / 4);
+    }
+    return val;
   }
 
   async getHtmlBySelector(selector) {
@@ -174,9 +203,12 @@ export class GetTextTool {
     });
 
     if (result.exceptionDetails) throw new Error(`get_text (html): ${result.exceptionDetails.text}`);
-    const val = result.result.value;
-    if (val?.error) throw new Error(`get_text (html): ${val.error}. RECOMMENDATION: If using a snapshot ref, ensure it is written as "@e12" (with an '@'). If using CSS, check if selector matches a valid element on the page.`);
-    return val || {};
+    const val = result.result.value || {};
+    if (val.error) throw new Error(`get_text (html): ${val.error}. RECOMMENDATION: If using a snapshot ref, ensure it is written as "@e12" (with an '@'). If using CSS, check if selector matches a valid element on the page.`);
+    if (val.html) {
+      val.estimatedTokens = Math.round(val.html.length / 4);
+    }
+    return val;
   }
 
   async getPageSource(format) {
@@ -187,7 +219,13 @@ export class GetTextTool {
     });
 
     if (result.exceptionDetails) throw new Error(`get_text (${format}): ${result.exceptionDetails.text}`);
-    return result.result.value || {};
+    const val = result.result.value || {};
+    if (val.html) {
+      val.estimatedTokens = Math.round(val.html.length / 4);
+    } else if (JSON.stringify(val)) {
+      val.estimatedTokens = Math.round(JSON.stringify(val).length / 4);
+    }
+    return val;
   }
 
   buildExpression(format) {

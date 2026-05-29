@@ -172,7 +172,7 @@ wss.on("connection", (ws, req) => {
     try {
       msg = JSON.parse(raw.toString());
     } catch {
-      console.log("[!] invalid JSON:", raw.toString().slice(0, 80));
+      console.log("[!] invalid JSON:", log.truncate(raw.toString()));
       return;
     }
 

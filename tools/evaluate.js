@@ -11,7 +11,7 @@ export class EvaluateTool {
 
   async execute(args) {
     const code = args.code;
-    if (!code) throw new Error("evaluate: code is required");
+    if (!code) throw new Error("evaluate: code is required. RECOMMENDATION: Provide a JavaScript expression or function to execute on the page, e.g., 'document.title'.");
 
     const tab = await getActiveTab();
     await attach(tab.id);

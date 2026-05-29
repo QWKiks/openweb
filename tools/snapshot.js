@@ -14,6 +14,8 @@ export class SnapshotTool {
     const selector = args.selector;
     const interactiveOnly = args.interactiveOnly !== false; // defaults to true for maximum token savings
     const format = args.format || "text";
+    const maxLength = args.maxLength || 50000;
+    const maxDepth = args.maxDepth || 8;
 
 
     const tab = await getActiveTab();
@@ -73,11 +75,33 @@ export class SnapshotTool {
     const result = await sendCommand("Accessibility.getFullAXTree");
     let tree = this.buildTree(result.nodes, allowedBackendIds, interactiveOnly);
 
+    let isTruncated = false;
+    let finalTree = tree;
+
     if (format === "text") {
-      tree = this.formatToIndentedText(tree);
+      finalTree = this.formatToIndentedText(tree, 0, maxDepth);
+      if (finalTree.length > maxLength) {
+        finalTree = finalTree.slice(0, maxLength);
+        isTruncated = true;
+      }
+    } else {
+      const treeStr = JSON.stringify(tree);
+      if (treeStr.length > maxLength) {
+        // Simple JSON truncation isn't always valid parseable JSON, but we can return truncated string
+        finalTree = treeStr.slice(0, maxLength);
+        isTruncated = true;
+      }
     }
 
-    return { url: tab.url, title: tab.title, tree };
+    const treeStr = typeof finalTree === "string" ? finalTree : JSON.stringify(finalTree);
+
+    return { 
+      url: tab.url, 
+      title: tab.title, 
+      tree: finalTree,
+      truncated: isTruncated,
+      estimatedTokens: Math.round(treeStr.length / 4)
+    };
   }
 
   buildTree(nodes, allowedBackendIds, interactiveOnly) {
@@ -169,13 +193,13 @@ export class SnapshotTool {
     return results;
   }
 
-  formatToIndentedText(nodes, depth = 0) {
+  formatToIndentedText(nodes, depth = 0, maxDepth = 8) {
     if (!nodes || nodes.length === 0) return "";
     let result = "";
     const indent = "  ".repeat(depth);
     for (const node of nodes) {
       if (Array.isArray(node)) {
-        result += this.formatToIndentedText(node, depth);
+        result += this.formatToIndentedText(node, depth, maxDepth);
         continue;
       }
       
@@ -192,8 +216,8 @@ export class SnapshotTool {
       const extraStr = extra.length > 0 ? " " + extra.join(" ") : "";
       result += `${indent}- ${parts.join("")}${extraStr}\n`;
       
-      if (node.children && node.children.length > 0) {
-        result += this.formatToIndentedText(node.children, depth + 1);
+      if (node.children && node.children.length > 0 && depth < maxDepth) {
+        result += this.formatToIndentedText(node.children, depth + 1, maxDepth);
       }
     }
     return result;

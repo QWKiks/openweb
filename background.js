@@ -57,6 +57,8 @@ import { GetMarkdownTool } from "./tools/get-markdown.js";
 import { GetElementBoundsTool } from "./tools/get-element-bounds.js";
 import { HumanizeTool } from "./tools/humanize.js";
 import { SessionManagerTool } from "./tools/session-manager.js";
+import { TableExtractTool } from "./tools/table-extract.js";
+import { FormFillTool } from "./tools/form-fill.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -109,6 +111,8 @@ register(new ApiDiscoveryTool());
 register(new SwaggerParserTool());
 register(new ResponsiveTestTool());
 register(new ColorPaletteTool());
+register(new TableExtractTool());
+register(new FormFillTool());
 
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const RATE_LIMIT_KEY = "webbridge_rate_limit";

@@ -48,8 +48,8 @@ switch (command) {
     console.log("\n  Registering MCP server with AI tools...\n");
     try {
       execSync(`node setup-mcp.js --all`, { cwd: INSTALL_DIR, stdio: "inherit" });
-    } catch {
-      // Some tools may not be detected, that's fine
+    } catch (e) {
+      console.log("  ⚠ Some AI tools could not be detected, but setup can continue.");
     }
 
     // 4. Start the daemon
@@ -57,8 +57,8 @@ switch (command) {
     const daemonPath = join(INSTALL_DIR, "daemon.js");
     try {
       execSync(`node "${daemonPath}"`, { stdio: "inherit" });
-    } catch {
-      // Daemon was stopped by user, that's fine
+    } catch (e) {
+      console.log("  ℹ Daemon stopped by user.");
     }
 
     // 5. Print extension instructions
@@ -80,7 +80,9 @@ switch (command) {
       : join(import.meta.dirname, "daemon.js");
     try {
       execSync(`node "${daemonPath}"`, { stdio: "inherit" });
-    } catch {}
+    } catch (e) {
+      // Silent ignore as it's often just a Ctrl+C in the daemon case
+    }
     break;
   }
 
@@ -90,7 +92,9 @@ switch (command) {
       : join(import.meta.dirname, "mcp-server.js");
     try {
       execSync(`node "${mcpPath}"`, { stdio: "inherit" });
-    } catch {}
+    } catch (e) {
+      // Silent ignore
+    }
     break;
   }
 

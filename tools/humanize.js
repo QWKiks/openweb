@@ -225,6 +225,7 @@ export class HumanizeTool {
 
     // Get box model center coordinates
     const boxModel = await sendCommand("DOM.getBoxModel", { objectId });
+    try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
     const content = boxModel.model?.content;
     if (!content || content.length < 8) {
       throw new Error(`humanize: element "${selector}" has no layout box`);

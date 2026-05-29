@@ -41,6 +41,7 @@ export class HoverTool {
 
     // Get box model for coordinates
     const boxModel = await sendCommand("DOM.getBoxModel", { objectId: object.objectId });
+    try { await sendCommand("Runtime.releaseObject", { objectId: object.objectId }); } catch {}
     const border = boxModel.model?.border;
     if (!border || border.length < 8) throw new Error("hover: element has no layout box");
 

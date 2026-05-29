@@ -76,6 +76,7 @@ export class DragDropTool {
       });
 
       const boxModel = await sendCommand("DOM.getBoxModel", { objectId: object.objectId });
+      try { await sendCommand("Runtime.releaseObject", { objectId: object.objectId }); } catch {}
       const border = boxModel.model?.border;
       if (!border || border.length < 8) throw new Error("drag_drop: source element has no layout box");
 
