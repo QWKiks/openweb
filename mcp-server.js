@@ -264,6 +264,16 @@ const TOOLS = [
     },
   },
   {
+    name: "get_element_bounds",
+    description: "Locate and retrieve the physical coordinate bounding boxes (x, y, width, height) of all visible interactive elements on the page. Essential for visual grounding, allowing AI models to map visual objects on screenshots to precise physical CDP mouse coordinates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
     name: "cookie",
     description: "Get, set, or delete cookies for the current page.",
     inputSchema: {
