@@ -440,6 +440,36 @@ const TOOLS = [
     },
   },
   {
+    name: "bookmark",
+    description: "Manage Chrome bookmarks: list, create, update, delete, or search bookmarks and folders.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: list, create, update, delete, search", enum: ["list", "create", "update", "delete", "search"] },
+        parentId: { type: "string", description: "Parent folder ID (for list, create). Default: root." },
+        title: { type: "string", description: "Bookmark/folder title (for create, update)" },
+        url: { type: "string", description: "Bookmark URL (for create, update)" },
+        index: { type: "number", description: "Position index in folder (for create)" },
+        id: { type: "string", description: "Bookmark ID (for update, delete)" },
+        query: { type: "string", description: "Search query (for search)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "extension",
+    description: "Manage Chrome extensions: list, enable, disable, or get info about installed extensions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: list, enable, disable, info", enum: ["list", "enable", "disable", "info"] },
+        id: { type: "string", description: "Extension ID (for enable, disable, info)" },
+        type: { type: "string", description: "Filter by type (for list): extension, theme, hosted_app, etc." },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
     name: "speech_to_text",
     description: "Transcribe audio from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Optional: auto-translate to target language. Requires local Whisper server to be running (services/whisper/whisper-server.py).",
     inputSchema: {
