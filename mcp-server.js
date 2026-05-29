@@ -74,11 +74,11 @@ function logError(...args) {
 const TOOLS = [
   {
     name: "navigate",
-    description: "Open a URL in the browser. Can open in a new tab or navigate the current tab.",
+    description: "Open a URL in the browser. RECOMMENDATION: Set 'newTab: true' (default) to start a clean session or isolate the page context. Set 'newTab: false' when continuing a search chain, submitting multiple steps, or navigating deep within the active domain.",
     inputSchema: {
       type: "object",
       properties: {
-        url: { type: "string", description: "URL to navigate to" },
+        url: { type: "string", description: "URL to navigate to. Example: 'https://example.com'" },
         newTab: { type: "boolean", description: "Open in a new tab (default: true)", default: true },
         tabId: { type: "number", description: "Tab ID to target (default: active tab). Use list_tabs to get IDs." },
       },
@@ -87,7 +87,7 @@ const TOOLS = [
   },
   {
     name: "snapshot",
-    description: "Capture the accessibility tree of the active page. Returns element refs (like @e1) for use with click/fill tools.",
+    description: "Capture the accessibility tree of the active page. RECOMMENDATION: Run this tool *first* on every new page load. It returns stable element references (like @e1, @e2) which you MUST use with 'click' and 'fill' tools to prevent selector errors and ensure 100% correct selector targeting.",
     inputSchema: {
       type: "object", properties: {
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
@@ -96,13 +96,13 @@ const TOOLS = [
   },
   {
     name: "screenshot",
-    description: "Take a screenshot of the current page. Returns base64 JPEG image (default) or PNG.",
+    description: "Take a screenshot of the current page. RECOMMENDATION: Use this tool to visually verify the result of dynamic transitions, form submissions, or modal overlays. Avoid using it blindly — always run it when you need to align your mental model with the browser viewport.",
     inputSchema: {
       type: "object",
       properties: {
         selector: {
           type: "string",
-          description: "CSS selector to screenshot a specific element (optional)",
+          description: "CSS selector or @e ref to screenshot a specific element (optional)",
         },
         format: {
           type: "string",
@@ -134,7 +134,7 @@ const TOOLS = [
   },
   {
     name: "fill",
-    description: "Fill a form field with a value by CSS selector or snapshot ref.",
+    description: "Fill a form field with a value by CSS selector or snapshot ref. RECOMMENDATION: Use the stable snapshot `@e` ref (e.g. '@e5') obtained from the 'snapshot' tool to target the input. If the element is hidden or protected by anti-bot typing checks, consider using 'humanize(cmd: type)'.",
     inputSchema: {
       type: "object",
       properties: {
@@ -171,7 +171,7 @@ const TOOLS = [
   },
   {
     name: "evaluate",
-    description: "Execute JavaScript code on the active page and return the result.",
+    description: "Execute JavaScript code on the active page and return the result. RECOMMENDATION: Use this tool ONLY when you need to inspect custom window states, trigger custom DOM methods, or read complex states not available via standard get_text or snapshot. Always keep code blocks short and handle exceptions inside.",
     inputSchema: {
       type: "object",
       properties: {
@@ -254,18 +254,18 @@ const TOOLS = [
   },
   {
     name: "get_markdown",
-    description: "Extract the active page or a targeted element's content as clean, semantic Markdown. Highly recommended for reading articles, manuals, or standard page content because Markdown retains headers, lists, links, tables, and formatting perfectly while saving massive amounts of context token size.",
+    description: "Extract the active page or a targeted element's content as clean, semantic Markdown. RECOMMENDATION: Use this tool *instead* of get_text(format: 'text') or get_text(format: 'html') when you need to read structured content (articles, documentation, tables, manuals) while keeping list formatting, headers, table grids, and image/link targets perfectly preserved. This saves up to 80% tokens compared to raw HTML while giving high reading comprehension for the model.",
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector or @e ref to convert to Markdown (default: 'body')", default: "body" },
+        selector: { type: "string", description: "CSS selector or @e ref of the DOM element to convert to Markdown. Examples: '@e12' (snapshot ref), 'article.post-content' (CSS), '#main-article' (CSS). (default: 'body')", default: "body" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
   {
     name: "get_element_bounds",
-    description: "Locate and retrieve the physical coordinate bounding boxes (x, y, width, height) of all visible interactive elements on the page. Essential for visual grounding, allowing AI models to map visual objects on screenshots to precise physical CDP mouse coordinates.",
+    description: "Locate and retrieve the physical coordinate bounding boxes (x, y, width, height) of all visible interactive elements on the page. RECOMMENDATION: Use this tool to achieve 'visual grounding' when coordinating actions with a 'screenshot' — it maps DOM nodes to precise viewport coordinates. Use the returned (x, y) coordinates as arguments for 'humanize(cmd: mouse_move)' or 'click(physical: true)'.",
     inputSchema: {
       type: "object",
       properties: {
@@ -275,19 +275,19 @@ const TOOLS = [
   },
   {
     name: "humanize",
-    description: "Anti-bot human-like emulation tool. cmd: 'mouse_move' (simulates natural Bezier curves mouse movement to element/coordinates, optionally clicks), cmd: 'type' (focuses element and types character by character with natural random key delay).",
+    description: "Anti-bot human-like inputs emulator. RECOMMENDATION: Use this tool *instead* of standard 'click' or 'fill' when interacting with pages protected by strict firewalls/anti-bot systems (Cloudflare, Datadome, Akamai). It bypasses detection by simulating natural mouse movements along cubic Bezier curves and key-by-key typing with randomized human intervals (50ms-150ms).",
     inputSchema: {
       type: "object",
       properties: {
-        cmd: { type: "string", description: "Operation mode: 'mouse_move' or 'type'", enum: ["mouse_move", "type"], default: "mouse_move" },
-        selector: { type: "string", description: "Target CSS selector or @e ref (for clicking or typing)" },
-        x: { type: "number", description: "Target X coordinate (viewport pixels, only for mouse_move)" },
-        y: { type: "number", description: "Target Y coordinate (viewport pixels, only for mouse_move)" },
-        steps: { type: "number", description: "Bezier mouse curve movement steps (default: 15, only for mouse_move)", default: 15 },
-        click: { type: "boolean", description: "Trigger mouse click after curve completes (default: false, only for mouse_move)", default: false },
-        text: { type: "string", description: "Text content to type (only for type)" },
-        delayMin: { type: "number", description: "Minimum typing delay in ms (default: 50, only for type)", default: 50 },
-        delayMax: { type: "number", description: "Maximum typing delay in ms (default: 150, only for type)", default: 150 },
+        cmd: { type: "string", description: "Operation mode: 'mouse_move' (Bezier curve cursor movement) or 'type' (natural keystroke typist)", enum: ["mouse_move", "type"], default: "mouse_move" },
+        selector: { type: "string", description: "Target CSS selector or @e ref (for mouse_move destination or element focusing). Examples: '@e15' (snapshot ref), 'input#agent-name' (CSS)" },
+        x: { type: "number", description: "Target X coordinate (viewport relative pixels, used only for mouse_move if selector is omitted)" },
+        y: { type: "number", description: "Target Y coordinate (viewport relative pixels, used only for mouse_move if selector is omitted)" },
+        steps: { type: "number", description: "Bezier mouse curve movement steps (default: 15). More steps = slower, smoother, more human-like movement.", default: 15 },
+        click: { type: "boolean", description: "Perform a physical coordinates mouse click after Bezier curve reaches destination (default: false, only for mouse_move)", default: false },
+        text: { type: "string", description: "Text content to type. Example: 'Standard Inputs & Wait Timing' (only for type command)" },
+        delayMin: { type: "number", description: "Minimum typing delay per key in milliseconds (default: 50, only for type)", default: 50 },
+        delayMax: { type: "number", description: "Maximum typing delay per key in milliseconds (default: 150, only for type)", default: 150 },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
@@ -295,14 +295,14 @@ const TOOLS = [
   },
   {
     name: "session_manager",
-    description: "Save and restore authenticated session contexts (cookies, localStorage, sessionStorage) to persist login states across browser runs. cmd: 'save' (returns full serialized session context), cmd: 'load' (injects session context into the current page and reloads page).",
+    description: "Save and restore browser authentication session contexts (cookies, localStorage, sessionStorage). RECOMMENDATION: Use this tool to serialize the authentication context to a local JSON file in your workspace after logging in, and load it back during subsequent runs to instantly bypass repeated logins, MFA prompts, or CAPTCHAs.",
     inputSchema: {
       type: "object",
       properties: {
-        cmd: { type: "string", description: "Operation: 'save' or 'load'", enum: ["save", "load"], default: "save" },
+        cmd: { type: "string", description: "Operation: 'save' (returns full serialized session state) or 'load' (restores session state and reloads the page)", enum: ["save", "load"], default: "save" },
         session: {
           type: "object",
-          description: "Full serialized session context JSON object containing cookies and DOM storage states (required for load)",
+          description: "Full serialized session context JSON object containing cookies and DOM storage states (required only for load). Example: Pass the object returned by the 'save' command.",
         },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
@@ -383,7 +383,7 @@ const TOOLS = [
   },
   {
     name: "dialog",
-    description: "Handle JavaScript dialogs (alert, confirm, prompt, beforeunload). List, accept/dismiss, or auto-handle.",
+    description: "Handle JavaScript dialogs (alert, confirm, prompt). RECOMMENDATION: Use `dialog(cmd: auto, accept: true)` *before* triggering actions that you expect will open an alert or confirmation dialog. This prevents the websocket connection from blocking and automatically bypasses the popup.",
     inputSchema: {
       type: "object",
       properties: {
