@@ -274,6 +274,26 @@ const TOOLS = [
     },
   },
   {
+    name: "humanize",
+    description: "Anti-bot human-like emulation tool. cmd: 'mouse_move' (simulates natural Bezier curves mouse movement to element/coordinates, optionally clicks), cmd: 'type' (focuses element and types character by character with natural random key delay).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Operation mode: 'mouse_move' or 'type'", enum: ["mouse_move", "type"], default: "mouse_move" },
+        selector: { type: "string", description: "Target CSS selector or @e ref (for clicking or typing)" },
+        x: { type: "number", description: "Target X coordinate (viewport pixels, only for mouse_move)" },
+        y: { type: "number", description: "Target Y coordinate (viewport pixels, only for mouse_move)" },
+        steps: { type: "number", description: "Bezier mouse curve movement steps (default: 15, only for mouse_move)", default: 15 },
+        click: { type: "boolean", description: "Trigger mouse click after curve completes (default: false, only for mouse_move)", default: false },
+        text: { type: "string", description: "Text content to type (only for type)" },
+        delayMin: { type: "number", description: "Minimum typing delay in ms (default: 50, only for type)", default: 50 },
+        delayMax: { type: "number", description: "Maximum typing delay in ms (default: 150, only for type)", default: 150 },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
     name: "cookie",
     description: "Get, set, or delete cookies for the current page.",
     inputSchema: {
