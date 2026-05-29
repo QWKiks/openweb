@@ -56,6 +56,7 @@ import { ColorPaletteTool } from "./tools/color-palette.js";
 import { GetMarkdownTool } from "./tools/get-markdown.js";
 import { GetElementBoundsTool } from "./tools/get-element-bounds.js";
 import { HumanizeTool } from "./tools/humanize.js";
+import { SessionManagerTool } from "./tools/session-manager.js";
 
 // ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
@@ -64,6 +65,7 @@ register(new EvaluateTool());
 register(new GetMarkdownTool());
 register(new GetElementBoundsTool());
 register(new HumanizeTool());
+register(new SessionManagerTool());
 register(new NetworkTool());
 register(new SnapshotTool());
 register(new ClickTool());

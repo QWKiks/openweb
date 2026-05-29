@@ -294,6 +294,22 @@ const TOOLS = [
     },
   },
   {
+    name: "session_manager",
+    description: "Save and restore authenticated session contexts (cookies, localStorage, sessionStorage) to persist login states across browser runs. cmd: 'save' (returns full serialized session context), cmd: 'load' (injects session context into the current page and reloads page).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Operation: 'save' or 'load'", enum: ["save", "load"], default: "save" },
+        session: {
+          type: "object",
+          description: "Full serialized session context JSON object containing cookies and DOM storage states (required for load)",
+        },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
     name: "cookie",
     description: "Get, set, or delete cookies for the current page.",
     inputSchema: {
