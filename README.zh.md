@@ -142,10 +142,10 @@ brew install ffmpeg yt-dlp
 npm start
 
 # 终端 2: 启动本地 Whisper 服务器
-python whisper-server.py
+python services/whisper/whisper-server.py
 
 # 或使用特定模型
-WHISPER_MODEL=small python whisper-server.py
+WHISPER_MODEL=small python services/whisper/whisper-server.py
 ```
 
 服务器默认运行在 `http://127.0.0.1:5001`。
@@ -236,9 +236,10 @@ openweb/
 ├── background.js          # Service Worker 入口
 ├── daemon.js              # WebSocket 守护进程 + REPL
 ├── mcp-server.js          # MCP 服务器 (stdio/SSE)
-├── whisper-server.py      # 本地 Whisper 语音转文字服务器
 ├── setup-mcp.js           # MCP 注册脚本
 ├── package.json
+├── services/
+│   └── whisper/           # 本地 Whisper 语音转文字服务器 & 转录存储
 ├── _locales/              # 国际化 (en, ru, zh_CN)
 ├── icon/                  # 扩展图标
 ├── popup/                 # 扩展弹窗 UI

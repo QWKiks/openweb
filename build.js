@@ -19,6 +19,14 @@ if (!VALID_TARGETS.includes(TARGET)) {
   process.exit(1);
 }
 
+// Automatically synchronize root manifest.json with manifest.chrome.json to avoid drift
+try {
+  writeFileSync("manifest.json", readFileSync("manifest.chrome.json", "utf-8"));
+  console.log("  ✓ Synchronized root manifest.json with manifest.chrome.json");
+} catch (e) {
+  console.warn(`  ⚠ Warning: failed to synchronize root manifest.json: ${e.message}`);
+}
+
 const SRC = ".";
 const OUT = join("dist", TARGET);
 

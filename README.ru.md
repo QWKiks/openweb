@@ -142,10 +142,10 @@ brew install ffmpeg yt-dlp
 npm start
 
 # Терминал 2: Запуск локального Whisper
-python whisper-server.py
+python services/whisper/whisper-server.py
 
 # Или с конкретной моделью
-WHISPER_MODEL=small python whisper-server.py
+WHISPER_MODEL=small python services/whisper/whisper-server.py
 ```
 
 Сервер работает на `http://127.0.0.1:5001` по умолчанию.
@@ -236,9 +236,10 @@ openweb/
 ├── background.js          # Точка входа service worker
 ├── daemon.js              # WebSocket-демон + REPL
 ├── mcp-server.js          # MCP-сервер (stdio/SSE)
-├── whisper-server.py      # Локальный Whisper-сервер для распознавания речи
 ├── setup-mcp.js           # Скрипт регистрации MCP
 ├── package.json
+├── services/
+│   └── whisper/           # Локальный Whisper-сервер & хранилище транскрипций
 ├── _locales/              # Локализация (en, ru, zh_CN)
 ├── icon/                  # Иконки расширения
 ├── popup/                 # UI всплывающего окна

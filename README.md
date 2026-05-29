@@ -186,10 +186,10 @@ brew install ffmpeg yt-dlp
 npm start
 
 # Terminal 2: Start local Whisper server
-python whisper-server.py
+python services/whisper/whisper-server.py
 
 # Or with specific model
-WHISPER_MODEL=small python whisper-server.py
+WHISPER_MODEL=small python services/whisper/whisper-server.py
 ```
 
 The server runs on `http://127.0.0.1:5001` by default.
@@ -475,10 +475,11 @@ openweb/
 ├── mcp-server.js             # MCP server (stdio/SSE)
 ├── replay.js                 # Session replay script
 ├── cloud.js                  # Remote browser cloud connector
-├── whisper-server.py         # Local Whisper server for speech-to-text
 ├── cli.js                    # CLI (setup, daemon, mcp, doctor)
 ├── setup-mcp.js              # MCP registration script
 ├── package.json
+├── services/
+│   └── whisper/              # Local Whisper server & transcription storage
 ├── _locales/                 # i18n (en, ru, zh_CN)
 ├── icon/                     # Extension icons
 ├── popup/                    # Extension popup UI

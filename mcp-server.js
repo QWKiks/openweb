@@ -495,20 +495,20 @@ const TOOLS = [
   },
   {
     name: "speech_to_text",
-    description: "Transcribe audio from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Optional: auto-translate to target language. Requires whisper-server.py to be running locally.",
+    description: "Transcribe audio from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Optional: auto-translate to target language. Requires local Whisper server to be running (services/whisper/whisper-server.py).",
     inputSchema: {
       type: "object",
       properties: {
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
         videoUrl: { type: "string", description: "Direct video URL (optional — auto-detected from page if omitted)" },
         language: { type: "string", description: "Language code for transcription, e.g. 'en', 'ru' (optional)" },
-        translateTo: { type: "string", description: "Auto-translate transcript to this language code, e.g. 'ru', 'zh' (optional, requires whisper-server.py translate endpoint)" },
+        translateTo: { type: "string", description: "Auto-translate transcript to this language code, e.g. 'ru', 'zh' (optional, requires local Whisper translate endpoint)" },
       },
     },
   },
   {
     name: "translate",
-    description: "Translate text offline using argos-translate (no API key). Requires whisper-server.py to be running locally.",
+    description: "Translate text offline using argos-translate (no API key). Requires local Whisper server to be running (services/whisper/whisper-server.py).",
     inputSchema: {
       type: "object",
       properties: {
