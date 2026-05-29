@@ -1143,6 +1143,26 @@ function healSnapshotRefs(args) {
   }
 }
 
+const CORE_TOOL_NAMES = new Set([
+  "navigate", "snapshot", "screenshot", "click", "fill", "get_markdown", "discover_tools"
+]);
+
+const discover_tools_schema = {
+  name: "discover_tools",
+  description: "Discover specialized browser automation tools (session management, network interception, diagnostics, audits, and advanced DOM tools). RECOMMENDATION: Run this tool if you need to perform audits, manage active cookies, inspect API traffic, or execute specialized task sequences.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      category: {
+        type: "string",
+        description: "Tool category to discover: 'session' (session/cookies), 'network' (request interceptors/HAR), 'diagnostics' (console/emulation/dialogs), 'audits' (security/accessibility/links), 'advanced' (viewport/bounds/bookmarks), or 'all' (all categories)",
+        enum: ["session", "network", "diagnostics", "audits", "advanced", "all"],
+        default: "all"
+      }
+    }
+  }
+};
+
 const server = new Server(
   {
     name: "webbridge-open",
@@ -1156,9 +1176,12 @@ const server = new Server(
   }
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: TOOLS,
-}));
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  const coreTools = TOOLS.filter(t => CORE_TOOL_NAMES.has(t.name));
+  return {
+    tools: [...coreTools, discover_tools_schema],
+  };
+});
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => ({
   resources: [
@@ -1202,6 +1225,46 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   // Self-Healing: Automatically correct missing '@' prefix in snapshot refs (e.g. 'e12' -> '@e12')
   if (args) {
     healSnapshotRefs(args);
+  }
+
+  if (name === "discover_tools") {
+    const category = args.category || "all";
+    const sessionTools = ["session_manager", "cookie", "session", "local_storage"];
+    const networkTools = ["network", "intercept", "websocket_monitor", "har_export", "redirect_chain"];
+    const diagnosticsTools = ["console", "dialog", "viewport", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations"];
+    const auditsTools = ["audit", "security_scan", "coverage"];
+    const advancedTools = ["get_element_bounds", "humanize", "key_type", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "api_discovery", "swagger_parser", "color_palette"];
+
+    const categories = {
+      session: sessionTools,
+      network: networkTools,
+      diagnostics: diagnosticsTools,
+      audits: auditsTools,
+      advanced: advancedTools
+    };
+
+    let targetTools = [];
+    if (category === "all") {
+      targetTools = [...sessionTools, ...networkTools, ...diagnosticsTools, ...auditsTools, ...advancedTools];
+    } else {
+      targetTools = categories[category] || [];
+    }
+
+    let responseMarkdown = `### 📂 Exposed Specialized Tools - Category: ${category.toUpperCase()}\n\n`;
+    responseMarkdown += `You can directly invoke any of these tools by name using standard CallTool JSON parameters. Their detailed schemas and instructions are outlined below:\n\n`;
+
+    for (const toolName of targetTools) {
+      const toolDef = TOOLS.find(t => t.name === toolName);
+      if (toolDef) {
+        responseMarkdown += `#### 🛠️ Tool: \`${toolDef.name}\`\n`;
+        responseMarkdown += `* **Description**: ${toolDef.description}\n`;
+        responseMarkdown += `* **Input Schema**:\n\`\`\`json\n${JSON.stringify(toolDef.inputSchema, null, 2)}\n\`\`\`\n\n`;
+      }
+    }
+
+    return {
+      content: [{ type: "text", text: responseMarkdown }]
+    };
   }
 
   if (name === "speech_to_text") {
