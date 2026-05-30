@@ -1,7 +1,7 @@
 class Openweb < Formula
   desc "Open-source browser automation daemon and MCP server for AI agents"
   homepage "https://github.com/QWKiks/openweb"
-  url "https://github.com/QWKiks/openweb/archive/refs/tags/v1.4.1.tar.gz"
+  url "https://github.com/QWKiks/openweb/archive/refs/tags/v1.6.1.tar.gz"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000" # Placeholder for release tarball checksum
   head "https://github.com/QWKiks/openweb.git", branch: "main"
 
@@ -52,7 +52,6 @@ class Openweb < Formula
   end
 
   test do
-    # Simple check that the CLI runs and returns the usage help
     assert_match "OpenWeb — CLI", shell_output("#{bin}/openweb help")
   end
 end

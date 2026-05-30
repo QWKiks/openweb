@@ -169,7 +169,7 @@ switch (command) {
     if (failCount) {
       console.log("\n  Fix:");
       if (!checks.find(c => c.name === "Daemon")?.ok) {
-        console.log("    npm start    (start the daemon)");
+        console.log("    openweb daemon    (start the daemon)");
       }
       if (!checks.find(c => c.name === "MCP Config")?.ok) {
         console.log("    npm run setup-mcp -- --all");
@@ -196,7 +196,7 @@ switch (command) {
     cd openweb
     npm install
     npm run setup-mcp -- --all
-    npm run daemon
+    openweb daemon
 `);
     break;
   }
