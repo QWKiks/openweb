@@ -12,7 +12,7 @@ const TOOLS = [
   { name: "list_tabs", description: "List all open browser tabs.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "close_tab", description: "Close a browser tab by ID.", readOnly: false, destructive: true, idempotent: false, openWorld: false },
   { name: "get_text", description: "Extract text content from the page or a specific element.", readOnly: true, destructive: false, idempotent: true, openWorld: false },
-  { name: "get_markdown", description: "Get page content as clean Markdown.", readOnly: true, destructive: false, idempotent: true, openWorld: false },
+  { name: "get_markdown", description: "Get page content as clean Markdown, or extract tabular data as a structured table.", readOnly: true, destructive: false, idempotent: true, openWorld: false },
   { name: "get_element_bounds", description: "Get the bounding box of an element on the page.", readOnly: true, destructive: false, idempotent: true, openWorld: false },
   { name: "hover", description: "Hover over an element by CSS selector or snapshot ref.", readOnly: true, destructive: false, idempotent: true, openWorld: false },
   { name: "select", description: "Select an option in a <select> dropdown element.", readOnly: false, destructive: false, idempotent: true, openWorld: false },
@@ -23,10 +23,8 @@ const TOOLS = [
   { name: "find_tab", description: "Find a tab by URL pattern.", readOnly: true, destructive: false, idempotent: true, openWorld: false },
   { name: "find_by_text", description: "Find an element on the page by its visible text content.", readOnly: true, destructive: false, idempotent: true, openWorld: false },
   { name: "dismiss_overlay", description: "Dismiss a modal, popup, or overlay on the page.", readOnly: false, destructive: true, idempotent: true, openWorld: false },
-  { name: "session_manager", description: "Save and restore browser authentication session contexts (cookies, localStorage, sessionStorage). DIFFERENT FROM session: session_manager saves AUTH/cookies/localStorage, while session saves/restores OPEN TABS.", readOnly: false, destructive: false, idempotent: true, openWorld: false },
-  { name: "session", description: "Save and restore browser session state (open tabs). Persists across service worker restarts. DIFFERENT FROM session_manager: session saves/restores OPEN TABS, while session_manager saves/restores AUTHENTICATION context (cookies, localStorage).", readOnly: true, destructive: false, idempotent: false, openWorld: false },
-  { name: "intercept", description: "Intercept, modify, block, or mock HTTP requests.", readOnly: false, destructive: true, idempotent: false, openWorld: true },
-  { name: "network", description: "Capture, list, or inspect HTTP network requests.", readOnly: false, destructive: false, idempotent: false, openWorld: true },
+  { name: "state", description: "Manage browser state, cookies, storage, and sessions. Unifies saving and restoring open tabs, cookies, local storage, and session storage.", readOnly: false, destructive: false, idempotent: false, openWorld: false },
+  { name: "network", description: "Capture, list, inspect HTTP requests, intercept network activity, trace redirects, monitor WebSockets, or discover APIs.", readOnly: false, destructive: false, idempotent: false, openWorld: true },
   { name: "console", description: "Capture and read browser console output (log, warn, error, info).", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "dialog", description: "Handle JavaScript dialogs (alert, confirm, prompt, beforeunload).", readOnly: false, destructive: false, idempotent: true, openWorld: false },
   { name: "emulate", description: "Emulate a mobile device, set geolocation, or change user agent.", readOnly: false, destructive: false, idempotent: true, openWorld: false },
@@ -41,20 +39,15 @@ const TOOLS = [
   { name: "audit", description: "Run an accessibility audit on the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "security_scan", description: "Run a security scan on the page.", readOnly: true, destructive: false, idempotent: false, openWorld: true },
   { name: "coverage", description: "Track CSS/JS code coverage.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
-  { name: "redirect_chain", description: "Trace HTTP redirect chain for a URL.", readOnly: true, destructive: false, idempotent: false, openWorld: true },
   { name: "shadow_dom", description: "List shadow DOM roots on the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "iframe_list", description: "List all iframes on the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "design_clone", description: "Clone the design/styles of a page or element.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "dom_mutations", description: "Watch and report DOM mutations on the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "service_worker", description: "Inspect and manage service workers.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
-  { name: "api_discovery", description: "Discover API endpoints used by the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "swagger_parser", description: "Parse Swagger/OpenAPI documentation from the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "color_palette", description: "Extract the color palette from the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
-  { name: "table_extract", description: "Extract tabular data from HTML tables on the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "form_fill", description: "Auto-detect and fill form fields intelligently.", readOnly: false, destructive: false, idempotent: true, openWorld: false },
   { name: "responsive_test", description: "Test page responsiveness across multiple viewport sizes.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
-  { name: "websocket_monitor", description: "Monitor WebSocket traffic on the page.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
-  { name: "har_export", description: "Export network requests as a HAR archive.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
   { name: "discover_tools", description: "Discover available tools by category. Returns tool schemas and descriptions.", readOnly: true, destructive: false, idempotent: false, openWorld: false },
 ];
 
@@ -127,12 +120,12 @@ describe("AI Tool Selection — Natural Language Queries", () => {
     { query: "refresh the page", expect: "history" },
     { query: "close the popup that just appeared", expect: "dismiss_overlay" },
     { query: "dismiss the cookie consent banner", expect: "dismiss_overlay" },
-    { query: "save the current session", expect: "session" },
-    { query: "save my open tabs for later", expect: "session" },
-    { query: "intercept network requests to block ads", expect: "intercept" },
+    { query: "save the current session", expect: "state" },
+    { query: "save my open tabs for later", expect: "state" },
+    { query: "intercept network requests to block ads", expect: "network" },
     { query: "capture network traffic", expect: "network" },
-    { query: "export network requests as HAR", expect: "har_export" },
-    { query: "monitor websocket messages", expect: "websocket_monitor" },
+    { query: "export network requests as HAR", expect: "network" },
+    { query: "monitor websocket messages", expect: "network" },
     { query: "check the browser console for errors", expect: "console" },
     { query: "accept the alert dialog", expect: "dialog" },
     { query: "emulate an iphone", expect: "emulate" },
@@ -153,16 +146,16 @@ describe("AI Tool Selection — Natural Language Queries", () => {
     { query: "check for accessibility issues", expect: "audit" },
     { query: "scan the page for security vulnerabilities", expect: "security_scan" },
     { query: "check code coverage", expect: "coverage" },
-    { query: "trace the redirect chain for this url", expect: "redirect_chain" },
+    { query: "trace the redirect chain for this url", expect: "network" },
     { query: "show me shadow DOM roots", expect: "shadow_dom" },
     { query: "list iframes on the page", expect: "iframe_list" },
     { query: "clone the design of this page", expect: "design_clone" },
     { query: "watch for DOM changes", expect: "dom_mutations" },
     { query: "check the service worker status", expect: "service_worker" },
-    { query: "find API endpoints used by this page", expect: "api_discovery" },
+    { query: "find API endpoints used by this page", expect: "network" },
     { query: "parse the swagger documentation", expect: "swagger_parser" },
     { query: "extract colors from the page", expect: "color_palette" },
-    { query: "extract the table data", expect: "table_extract" },
+    { query: "extract the table data", expect: "get_markdown" },
     { query: "auto-fill this form", expect: "form_fill" },
     { query: "test responsive design", expect: "responsive_test" },
     { query: "what tools are available", expect: "discover_tools" },
@@ -200,16 +193,14 @@ describe("AI Tool Selection — Confusing & Ambiguous Queries", () => {
       `"get text content" should prefer get_text over get_markdown`);
   });
 
-  it("should distinguish session vs session_manager", () => {
+  it("should map session-related queries to state", () => {
     const saveQ = findBestTool("save the browser session");
     const readQ = findBestTool("list saved sessions");
     if (saveQ) {
-      assert(saveQ.name === "session_manager" || saveQ.name === "session",
-        `"save the browser session" mapped to unexpected "${saveQ.name}"`);
+      assert.strictEqual(saveQ.name, "state", `"save the browser session" mapped to unexpected "${saveQ.name}"`);
     }
     if (readQ) {
-      assert(readQ.name === "session" || readQ.name === "session_manager",
-        `"list saved sessions" mapped to unexpected "${readQ.name}"`);
+      assert.strictEqual(readQ.name, "state", `"list saved sessions" mapped to unexpected "${readQ.name}"`);
     }
   });
 
@@ -250,7 +241,7 @@ describe("AI Tool Selection — Multi-Step Reasoning", () => {
 });
 
 describe("AI Tool Selection — Dangerous Operation Guarding", () => {
-  const DESTRUCTIVE = ["close_tab", "dismiss_overlay", "intercept"];
+  const DESTRUCTIVE = ["close_tab", "dismiss_overlay"];
 
   for (const name of DESTRUCTIVE) {
     it(`should clearly mark ${name} as destructive in description`, () => {
@@ -279,7 +270,7 @@ describe("AI Tool Selection — Confusion Matrix", () => {
   const matrix = buildConfusionMatrix();
 
   it("should have no tool pairs sharing 5+ significant keywords (excluding known duplicates)", () => {
-    const knownDuplicates = new Set(["session_session_manager"]);
+    const knownDuplicates = new Set();
     const high = matrix.filter(m => !knownDuplicates.has(`${m.a}_${m.b}`) && !knownDuplicates.has(`${m.b}_${m.a}`) && m.score >= 5);
     if (high.length > 0) {
       assert.fail(`${high.length} tool pairs share 5+ keywords:\n` +
@@ -287,13 +278,7 @@ describe("AI Tool Selection — Confusion Matrix", () => {
     }
   });
 
-  it("should have session and session_manager as the most similar pair", () => {
-    if (matrix.length > 0) {
-      const top = matrix[0];
-      assert(top.a === "session" || top.a === "session_manager",
-        `Most similar pair should be session/session_manager, got ${top.a}/${top.b}`);
-    }
-  });
+
 });
 
 describe("Tool Description Quality — AI Disambiguation", () => {
@@ -395,13 +380,11 @@ describe("AI Workflow — Correct Tool Sequencing", () => {
 
 describe("AI Safety — Confusingly Similar Tool Names", () => {
   const SIMILAR_PAIRS = [
-    ["session", "session_manager"],
     ["wait", "wait_stale"],
     ["find_tab", "find_by_text"],
     ["get_text", "get_markdown", "get_element_bounds"],
     ["screenshot", "snapshot"],
     ["audit", "security_scan"],
-    ["network", "intercept"],
     ["history", "bookmark"],
     ["save_as_pdf", "screenshot"],
     ["dom_mutations", "shadow_dom"],

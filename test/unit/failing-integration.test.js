@@ -259,7 +259,7 @@ describe("50 Deliberately Failing Integration Tests Suite", () => {
     assert.ok(routesDiscovered > 0, "API Discovery integration failed to locate OpenAPI schema routes on daemon endpoint");
   });
 
-  it("49: should fail table_extract cell index parsing integration alignment", () => {
+  it("49: should fail get_markdown table mode cell index parsing integration alignment", () => {
     const extractedHeadersCount = 5;
     const extractedRowCellsCount = 4;
     assert.strictEqual(extractedRowCellsCount, extractedHeadersCount, "Table extraction: header length and row cell count mismatch");

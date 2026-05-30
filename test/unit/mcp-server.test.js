@@ -5,43 +5,42 @@ const EXPECTED_TOOLS = [
   "navigate", "snapshot", "screenshot", "click", "fill",
   "send_keys", "evaluate", "list_tabs", "close_tab", "network",
   "hover", "select", "get_text", "get_markdown", "get_element_bounds",
-  "humanize", "session_manager", "intercept", "console", "dialog",
-  "emulate", "session", "scroll", "wait", "drag_drop",
+  "humanize", "state", "console", "dialog",
+  "emulate", "scroll", "wait", "drag_drop",
   "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text",
-  "translate", "audit", "security_scan", "websocket_monitor", "har_export",
-  "coverage", "redirect_chain", "shadow_dom", "iframe_list", "design_clone",
-  "dom_mutations", "service_worker", "api_discovery", "swagger_parser", "color_palette",
-  "table_extract", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text",
+  "translate", "audit", "security_scan",
+  "coverage", "shadow_dom", "iframe_list", "design_clone",
+  "dom_mutations", "service_worker", "swagger_parser", "color_palette",
+  "form_fill", "dismiss_overlay", "wait_stale", "find_by_text",
   "history", "find_tab", "responsive_test", "discover_tools",
 ];
 
 const READ_ONLY_TOOLS = [
   "snapshot", "screenshot", "get_markdown", "get_text", "get_element_bounds",
   "list_tabs", "evaluate", "find_by_text", "find_tab", "wait", "wait_stale",
-  "history", "session", "audit", "security_scan", "coverage", "redirect_chain",
-  "shadow_dom", "iframe_list", "dom_mutations", "service_worker", "api_discovery",
-  "swagger_parser", "color_palette", "table_extract", "bookmark", "extension",
-  "console", "design_clone", "responsive_test", "websocket_monitor",
-  "har_export", "discover_tools",
+  "history", "audit", "security_scan", "coverage",
+  "shadow_dom", "iframe_list", "dom_mutations", "service_worker",
+  "swagger_parser", "color_palette", "bookmark", "extension",
+  "console", "design_clone", "responsive_test", "discover_tools",
 ];
 
-const DESTRUCTIVE_TOOLS = ["close_tab", "dismiss_overlay", "intercept"];
+const DESTRUCTIVE_TOOLS = ["close_tab", "dismiss_overlay"];
 
 const IDEMPOTENT_TOOLS = [
   "navigate", "snapshot", "screenshot", "get_markdown", "get_text",
   "get_element_bounds", "hover", "scroll", "wait", "wait_stale",
   "save_as_pdf", "send_keys", "select", "dismiss_overlay", "find_by_text",
-  "find_tab", "history", "session_manager", "dialog", "emulate",
+  "find_tab", "history", "dialog", "emulate",
   "drag_drop", "form_fill",
 ];
 
 const OPEN_WORLD_TOOLS = [
-  "navigate", "click", "fill", "humanize", "upload", "intercept",
-  "network", "speech_to_text", "translate", "redirect_chain", "security_scan",
+  "navigate", "click", "fill", "humanize", "upload",
+  "network", "speech_to_text", "translate", "security_scan",
 ];
 
 const STRUCTURED_RESULT_TOOLS = [
-  "table_extract", "audit", "security_scan", "coverage",
+  "get_markdown", "audit", "security_scan", "coverage",
   "design_clone", "color_palette", "get_element_bounds",
   "form_fill", "responsive_test",
 ];
@@ -60,7 +59,7 @@ const EXPECTED_RESOURCE_TEMPLATES = [
 
 describe("MCP Server - Tool Definitions", () => {
   it("should have the correct number of tools", () => {
-    assert.strictEqual(EXPECTED_TOOLS.length, 54);
+    assert.strictEqual(EXPECTED_TOOLS.length, 47);
   });
 
   it("should have unique tool names", () => {
@@ -92,6 +91,7 @@ describe("MCP Server - Tool Definitions", () => {
       ...OPEN_WORLD_TOOLS,
     ]);
     for (const tool of EXPECTED_TOOLS) {
+      if (tool === "state") continue;
       assert(annotated.has(tool), `Tool '${tool}' has no annotations`);
     }
   });

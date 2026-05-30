@@ -115,24 +115,11 @@ describe("Phase 6 Innovations & Optimizations", () => {
         if (method === "DOM.querySelector") {
           return { nodeId: 10 };
         }
-        if (method === "DOM.describeNode") {
-          return { node: { backendNodeId: 999 } };
-        }
-        if (method === "DOM.getFlattenedDocument") {
+        if (method === "Accessibility.getPartialAXTree") {
           return {
             nodes: [
-              { nodeId: 10, backendNodeId: 999 },
-              { nodeId: 11, parentId: 10, backendNodeId: 1001 },
-              { nodeId: 12, parentId: 1, backendNodeId: 1002 }, // outside
-            ],
-          };
-        }
-        if (method === "Accessibility.getFullAXTree") {
-          return {
-            nodes: [
-              { nodeId: "1", role: { value: "root" }, childIds: ["2", "3"] },
+              { nodeId: "1", role: { value: "root" }, childIds: ["2"] },
               { nodeId: "2", role: { value: "button" }, backendDOMNodeId: 1001, name: { value: "Inside selector" } },
-              { nodeId: "3", role: { value: "button" }, backendDOMNodeId: 1002, name: { value: "Outside selector" } },
             ],
           };
         }
