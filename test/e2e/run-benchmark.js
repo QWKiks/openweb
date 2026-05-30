@@ -266,6 +266,68 @@ async function run() {
     log("warn", `Identified broken link returning 404: ${linksResult.brokenLinks[0].url}`);
   }
 
+  // --- Step 5: Test 4 - Honeypot Trap & Dynamic Math CAPTCHA ---
+  log("info", "\nSTEP 5: Honeypot & Math CAPTCHA benchmark...");
+  const mathTextResult = await callTool("evaluate", { expression: "document.getElementById('math-label').innerText" });
+  const mathText = mathTextResult.result?.value ?? mathTextResult;
+  log("info", `Math CAPTCHA text: "${mathText}"`);
+  const mathMatch = mathText.match(/Resolve Math:\s*(\d+)\s*\+\s*(\d+)/);
+  if (!mathMatch) throw new Error("Could not parse CAPTCHA formula");
+  const ans = parseInt(mathMatch[1], 10) + parseInt(mathMatch[2], 10);
+  log("ok", `Calculated sum: ${mathMatch[1]} + ${mathMatch[2]} = ${ans}`);
+
+  log("info", "Filling in correct math answer (ignoring hidden honeypot)...");
+  await callTool("fill", { selector: "#math-answer", value: String(ans) });
+  
+  log("info", "Submitting CAPTCHA...");
+  await callTool("click", { selector: "#btn-submit-captcha" });
+  
+  const capStatusResult = await callTool("evaluate", { expression: "document.getElementById('captcha-status').innerText" });
+  const capStatus = capStatusResult.result?.value ?? capStatusResult;
+  log("ok", `CAPTCHA Submission Status: "${capStatus.trim()}"`);
+  if (!capStatus.includes("SUCCESS")) {
+    throw new Error("Math CAPTCHA validation failed!");
+  }
+
+  // --- Step 6: Test 5 - Hover, Hold & Multi-Click Gestures ---
+  log("info", "\nSTEP 6: Hover-hold and Double-Click Gestures benchmark...");
+  log("info", "Hovering over '#gesture-trigger' element...");
+  await callTool("hover", { selector: "#gesture-trigger" });
+  log("info", "Waiting 1000ms for hover-hold threshold and sub-menu expansion animation...");
+  await new Promise(r => setTimeout(r, 1000));
+  
+  log("info", "Sending double-click event to revealed target...");
+  await callTool("evaluate", { expression: "document.getElementById('btn-double-click').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))" });
+  
+  const gestStatusResult = await callTool("evaluate", { expression: "document.getElementById('gesture-status').innerText" });
+  const gestStatus = gestStatusResult.result?.value ?? gestStatusResult;
+  log("ok", `Gestures Status: "${gestStatus.trim()}"`);
+  if (!gestStatus.includes("SUCCESS")) {
+    throw new Error("Hover & Double click gesture verification failed!");
+  }
+
+  // --- Step 7: Test 6 - Stale Overlay & Nested Shadow DOM ---
+  log("info", "\nSTEP 7: Stale Overlay and Nested Shadow DOM benchmark...");
+  log("info", "Clicking target action button to trigger blocking overlay...");
+  await callTool("click", { selector: "#btn-shadow-target" });
+  
+  log("info", "Traversing open Shadow Root to locate and click close trigger...");
+  await callTool("evaluate", { expression: "document.getElementById('close-btn-container').firstElementChild.shadowRoot.getElementById('shadow-close-trigger').click()" });
+  log("ok", "Dismissed overlay via Shadow DOM close trigger!");
+  
+  log("info", "Waiting 500ms for overlay fade-out...");
+  await new Promise(r => setTimeout(r, 500));
+  
+  log("info", "Re-clicking the target action button...");
+  await callTool("click", { selector: "#btn-shadow-target" });
+  
+  const shadStatusResult = await callTool("evaluate", { expression: "document.getElementById('shadow-status').innerText" });
+  const shadStatus = shadStatusResult.result?.value ?? shadStatusResult;
+  log("ok", `Shadow/Overlay Status: "${shadStatus.trim()}"`);
+  if (!shadStatus.includes("SUCCESS")) {
+    throw new Error("Stale Overlay & Shadow DOM sequence failed!");
+  }
+
   // Close the tab
   log("info", "\nCleaning up: Closing the benchmark sandbox tab...");
   await callTool("close_tab", { tabId });
