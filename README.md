@@ -218,6 +218,11 @@ openweb/
     └── ...                   # 30+ tools total
 ```
 
+## Security & Verifiability
+
+* **Vulnerability Disclosure**: Read our [SECURITY.md](SECURITY.md) to learn about our threat model, localhost binding, and origin verification.
+* **VirusTotal Clean Scan**: The repository files and extension builds are verified clean. [0/70 Detections (Clean) Report](https://www.virustotal.com/gui/file/0df903347798d335ab622f8cb27c13c38a086e1d2f5936c8d099840f76b82802?nocache=1)
+
 ## License
 
 GNU GPLv3

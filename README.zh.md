@@ -252,10 +252,13 @@ OPENWEB_WS_URL=ws://192.168.1.100:10086/ws node mcp-server.js
 
 ## 安全性
 
+- **病毒分析 (VirusTotal)：** 源代码和扩展程序构建版本已验证为安全。 [分析报告 (0/70 安全/无毒)](https://www.virustotal.com/gui/file/0df903347798d335ab622f8cb27c13c38a086e1d2f5936c8d099840f76b82802?nocache=1)
+- **安全政策：** 请阅读我们的 [SECURITY.md](SECURITY.md) 以详细了解我们的威胁模型、本地主机绑定和来源验证。
 - **身份验证：** 设置 `OPENWEB_TOKEN` 以保护控制器连接（Bearer 令牌）
 - 启用令牌时，守护进程拒绝不安全的 `ws://` 连接 — 请使用 `wss://`
 - SSE 传输也需要 `Authorization` 请求头中的 Bearer 令牌
 - 令牌比较使用 `crypto.timingSafeEqual` 防止时序攻击
+
 
 ## 项目结构
 
