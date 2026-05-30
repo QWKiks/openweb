@@ -2,6 +2,7 @@
   "name": "openweb",
   "version": "1.6.1",
   "private": false,
+  "license": "GPL-3.0-or-later",
   "description": "Open-source browser extension + daemon + MCP server for AI agents",
   "type": "module",
   "bin": {

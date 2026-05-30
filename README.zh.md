@@ -317,4 +317,5 @@ openweb/
 
 ## 许可证
 
-MIT
+GNU GPLv3
+

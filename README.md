@@ -220,4 +220,5 @@ openweb/
 
 ## License
 
-MIT
+GNU GPLv3
+
