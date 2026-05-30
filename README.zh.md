@@ -20,17 +20,46 @@ Chrome 扩展
 
 ## 快速开始
 
-### 一键安装
+### 安装方法
 
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1 | iex
-```
+对于 macOS 用户，强烈建议通过 **Homebrew** 进行本地安装，因为它提供了自动完整性校验：
 
-**macOS / Linux:**
+**macOS (Homebrew - 推荐):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh | bash
+# 从仓库中本地安装 Formula：
+brew install --formula Formula/openweb.rb
+
+# 启动后台守护进程服务：
+brew services start openweb
 ```
+
+对于其他环境，我们强烈建议使用安全的 **两步安装法**，在执行前检查脚本的完整性：
+
+**Windows (PowerShell - 推荐):**
+```powershell
+# 1. 下载安装脚本：
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1" -OutFile "install.ps1"
+
+# 2. 检查脚本内容确保安全：
+Get-Content install.ps1
+
+# 3. 执行脚本：
+.\install.ps1
+```
+
+**macOS / Linux (Bash - 推荐):**
+```bash
+# 1. 下载安装脚本：
+curl -fsSL -o install.sh https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh
+
+# 2. 检查脚本内容确保安全：
+cat install.sh
+
+# 3. 执行脚本：
+bash install.sh
+```
+
+*(或者，为了快速自动设置，您也可以直接运行单行命令，但需自行承担风险：`irm https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1 | iex` 或 `curl -fsSL https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh | bash`)*
 
 此脚本将：
 1. 克隆仓库并安装依赖

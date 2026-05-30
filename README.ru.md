@@ -20,17 +20,46 @@ MCP-сервер (mcp-server.js)
 
 ## Быстрый старт
 
-### Установка одной командой
+### Установка
 
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1 | iex
-```
+Для пользователей macOS настоятельно рекомендуется нативная установка через **Homebrew**, так как она автоматически проверяет целостность пакетов:
 
-**macOS / Linux:**
+**macOS (Homebrew - Рекомендуется):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh | bash
+# Установка формулы напрямую из репозитория:
+brew install --formula Formula/openweb.rb
+
+# Запуск фонового сервиса демона:
+brew services start openweb
 ```
+
+Для других операционных систем мы настоятельно рекомендуем использовать безопасную **двухэтапную установку** для предварительной проверки целостности скриптов перед их выполнением:
+
+**Windows (PowerShell - Рекомендуется):**
+```powershell
+# 1. Скачайте скрипт установщика:
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1" -OutFile "install.ps1"
+
+# 2. Проверьте целостность и содержимое скрипта:
+Get-Content install.ps1
+
+# 3. Запустите скрипт:
+.\install.ps1
+```
+
+**macOS / Linux (Bash - Рекомендуется):**
+```bash
+# 1. Скачайте скрипт установщика:
+curl -fsSL -o install.sh https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh
+
+# 2. Проверьте целостность и содержимое скрипта:
+cat install.sh
+
+# 3. Запустите скрипт:
+bash install.sh
+```
+
+*(Альтернативно вы можете запустить автоматическую установку одной строкой напрямую в shell на свой страх и риск: `irm https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1 | iex` или `curl -fsSL https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh | bash`)*
 
 Скрипт:
 1. Клонирует репозиторий и установит зависимости

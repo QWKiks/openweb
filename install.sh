@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # OpenWeb — Bash installer
-# Run:  curl -fsSL https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh | bash
+# Secure installation:
+#   curl -fsSL -o install.sh https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh
+#   cat install.sh # inspect script integrity
+#   bash install.sh
 
 REPO="https://github.com/QWKiks/openweb.git"
 DIR="$HOME/.openweb"

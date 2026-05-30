@@ -1,5 +1,8 @@
 # OpenWeb — PowerShell installer
-# Run:  irm https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1 | iex
+# Secure installation:
+#   Invoke-WebRequest -Uri "https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1" -OutFile "install.ps1"
+#   Get-Content install.ps1 # inspect script integrity
+#   .\install.ps1
 
 $Repo = "https://github.com/QWKiks/openweb.git"
 $Dir = "$env:USERPROFILE\.openweb"

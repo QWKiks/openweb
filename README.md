@@ -20,17 +20,46 @@ Browser
 
 ## Quick Start
 
-### One Command Install
+### Installation
 
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1 | iex
-```
+For macOS users, installing natively via **Homebrew** is highly recommended as it provides automated integrity verification:
 
-**macOS / Linux:**
+**macOS (Homebrew - Recommended):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh | bash
+# Install the formula natively from the repository:
+brew install --formula Formula/openweb.rb
+
+# Start the background daemon service:
+brew services start openweb
 ```
+
+For other environments, we strongly recommend a secure **two-step installation** to inspect script integrity before execution:
+
+**Windows (PowerShell - Recommended):**
+```powershell
+# 1. Download the installer script:
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1" -OutFile "install.ps1"
+
+# 2. Inspect the script to ensure integrity:
+Get-Content install.ps1
+
+# 3. Execute the script:
+.\install.ps1
+```
+
+**macOS / Linux (Bash - Recommended):**
+```bash
+# 1. Download the installer script:
+curl -fsSL -o install.sh https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh
+
+# 2. Inspect the script to ensure integrity:
+cat install.sh
+
+# 3. Execute the script:
+bash install.sh
+```
+
+*(Alternatively, for quick automated setup, you can pipeline directly at your own risk: `irm https://raw.githubusercontent.com/QWKiks/openweb/main/install.ps1 | iex` or `curl -fsSL https://raw.githubusercontent.com/QWKiks/openweb/main/install.sh | bash`)*
 
 This will:
 1. Clone the repo and install dependencies
