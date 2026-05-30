@@ -26,8 +26,9 @@ For macOS users, installing natively via **Homebrew** is highly recommended as i
 
 **macOS (Homebrew - Recommended):**
 ```bash
-# Install the formula natively from the repository:
-brew install --formula Formula/openweb.rb
+# Tap our repository directly and install OpenWeb:
+brew tap qwkiks/openweb https://github.com/QWKiks/openweb.git
+brew install openweb
 
 # Start the background daemon service:
 brew services start openweb
@@ -91,6 +92,32 @@ You should see:
 > **Auth (optional):** Set `OPENWEB_TOKEN` env var to require Bearer auth for controllers and SSE transport.
 > OPENWEB_TOKEN=mysecret npm start
 - **Auth token** — optional `OPENWEB_TOKEN` env var for Bearer auth
+
+### Step 2: Register MCP with your AI Tools
+
+We provide an interactive CLI tool to automatically register OpenWeb as an MCP server in your favorite AI clients:
+
+```bash
+# Interactive mode (detects installed tools and shows options)
+npm run setup-mcp
+
+# Register with all detected tools automatically
+npm run setup-mcp -- --all
+
+# Or target specific tools
+npm run setup-mcp -- --claude       # Claude Code
+npm run setup-mcp -- --cursor       # Cursor IDE
+npm run setup-mcp -- --windsurf     # Windsurf IDE
+npm run setup-mcp -- --gemini       # Gemini CLI
+npm run setup-mcp -- --antigravity  # Google Antigravity
+npm run setup-mcp -- --opencode     # OpenCode
+npm run setup-mcp -- --codex        # OpenAI Codex CLI
+
+# Remove OpenWeb MCP from all tools
+npm run setup-mcp -- --remove
+```
+
+*Restart your AI tool after registration to apply changes.*
 
 ## Observability
 

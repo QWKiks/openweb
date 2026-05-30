@@ -26,8 +26,9 @@ Chrome 扩展
 
 **macOS (Homebrew - 推荐):**
 ```bash
-# 从仓库中本地安装 Formula：
-brew install --formula Formula/openweb.rb
+# 直接添加我们的仓库为 tap 并安装 OpenWeb:
+brew tap qwkiks/openweb https://github.com/QWKiks/openweb.git
+brew install openweb
 
 # 启动后台守护进程服务：
 brew services start openweb

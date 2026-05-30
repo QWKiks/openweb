@@ -26,8 +26,9 @@ MCP-сервер (mcp-server.js)
 
 **macOS (Homebrew - Рекомендуется):**
 ```bash
-# Установка формулы напрямую из репозитория:
-brew install --formula Formula/openweb.rb
+# Подключите наш репозиторий и установите OpenWeb:
+brew tap qwkiks/openweb https://github.com/QWKiks/openweb.git
+brew install openweb
 
 # Запуск фонового сервиса демона:
 brew services start openweb
