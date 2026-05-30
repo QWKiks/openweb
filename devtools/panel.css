@@ -1,11 +1,45 @@
 /* ── DevTools Panel Styles ──────────────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+:root {
+  --bg: #fff;
+  --bg-surface: #f8f8f8;
+  --bg-hover: #f8f8f8;
+  --fg: #333;
+  --fg-muted: #666;
+  --fg-subtle: #999;
+  --border: #e0e0e0;
+  --border-light: #eee;
+  --border-input: #ddd;
+  --border-focus: #999;
+  --success: #22c55e;
+  --error: #ef4444;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e1e;
+    --bg-surface: #252526;
+    --bg-hover: #2d2d2e;
+    --fg: #ccc;
+    --fg-muted: #999;
+    --fg-subtle: #777;
+    --border: #333;
+    --border-light: #2d2d2e;
+    --border-input: #555;
+    --border-focus: #888;
+    --success: #4ade80;
+    --error: #f87171;
+  }
+
+  body { color-scheme: dark; }
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 11px;
-  color: #333;
-  background: #fff;
+  color: var(--fg);
+  background: var(--bg);
 }
 
 .panel-header {
@@ -13,8 +47,8 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 6px 10px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f8f8f8;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
 }
 
 .panel-title {
@@ -23,7 +57,7 @@ body {
 }
 
 .panel-stats {
-  color: #666;
+  color: var(--fg-muted);
   font-size: 10px;
 }
 
@@ -31,34 +65,46 @@ body {
   display: flex;
   gap: 6px;
   padding: 6px 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .filter-row input {
   flex: 1;
   padding: 3px 6px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-input);
   border-radius: 3px;
   font-size: 11px;
   font-family: inherit;
+  background: var(--bg);
+  color: var(--fg);
   outline: none;
 }
 
 .filter-row input:focus {
-  border-color: #999;
+  border-color: var(--border-focus);
+}
+
+.filter-row input:focus-visible {
+  box-shadow: 0 0 0 2px var(--border-focus);
 }
 
 .btn-tiny {
   padding: 3px 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-input);
   border-radius: 3px;
-  background: #f5f5f5;
+  background: var(--bg-surface);
+  color: var(--fg);
   cursor: pointer;
   font-size: 10px;
 }
 
 .btn-tiny:hover {
-  background: #eee;
+  background: var(--bg-hover);
+}
+
+.btn-tiny:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--border-focus);
 }
 
 .call-list {
@@ -71,16 +117,16 @@ body {
   align-items: center;
   gap: 8px;
   padding: 4px 10px;
-  border-bottom: 1px solid #f5f5f5;
-  font-family: monospace;
+  border-bottom: 1px solid var(--border-light);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
 .call-entry:hover {
-  background: #f8f8f8;
+  background: var(--bg-hover);
 }
 
 .call-time {
-  color: #999;
+  color: var(--fg-subtle);
   font-size: 10px;
   flex-shrink: 0;
   width: 60px;
@@ -93,7 +139,7 @@ body {
 }
 
 .call-duration {
-  color: #666;
+  color: var(--fg-muted);
   flex-shrink: 0;
   width: 50px;
   text-align: right;
@@ -106,11 +152,11 @@ body {
   border-radius: 50%;
 }
 
-.call-status.ok { background: #22c55e; }
-.call-status.error { background: #ef4444; }
+.call-status.ok { background: var(--success); }
+.call-status.error { background: var(--error); }
 
 .call-error {
-  color: #dc2626;
+  color: var(--error);
   font-size: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
