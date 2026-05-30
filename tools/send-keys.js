@@ -117,9 +117,45 @@ export class SendKeysTool {
   name = "send_keys";
 
   async execute(args) {
-    const keys = args.keys;
+    const { keys, text, perChar, delay } = args;
+
+    // NEW: unicode text input via Input.insertText
+    if (text !== undefined) {
+      if (typeof text !== "string" || text.length === 0) {
+        throw new Error("send_keys: text must be a non-empty string");
+      }
+      const tab = await getActiveTab();
+      await attach(tab.id);
+
+      if (perChar) {
+        const charDelay = delay ?? 50;
+        const chars = [...text];
+        for (const ch of chars) {
+          await sendCommand("Input.dispatchKeyEvent", {
+            type: "keyDown",
+            key: ch,
+            code: "",
+            text: ch,
+          });
+          await sendCommand("Input.dispatchKeyEvent", {
+            type: "keyUp",
+            key: ch,
+            code: "",
+            text: ch,
+          });
+          if (charDelay > 0) await new Promise((r) => setTimeout(r, charDelay));
+        }
+        return { success: true, mode: "perChar", length: chars.length };
+      }
+
+      // bulk insert — single input event, no individual key down/up
+      await sendCommand("Input.insertText", { text });
+      return { success: true, mode: "insertText", length: [...text].length };
+    }
+
+    // LEGACY: key combination dispatch
     if (typeof keys !== "string" || !keys.trim()) {
-      throw new Error('send_keys: keys is required (string), e.g. "Enter" or "Mod+A" or "Shift+Tab" or "Enter Escape"');
+      throw new Error('send_keys: specify either "text" (unicode-safe) or "keys" (key combos like "Enter", "Mod+A")');
     }
 
     const repeat = args.repeat;
@@ -143,8 +179,6 @@ export class SendKeysTool {
         const keySpec = applyShift(spec, modifierBits & SHIFT_BIT);
         let currentModifiers = 0;
 
-        
-
         for (const mod of modifierKeys) {
           currentModifiers |= mod.bit;
           await sendCommand("Input.dispatchKeyEvent", {
@@ -155,8 +189,6 @@ export class SendKeysTool {
             windowsVirtualKeyCode: mod.vkc,
           });
         }
-
-        
 
         const textArg = (modifierBits & ~SHIFT_BIT) === 0 && keySpec.text !== undefined
           ? { text: keySpec.text }
@@ -170,8 +202,6 @@ export class SendKeysTool {
           ...textArg,
         });
 
-        
-
         await sendCommand("Input.dispatchKeyEvent", {
           type: "keyUp",
           modifiers: modifierBits,
@@ -179,8 +209,6 @@ export class SendKeysTool {
           code: keySpec.code,
           windowsVirtualKeyCode: keySpec.vkc,
         });
-
-        
 
         for (let i = modifierKeys.length - 1; i >= 0; i--) {
           const mod = modifierKeys[i];

@@ -87,6 +87,13 @@ function generateFillCode(targetExpr, value) {
   return `
     const __target = ${targetExpr};
     __target.focus();
+
+    // --- combobox / autocomplete detection ---
+    const __role = (__target.getAttribute('role') || '').toLowerCase();
+    const __ariaAuto = __target.hasAttribute('aria-autocomplete');
+    const __parentCombobox = __target.closest('[role="combobox"]');
+    const __isCombobox = __role === 'combobox' || __ariaAuto || !!__parentCombobox;
+
     if (__target.isContentEditable) {
       const __sel = window.getSelection();
       if (__sel) {
@@ -109,8 +116,14 @@ function generateFillCode(targetExpr, value) {
           bubbles: true,
         }));
       }
-      return { success: true, tag: __target.tagName, mode: 'contenteditable' };
+      return {
+        success: true, tag: __target.tagName, mode: 'contenteditable',
+        comboboxDetected: __isCombobox,
+        actualValue: __target.textContent,
+        suggestion: __isCombobox ? 'This field appears to be a combobox/autocomplete. fill() sets text but may NOT trigger the autocomplete dropdown. For proper autocomplete interaction, use select_autocomplete() instead.' : undefined
+      };
     }
+
     const __nativeSetter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype, 'value'
     )?.set || Object.getOwnPropertyDescriptor(
@@ -123,6 +136,15 @@ function generateFillCode(targetExpr, value) {
     }
     __target.dispatchEvent(new Event('input', { bubbles: true }));
     __target.dispatchEvent(new Event('change', { bubbles: true }));
-    return { success: true, tag: __target.tagName, mode: 'value' };
+
+    // Read back the actual value after set
+    const __actualValue = __target.value;
+
+    return {
+      success: true, tag: __target.tagName, mode: 'value',
+      comboboxDetected: __isCombobox,
+      actualValue: __actualValue,
+      suggestion: __isCombobox ? 'This field appears to be a combobox/autocomplete. fill() sets the value directly but may NOT trigger the autocomplete dropdown. For proper autocomplete interaction, use select_autocomplete() instead.' : undefined
+    };
   `;
 }

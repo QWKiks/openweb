@@ -44,6 +44,7 @@ import { FormFillTool } from "./tools/form-fill.js";
 import { DismissOverlayTool } from "./tools/dismiss-overlay.js";
 import { WaitStaleTool } from "./tools/wait-stale.js";
 import { FindByTextTool } from "./tools/find-by-text.js";
+import { SelectAutocompleteTool } from "./tools/select-autocomplete.js";
 import { StateTool, SessionTool, SessionManagerTool, CookieTool, LocalStorageTool } from "./tools/state.js";
 
 register(new NavigateTool());
@@ -94,6 +95,7 @@ register(new FormFillTool());
 register(new DismissOverlayTool());
 register(new WaitStaleTool());
 register(new FindByTextTool());
+register(new SelectAutocompleteTool());
 
 const RATE_LIMIT_KEY = "OpenWeb_rate_limit";
 const DEFAULT_RATE_LIMIT = 0; 

@@ -94,7 +94,7 @@ const TOOLS = [
   },
   {
     name: "screenshot",
-    description: "Take a screenshot of the current page. RECOMMENDATION: Use this tool to visually verify the result of dynamic transitions, form submissions, or modal overlays. Avoid using it blindly — always run it when you need to align your mental model with the browser viewport.",
+    description: "Take a screenshot of the current page. RECOMMENDATION: Use this tool to visually verify the result of dynamic transitions, form submissions, or modal overlays. NOTE: Some AI models cannot process image output. If screenshot returns an image error, use snapshot() + get_text()/get_markdown() as text-based fallback to understand page state.",
     inputSchema: {
       type: "object",
       properties: {
@@ -134,7 +134,7 @@ const TOOLS = [
   },
   {
     name: "fill",
-    description: "Fill a form field with a value by CSS selector or snapshot ref. RECOMMENDATION: Use the stable snapshot @e ref (e.g. '@e5') obtained from the 'snapshot' tool to target the input. PREFER fill over humanize for standard form inputs. Switch to 'humanize(cmd: type)' ONLY if the input rejects standard fill (such as certain hidden, complex React-controlled, or highly sensitive dynamic input fields).",
+    description: "Fill a form field with a value by CSS selector or snapshot ref. RECOMMENDATION: Use the stable snapshot @e ref (e.g. '@e5') obtained from the 'snapshot' tool to target the input. PREFER fill over humanize for standard form inputs. Switch to 'humanize(cmd: type)' ONLY if the input rejects standard fill (such as certain hidden, complex React-controlled, or highly sensitive dynamic input fields). NOTE: fill() now auto-detects combobox fields (role='combobox', aria-autocomplete). If 'comboboxDetected: true' in the response, use 'select_autocomplete' instead for proper autocomplete interaction.",
     inputSchema: {
       type: "object",
       properties: {
@@ -147,14 +147,17 @@ const TOOLS = [
   },
   {
     name: "send_keys",
-    description: "Send keyboard key combinations (e.g. Enter, Ctrl+A, Tab) to the currently focused element.",
+    description: "Send keyboard key combinations (e.g. Enter, Ctrl+A, Tab) or type unicode text (any language, emoji) via Input.insertText to the currently focused element. USE CASE — text: fill combo-box autocomplete fields that reject standard fill() (e.g. airport/address selectors). USE CASE — keys: press key combos like 'Enter', 'Ctrl+A', 'Tab' or 'Escape ArrowDown Enter'.",
     inputSchema: {
       type: "object",
       properties: {
-        keys: { type: "string", description: "Key combination, e.g. 'Enter', 'Ctrl+A', 'Tab'" },
+        keys: { type: "string", description: "Key combination(s), e.g. 'Enter', 'Ctrl+A', 'Tab', 'Escape ArrowDown Enter'. Mutually exclusive with 'text'." },
+        text: { type: "string", description: "Unicode text to type (any language, emoji, symbols). Uses CDP Input.insertText. Best for filling combo-boxes / autocomplete inputs that reject value-only fill(). Mutually exclusive with 'keys'." },
+        perChar: { type: "boolean", description: "When true with 'text', dispatches per-character keyDown/keyUp events instead of one bulk insertText. Required for autocomplete/combobox fields that debounce-search on each keystroke. Default: false." },
+        delay: { type: "number", description: "Delay in ms between per-character key events (only when perChar:true). Default: 50." },
+        repeat: { type: "number", description: "Repeat the key sequence N times (1-100, only for 'keys' mode). Default: 1." },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
-      required: ["keys"],
     },
   },
   {
@@ -187,14 +190,14 @@ const TOOLS = [
   },
   {
     name: "network",
-    description: "Capture, list, inspect HTTP requests, intercept network activity, trace redirects, monitor WebSockets, or discover APIs. RECOMMENDATION: Use cmd: block_ads to block heavy trackers and speed up rendering. Use cmd: intercept to block, redirect, mock, or modify network requests.",
+    description: "Capture, list, inspect HTTP requests, intercept network activity, trace redirects, monitor WebSockets, discover APIs, or view historical requests. RECOMMENDATION: Use cmd: 'start' BEFORE navigation to capture all requests. Use cmd: 'history' to browse past requests from Performance API (no prior capture needed). Use cmd: 'intercept' to block, redirect, mock, or modify network requests.",
     inputSchema: {
       type: "object",
       properties: {
         cmd: {
           type: "string",
-          description: "Network command to run: 'start' (start capture), 'stop' (stop capture), 'list' (list requests), 'detail' (inspect request), 'block_ads' (block ads/trackers), 'intercept' (modify/mock requests), 'har_export' (export HAR), 'websocket_monitor' (WebSocket logs), 'redirect_chain' (trace redirects), 'api_discovery' (find endpoints)",
-          enum: ["start", "capture", "stop", "list", "detail", "inspect", "block_ads", "intercept", "har_export", "websocket_monitor", "redirect_chain", "api_discovery"]
+          description: "Network command: 'start'/'capture' (begin capture), 'stop' (stop capture), 'list' (show captured), 'history' (browse past requests via Performance API, no prior setup needed), 'detail'/'inspect' (request body), 'block_ads' (block trackers), 'intercept' (modify/mock), 'har_export' (export HAR), 'websocket_monitor' (WebSocket logs), 'redirect_chain' (trace redirects), 'api_discovery' (find API endpoints in page source)",
+          enum: ["start", "capture", "stop", "list", "history", "detail", "inspect", "block_ads", "intercept", "har_export", "websocket_monitor", "redirect_chain", "api_discovery"]
         },
         enable: { type: "boolean", description: "Enable or disable ad blocker (for block_ads cmd, default: true)", default: true },
         filter: { type: "string", description: "Url filter match (for list cmd)" },
@@ -405,7 +408,7 @@ const TOOLS = [
   },
   {
     name: "wait",
-    description: "Wait for a condition on the page. RECOMMENDATION: Wait for 'network_idle' after clicking form submits to ensure the request is processed, or wait for 'selector' to verify dynamic element rendering.",
+    description: "Wait for a condition on the page. RECOMMENDATION: Wait for 'network_idle' after clicking form submits to ensure the request is processed, or wait for 'selector' to verify dynamic element rendering. On timeout, response includes 'reason' field explaining what was still pending.",
     inputSchema: {
       type: "object",
       properties: {
@@ -637,6 +640,22 @@ const TOOLS = [
     },
   },
   {
+    name: "select_autocomplete",
+    description: "Expert tool for combo-box / autocomplete fields (airport, city, address, etc.). FOCUSES the field, types text per-character (triggers debounce search), waits for dropdown, then selects the first or best-matching suggestion. USE THIS instead of fill() on any field with role='combobox' or aria-autocomplete. Returns the final selected value.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref (from snapshot) of the combo-box/autocomplete input field. Example: '@e17'" },
+        text: { type: "string", description: "Text to type character-by-character into the field to trigger autocomplete search. Example: 'Москва' or 'London'" },
+        selectValue: { type: "string", description: "Optional: specific text to match in the dropdown. If omitted, the first suggestion (ArrowDown + Enter) is selected. Example: 'Москва, Россия'" },
+        itemSelector: { type: "string", description: "Optional: custom CSS selector for dropdown suggestion items. Default: '[role=\"option\"], [role=\"listbox\"] [role=\"option\"], [data-option-value], .autocomplete-item'" },
+        delay: { type: "number", description: "Delay in ms between each typed character (default: 80). Increase to 150-300 for slow autocomplete APIs." },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["selector", "text"],
+    },
+  },
+  {
     name: "click_and_verify",
     description: "CLICK an element then WAIT for the page to settle. Runs click() + wait(type: 'network_idle') + screenshot(). USE INSTEAD OF: calling click, wait, and screenshot separately. Best for: button clicks, link clicks, form submissions, or any navigation trigger that needs visual confirmation.",
     inputSchema: {
@@ -687,12 +706,14 @@ const IDEMPOTENT_TOOLS = new Set([
   "save_as_pdf", "send_keys", "select", "dismiss_overlay", "find_by_text",
   "find_tab", "history", "dialog", "emulate",
   "drag_drop", "form_fill", "extract_page", "click_and_verify",
+  "select_autocomplete",
 ]);
 
 const OPEN_WORLD_TOOLS = new Set([
   "navigate", "click", "fill", "humanize", "upload",
   "network", "speech_to_text", "translate", "security_scan",
   "extract_page", "click_and_verify",
+  "select_autocomplete",
 ]);
 
 for (const tool of TOOLS) {
@@ -707,8 +728,9 @@ for (const tool of TOOLS) {
 const NEXT_STEP_HINTS = {
   navigate: "On timeout, the page may still be loading. Retry with waitUntil: 'DOMContentLoaded'.",
   snapshot: "If @e refs are stale (element not found), call snapshot again first, then retry.",
+  wait: "On timeout, check 'reason' field in response to understand what was still pending. For network_idle, 'pendingResources' shows remaining loading elements.",
   click: "If selector fails, the element may not be interactive yet. Call snapshot to verify it exists, then retry.",
-  fill: "If fill fails on a complex input, try humanize(text: value, selector: selector) instead.",
+  fill: "If fill fails on a complex input, try humanize(text: value, selector: selector) instead. If 'comboboxDetected: true' is returned, use select_autocomplete() for proper autocomplete interaction.",
   screenshot: "If the page is blank, wait for navigation to complete first (wait(type: 'network_idle')).",
   evaluate: "Wrap your code in try/catch and return the error as a value.",
   close_tab: "Closing the last tab is safe — the window remains open but empty.",
@@ -717,12 +739,13 @@ const NEXT_STEP_HINTS = {
   hover: "If the element is overlapped, scroll it into view first.",
   get_text: "For structured content prefer get_markdown. For raw DOM use format: 'html'.",
   get_markdown: "If extraction yields empty result, the page may need JavaScript rendering. Try navigate first.",
-  network: "Start capture before navigation to catch all requests. Use cmd: 'list' to inspect.",
+  network: "Use cmd: 'start' before navigation to catch all requests. Use cmd: 'history' to browse past requests without prior setup. Use cmd: 'list' to view captured.",
   speech_to_text: "Requires a local Whisper server at http://127.0.0.1:5001 or a yt-dlp binary.",
   translate: "Uses local Whisper for translation. Ensure the server is running.",
   security_scan: "May take 30-60 seconds. Set a generous timeout in your client.",
   audit: "Run after the page is fully loaded for complete results.",
   discover_tools: "Call with no arguments to list all categories.",
+  select_autocomplete: "If the dropdown doesn't appear, increase 'delay' (150-300). If the wrong item is selected, use 'selectValue' to match specific text. For combo-boxes that require Enter after selection, follow with send_keys({keys: 'Enter'}).",
 };
 
 function errorResult(text, nextStep) {
@@ -741,7 +764,7 @@ const SESSION_TOOLS = ["state"];
 const NETWORK_TOOLS = ["network"];
 const DIAGNOSTICS_TOOLS = ["console", "dialog", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations", "history"];
 const AUDITS_TOOLS = ["audit", "security_scan", "coverage"];
-const ADVANCED_TOOLS = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "swagger_parser", "color_palette", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab"];
+const ADVANCED_TOOLS = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "swagger_parser", "color_palette", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab", "select_autocomplete"];
 
 const CORE_TOOL_NAMES = new Set([
   "navigate", "snapshot", "screenshot", "click", "fill",

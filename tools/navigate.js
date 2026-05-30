@@ -8,7 +8,7 @@ export class NavigateTool {
     const url = args.url;
     if (!url) throw new Error("navigate: url is required");
 
-    const newTab = args.newTab !== false; 
+    const newTab = args.newTab === true; 
 
     const session = args._session;
     const groupTitle = args.group_title;

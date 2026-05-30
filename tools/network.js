@@ -164,10 +164,12 @@ export class NetworkTool {
     switch (cmd) {
       
 
-      case "start": return this.start();
+      case "start":
+      case "capture": return this.start();
       case "stop": return this.stop();
       case "list": return this.list(args.filter);
-      case "detail": return this.detail(args.requestId);
+      case "detail":
+      case "inspect": return this.detail(args.requestId);
       case "block_ads": return this.blockAds(args.enable !== false);
 
       
@@ -189,6 +191,8 @@ export class NetworkTool {
       
 
       case "api_discovery": return this.apiDiscovery();
+
+      case "history": return this.history();
 
       default: throw new Error(`network: unknown cmd "${cmd}"`);
     }
@@ -618,6 +622,39 @@ export class NetworkTool {
   }
 
   
+
+  async history() {
+    const tab = await getActiveTab();
+    await attach(tab.id);
+
+    const result = await sendCommand("Runtime.evaluate", {
+      expression: `(() => {
+        const entries = performance.getEntriesByType('resource');
+        const xhrAndFetch = entries.filter(r =>
+          r.initiatorType === 'fetch' || r.initiatorType === 'xmlhttprequest'
+        );
+        return {
+          count: xhrAndFetch.length,
+          requests: xhrAndFetch.map(r => ({
+            url: r.name,
+            initiatorType: r.initiatorType,
+            duration: Math.round(r.duration),
+            transferSize: r.transferSize,
+            startTime: Math.round(r.startTime),
+          })),
+        };
+      })()`,
+      returnByValue: true,
+      awaitPromise: false,
+    });
+
+    if (result.exceptionDetails) {
+      throw new Error("network(cmd: 'history'): " + result.exceptionDetails.text);
+    }
+    const data = result.result?.value || { count: 0, requests: [] };
+    data.note = "History is read-only from Performance API. Use cmd: 'start' before navigation to capture full request/response details.";
+    return data;
+  }
 
   async apiDiscovery() {
     const tab = await getActiveTab();
