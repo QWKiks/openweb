@@ -40,19 +40,32 @@ setInterval(() => {
   }
 }, 300000);
 
-/** @type {Set<string>} recent nonces to prevent replay */
-const recentNonces = new Set();
-setInterval(() => recentNonces.clear(), 120000); // clear every 2 min
+/** @type {Map<string, number>} recent nonces -> expire time (DoS and replay protection) */
+const recentNonces = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [nonce, expireTime] of recentNonces) {
+    if (now > expireTime) recentNonces.delete(nonce);
+  }
+}, 10000); // clean expired nonces every 10 seconds
 
 function isOriginAllowed(origin, roleHint) {
   if (!origin || origin === "null") return true; // Node.js clients have no origin
-  if (origin.startsWith("chrome-extension://")) {
-    const id = origin.slice("chrome-extension://".length);
-    if (!id || id.includes("/")) return false;
-    return roleHint === "extension" || roleHint === "any";
+  try {
+    const parsed = new URL(origin);
+    if (parsed.username || parsed.password) return false; // Prevent auth spoofing
+    if (parsed.protocol === "chrome-extension:") {
+      const id = parsed.hostname;
+      if (!id || id.includes("/")) return false;
+      return roleHint === "extension" || roleHint === "any";
+    }
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      const hostname = parsed.hostname;
+      return hostname === "localhost" || hostname === "127.0.0.1";
+    }
+  } catch (e) {
+    // Disallow malformed URLs
   }
-  const localhostMatch = origin.match(/^https?:\/\/(localhost|127\.0\.0\.1)(?:[:/]|$)/);
-  if (localhostMatch) return true;
   return false;
 }
 
@@ -154,6 +167,38 @@ setInterval(() => {
   }
 }, 15000);
 
+function validateIncomingMessage(msg) {
+  if (!msg || typeof msg !== "object") return false;
+  if (typeof msg.type !== "string") return false;
+  
+  switch (msg.type) {
+    case "hello":
+      if (msg.payload && typeof msg.payload !== "object") return false;
+      break;
+    case "register":
+      if (msg.token && typeof msg.token !== "string") return false;
+      if (msg.nonce && typeof msg.nonce !== "string") return false;
+      if (msg.timestamp && typeof msg.timestamp !== "string" && typeof msg.timestamp !== "number") return false;
+      break;
+    case "heartbeat":
+    case "pong":
+      break;
+    case "tool_call":
+      if (msg.requestId === undefined || msg.requestId === null) return false;
+      if (!msg.payload || typeof msg.payload !== "object") return false;
+      if (typeof msg.payload.name !== "string") return false;
+      if (msg.payload.args && typeof msg.payload.args !== "object") return false;
+      break;
+    case "tool_result":
+      if (msg.responseToRequestId === undefined || msg.responseToRequestId === null) return false;
+      if (!msg.payload || typeof msg.payload !== "object") return false;
+      break;
+    default:
+      return false;
+  }
+  return true;
+}
+
 wss.on("connection", (ws, req) => {
   const ip = req.socket.remoteAddress || "unknown";
   const origin = req.headers.origin || "null";
@@ -183,6 +228,11 @@ wss.on("connection", (ws, req) => {
       msg = JSON.parse(rawText);
     } catch {
       log.warn("invalid JSON received", { raw: log.truncate(raw.toString()) });
+      return;
+    }
+
+    if (!validateIncomingMessage(msg)) {
+      log.warn("incoming message validation failed", { msg: log.truncate(rawText) });
       return;
     }
 
@@ -234,6 +284,7 @@ wss.on("connection", (ws, req) => {
           }
         }
         if (msg.nonce) {
+          const now = Date.now();
           if (recentNonces.has(msg.nonce)) {
             log.warn("register rejected — replayed nonce");
             isRejected = true;
@@ -242,7 +293,24 @@ wss.on("connection", (ws, req) => {
             ws.close(4009, "Replay nonce");
             return;
           }
-          recentNonces.add(msg.nonce);
+          
+          // DoS protection: limit maximum tracked nonces in sliding window
+          if (recentNonces.size >= 10000) {
+            for (const [n, exp] of recentNonces) {
+              if (now > exp) recentNonces.delete(n);
+            }
+            if (recentNonces.size >= 10000) {
+              log.warn("register rejected — nonce pool exhausted (DoS protection)");
+              isRejected = true;
+              role = "rejected";
+              ws.send(JSON.stringify({ type: "register_nack", error: "Server busy" }));
+              ws.close(4008, "Server busy");
+              return;
+            }
+          }
+          
+          // Expire nonce exactly after 35 seconds (30s window + 5s clock skew buffer)
+          recentNonces.set(msg.nonce, now + 35000);
         }
 
         // AI client registers itself — check auth if token is configured

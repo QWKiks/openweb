@@ -125,13 +125,21 @@ describe("healSnapshotRefs — Self-Healing Selector Logic", () => {
 describe("Daemon Security — Edge Cases", () => {
   function isOriginAllowed(origin, roleHint) {
     if (!origin || origin === "null") return true;
-    if (origin.startsWith("chrome-extension://")) {
-      const id = origin.slice("chrome-extension://".length);
-      if (!id || id.includes("/")) return false;
-      return roleHint === "extension" || roleHint === "any";
+    try {
+      const parsed = new URL(origin);
+      if (parsed.username || parsed.password) return false;
+      if (parsed.protocol === "chrome-extension:") {
+        const id = parsed.hostname;
+        if (!id || id.includes("/")) return false;
+        return roleHint === "extension" || roleHint === "any";
+      }
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        const hostname = parsed.hostname;
+        return hostname === "localhost" || hostname === "127.0.0.1";
+      }
+    } catch (e) {
+      // ignore
     }
-    const localhostMatch = origin.match(/^https?:\/\/(localhost|127\.0\.0\.1)(?:[:/]|$)/);
-    if (localhostMatch) return true;
     return false;
   }
 

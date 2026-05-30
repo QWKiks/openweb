@@ -36,16 +36,21 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import WebSocket from "ws";
 import { appendFileSync, writeFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from "fs";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { tmpdir, userInfo } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TRANSCRIPTIONS_DIR = join(__dirname, "transcriptions");
 
+let username = "default";
+try { username = userInfo().username; } catch {}
+const STARTUP_LOG_PATH = join(tmpdir(), `openweb-mcp-startup-${username}.log`);
+
 function startupLog(...args) {
   const line = `[${new Date().toISOString()}] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
-  try { appendFileSync('/tmp/mcp-startup.log', line); } catch { }
+  try { appendFileSync(STARTUP_LOG_PATH, line); } catch { }
 }
 startupLog('MCP server starting...');
 process.on('uncaughtException', (err) => { startupLog('UNCAUGHT EXCEPTION:', err.message, err.stack); throw err; });
@@ -1089,9 +1094,10 @@ async function downloadMedia(videoUrl) {
 
   if (videoUrl.startsWith("blob:") || videoUrl.includes("x.com") || videoUrl.includes("twitter.com")) {
     logInfo("Using yt-dlp to download audio from", videoUrl);
-    tempPath = `/tmp/mcp-audio-${Date.now()}.mp4`;
+    tempPath = join(tmpdir(), `openweb-audio-${username}-${Date.now()}.mp4`);
     try {
-      execSync(`yt-dlp -f ba -o "${tempPath}" "${videoUrl}"`, { timeout: 120000, stdio: "ignore" });
+      const result = spawnSync("yt-dlp", ["-f", "ba", "-o", tempPath, videoUrl], { timeout: 120000, stdio: "ignore" });
+      if (result.error) throw result.error;
       if (!existsSync(tempPath)) throw new Error("yt-dlp failed to download audio");
       buffer = readFileSync(tempPath);
       filename = "audio.mp4";

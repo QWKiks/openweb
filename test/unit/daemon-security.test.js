@@ -5,9 +5,21 @@ import assert from "node:assert";
 // We re-implement them here to avoid importing the full daemon
 function isOriginAllowed(origin, roleHint) {
   if (!origin || origin === "null") return true;
-  if (origin.startsWith("chrome-extension://")) return roleHint === "extension" || roleHint === "any";
-  if (origin.startsWith("http://localhost") || origin.startsWith("https://localhost")) return true;
-  if (origin.startsWith("http://127.0.0.1") || origin.startsWith("https://127.0.0.1")) return true;
+  try {
+    const parsed = new URL(origin);
+    if (parsed.username || parsed.password) return false;
+    if (parsed.protocol === "chrome-extension:") {
+      const id = parsed.hostname;
+      if (!id || id.includes("/")) return false;
+      return roleHint === "extension" || roleHint === "any";
+    }
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      const hostname = parsed.hostname;
+      return hostname === "localhost" || hostname === "127.0.0.1";
+    }
+  } catch (e) {
+    // ignore
+  }
   return false;
 }
 
