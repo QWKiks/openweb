@@ -2,7 +2,7 @@ class Openweb < Formula
   desc "Open-source browser automation daemon and MCP server for AI agents"
   homepage "https://github.com/QWKiks/openweb"
   url "https://github.com/QWKiks/openweb/archive/refs/tags/v1.6.1.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000" # Placeholder for release tarball checksum
+  sha256 "d3d039751ecf1f44b852c8fe3267066a6a3e5b1abe532574426b435633abb180"
   head "https://github.com/QWKiks/openweb.git", branch: "main"
 
   depends_on "node"
