@@ -1,11 +1,8 @@
 /**
- * WebBridge Open — MCP Server
+ * OpenWeb — MCP Server
  *
- * Model Context Protocol server that exposes browser automation tools
- * to AI agents (Claude Desktop, Cursor, Windsurf, etc.).
- *
- * Transport: stdio (for Claude Desktop / Cursor integration)
- * Backend:   connects to WebBridge daemon via WebSocket
+ * Implements the Model Context Protocol (MCP) for browser automation.
+ * Backend:   connects to OpenWeb daemon via WebSocket
  *
  * Usage:
  *   node mcp-server.js                          # stdio transport
@@ -14,9 +11,9 @@
  * Claude Desktop config (claude_desktop_config.json):
  *   {
  *     "mcpServers": {
- *       "webbridge": {
+ *       "openweb": {
  *         "command": "node",
- *         "args": ["C:/path/to/webbridge-open/mcp-server.js"]
+ *         "args": ["C:/path/to/openweb/mcp-server.js"]
  *       }
  *     }
  *   }
@@ -636,116 +633,41 @@ const TOOLS = [
   },
 
   {
-    name: "swagger_parser",
-    description: "Parse Swagger / OpenAPI specification from the active page and extract endpoints, parameters, and schemas.",
+    name: "find_tab",
+    description: "Find a browser tab by URL pattern.",
     inputSchema: {
       type: "object",
       properties: {
-        url: { type: "string", description: "Optional: direct URL to swagger.json" },
+        url: { type: "string", description: "URL pattern to search for" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  // ── Macro tools (coarse-grained workflows) ─────────────────────────────
+  {
+    name: "extract_page",
+    description: "EXTRACT page content in one step. Runs snapshot() + get_markdown() sequentially and returns: element refs, markdown content, and metadata. USE INSTEAD OF: calling snapshot and get_markdown separately. Best for: reading articles, documentation, or any page where you need both interactive refs and readable content.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref of a target subtree (optional)" },
+        maxLength: { type: "number", description: "Maximum content length in characters (default: 50000)", default: 50000 },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
   {
-    name: "color_palette",
-    description: "Extract dominant colors from the website for branding and design analysis.",
+    name: "click_and_verify",
+    description: "CLICK an element then WAIT for the page to settle. Runs click() + wait(type: 'network_idle') + screenshot(). USE INSTEAD OF: calling click, wait, and screenshot separately. Best for: button clicks, link clicks, form submissions, or any navigation trigger that needs visual confirmation.",
     inputSchema: {
       type: "object",
       properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-
-  {
-    name: "form_fill",
-    description: "Fill a complete form with multiple fields in one call. Handles text inputs, selects, checkboxes, radio buttons, date pickers. RECOMMENDATION: Prefer form_fill over calling fill/select/click separately for each form field. Pass all field values as a JSON object in 'fields' parameter. The tool automatically finds fields by name, id, aria-label, or placeholder.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        selector: { type: "string", description: "CSS selector for the form element (default: 'form'). Examples: '#login-form', 'form:first-of-type'", default: "form" },
-        fields: {
-          type: "object",
-          description: "Key-value pairs of field names/IDs to values. Examples: {\"email\": \"user@example.com\", \"password\": \"mypass\", \"remember\": true, \"country\": \"US\"}",
-          additionalProperties: { type: "string" },
-        },
-        submit: { type: "boolean", description: "Automatically click the submit button after filling (default: true)", default: true },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-      required: ["fields"],
-    },
-  },
-  {
-    name: "dismiss_overlay",
-    description: "Detect and dismiss overlays such as cookie banners, modals, popups, and interstitial dialogs. RECOMMENDATION: Call dismiss_overlay after navigate() to clear blocking overlays before interacting with page content. Saves 3-5 failed interaction attempts caused by overlaid elements.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "wait_stale",
-    description: "Wait for an element to become stale (removed from DOM) or hidden. RECOMMENDATION: Call wait_stale after click() on close buttons, accept buttons, or any element that triggers overlay dismissal or content removal. Prevents race conditions where the AI attempts to interact with elements that were just removed.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        selector: { type: "string", description: "CSS selector or @e ref of the element to wait for removal. Examples: '@e15', '.modal', '#cookie-banner'" },
-        timeout: { type: "number", description: "Maximum wait time in ms (default: 10000)", default: 10000 },
+        selector: { type: "string", description: "CSS selector or @e ref of the element to click. Examples: '@e5' (snapshot reference), 'button#submit'." },
+        mode: { type: "string", description: "Click mode: 'synthetic' (default), 'physical', or 'humanized'", enum: ["synthetic", "physical", "humanized"], default: "synthetic" },
+        waitFor: { type: "string", description: "Condition to wait for after click: 'network_idle' (default), 'navigation', or 'none'", enum: ["network_idle", "navigation", "none"], default: "network_idle" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
-    },
-  },
-  {
-    name: "find_by_text",
-    description: "Find an element in the DOM by its text content, aria-label, or placeholder attribute. Returns a CSS selector usable with click, fill, hover, etc. RECOMMENDATION: Use find_by_text when you know the visible text of an element (e.g. 'Log In', 'Submit', 'Search...') but don't have a CSS selector or @e ref. DIFFERENT FROM: get_text reads page text, find_by_text locates element selectors for targeting.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        text: { type: "string", description: "Text to search for in element content, aria-label, or placeholder. Examples: 'Log In', 'Search products', 'user@email.com'" },
-        tag: { type: "string", description: "Optional HTML tag to restrict search (e.g. 'button', 'a', 'input'). Default: all interactive elements" },
-        exact: { type: "boolean", description: "Require exact match instead of partial (default: false)", default: false },
-        returnMultiple: { type: "boolean", description: "Return up to 10 matching results instead of just the first (default: false)", default: false },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-      required: ["text"],
-    },
-  },
-  {
-    name: "history",
-    description: "Navigate browser history: go back, go forward, or reload the page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cmd: { type: "string", description: "Action: back, forward, or refresh", enum: ["back", "forward", "refresh"] },
-        ignoreCache: { type: "boolean", description: "Bypass cache on refresh (default: false)", default: false },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-      required: ["cmd"],
-    },
-  },
-  {
-    name: "find_tab",
-    description: "Find an open tab by URL pattern and make it the active tab. Returns the tab ID for subsequent operations.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        url: { type: "string", description: "URL or hostname to search for in open tabs" },
-        active: { type: "boolean", description: "Only search in the active window (default: false)", default: false },
-      },
-      required: ["url"],
-    },
-  },
-  {
-    name: "responsive_test",
-    description: "Quick responsive design check — takes screenshots at mobile, tablet, and desktop breakpoints and reports layout metrics.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
     },
   },
   {
@@ -771,8 +693,8 @@ const READ_ONLY_TOOLS = new Set([
   "history", "audit", "security_scan", "coverage",
   "shadow_dom", "iframe_list", "dom_mutations", "service_worker",
   "swagger_parser", "color_palette", "bookmark", "extension",
-  "console", "design_clone", "responsive_test",
-  "discover_tools", "hover", "scroll", "save_as_pdf",
+  "console", "design_clone", "responsive_test", "discover_tools",
+  "extract_page",
 ]);
 
 const DESTRUCTIVE_TOOLS = new Set([
@@ -784,12 +706,13 @@ const IDEMPOTENT_TOOLS = new Set([
   "get_element_bounds", "hover", "scroll", "wait", "wait_stale",
   "save_as_pdf", "send_keys", "select", "dismiss_overlay", "find_by_text",
   "find_tab", "history", "dialog", "emulate",
-  "drag_drop", "form_fill",
+  "drag_drop", "form_fill", "extract_page", "click_and_verify",
 ]);
 
 const OPEN_WORLD_TOOLS = new Set([
   "navigate", "click", "fill", "humanize", "upload",
   "network", "speech_to_text", "translate", "security_scan",
+  "extract_page", "click_and_verify",
 ]);
 
 for (const tool of TOOLS) {
@@ -801,8 +724,57 @@ for (const tool of TOOLS) {
   if (Object.keys(annotations).length > 0) tool.annotations = annotations;
 }
 
+// ── Structured result / error helpers ──────────────────────────────────────
+const NEXT_STEP_HINTS = {
+  navigate: "On timeout, the page may still be loading. Retry with waitUntil: 'DOMContentLoaded'.",
+  snapshot: "If @e refs are stale (element not found), call snapshot again first, then retry.",
+  click: "If selector fails, the element may not be interactive yet. Call snapshot to verify it exists, then retry.",
+  fill: "If fill fails on a complex input, try humanize(text: value, selector: selector) instead.",
+  screenshot: "If the page is blank, wait for navigation to complete first (wait(type: 'network_idle')).",
+  evaluate: "Wrap your code in try/catch and return the error as a value.",
+  close_tab: "Closing the last tab is safe — the window remains open but empty.",
+  send_keys: "Ensure the target element is focused first (click it), then retry.",
+  select: "Use the visible option text, not the value attribute, for best matching.",
+  hover: "If the element is overlapped, scroll it into view first.",
+  get_text: "For structured content prefer get_markdown. For raw DOM use format: 'html'.",
+  get_markdown: "If extraction yields empty result, the page may need JavaScript rendering. Try navigate first.",
+  network: "Start capture before navigation to catch all requests. Use cmd: 'list' to inspect.",
+  speech_to_text: "Requires a local Whisper server at http://127.0.0.1:5001 or a yt-dlp binary.",
+  translate: "Uses local Whisper for translation. Ensure the server is running.",
+  security_scan: "May take 30-60 seconds. Set a generous timeout in your client.",
+  audit: "Run after the page is fully loaded for complete results.",
+  discover_tools: "Call with no arguments to list all categories.",
+};
+
+function errorResult(text, nextStep) {
+  const content = { type: "text", text };
+  if (nextStep) content.nextStep = nextStep;
+  return { content: [content], isError: true };
+}
+
+function successResult(text, structured) {
+  const result = { content: [{ type: "text", text }] };
+  if (structured !== undefined) result.structuredContent = structured;
+  return result;
+}
+
+const SESSION_TOOLS = ["state"];
+const NETWORK_TOOLS = ["network"];
+const DIAGNOSTICS_TOOLS = ["console", "dialog", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations", "history"];
+const AUDITS_TOOLS = ["audit", "security_scan", "coverage"];
+const ADVANCED_TOOLS = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "swagger_parser", "color_palette", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab"];
+
+const CORE_TOOL_NAMES = new Set([
+  "navigate", "snapshot", "screenshot", "click", "fill",
+  "send_keys", "evaluate", "list_tabs", "close_tab", "network",
+  "hover", "select", "get_text", "get_markdown", "get_element_bounds",
+  "humanize", "state", "console", "dialog", "emulate",
+  "scroll", "wait", "save_as_pdf", "upload", "find_tab",
+]);
+
 let ws = null;
 const pendingCalls = new Map();
+const idempotencyCache = new Map();
 let reconnectTimer = null;
 let reconnectDelay = 1000;
 const MAX_RECONNECT_DELAY = 30000;
@@ -927,7 +899,7 @@ function connectToDaemon() {
   });
 }
 
-function sendToolCall(name, args) {
+function sendToolCall(name, args, progressToken) {
   return new Promise(async (resolve) => {
     logInfo("Tool call requested", name);
     logDebug("Tool args", args);
@@ -943,6 +915,11 @@ function sendToolCall(name, args) {
         return;
       }
     }
+
+    // Strip idempotencyKey before sending to daemon
+    const toolArgs = { ...args };
+    const idempotencyKey = toolArgs.idempotencyKey;
+    delete toolArgs.idempotencyKey;
 
     const requestId = randomUUID();
     logInfo("Sending tool call", { name, requestId });
@@ -961,14 +938,40 @@ function sendToolCall(name, args) {
     const DEFAULT_TIMEOUT = 15000;
     const toolTimeout = TOOL_TIMEOUTS[name] || DEFAULT_TIMEOUT;
 
+    const DESTRUCTIVE_TOOL_SET = new Set(["close_tab", "dismiss_overlay"]);
+
+    // Progress reporting interval for long operations
+    let progressInterval = null;
+    if (progressToken && TOOL_TIMEOUTS[name]) {
+      let elapsed = 0;
+      progressInterval = setInterval(() => {
+        elapsed += 5000;
+        server.notification({
+          method: "notifications/progress",
+          params: {
+            progressToken,
+            progress: Math.min(elapsed / toolTimeout, 0.9),
+            total: 1,
+            message: `${name} in progress (${Math.round(elapsed / 1000)}s)`,
+          },
+        }).catch(() => {});
+      }, 5000);
+    }
+
     const timeout = setTimeout(() => {
+      if (progressInterval) clearInterval(progressInterval);
       pendingCalls.delete(requestId);
       logError("Tool call timeout", { name, requestId, timeoutMs: toolTimeout });
-      resolve({ error: `Tool call timed out (${toolTimeout / 1000}s): ${name}` });
+      const isDestructive = DESTRUCTIVE_TOOL_SET.has(name);
+      resolve({
+        error: `Tool call timed out (${toolTimeout / 1000}s): ${name}`,
+        isRetrySafe: !isDestructive,
+      });
     }, toolTimeout);
 
     pendingCalls.set(requestId, (payload) => {
       clearTimeout(timeout);
+      if (progressInterval) clearInterval(progressInterval);
       if (payload?.error) {
         logError("Tool call returned error", { name, requestId, error: payload.error });
       } else {
@@ -982,13 +985,14 @@ function sendToolCall(name, args) {
         JSON.stringify({
           type: "tool_call",
           requestId,
-          payload: { name, args },
+          payload: { name, args: toolArgs },
         })
       );
       logDebug("Message sent to daemon", { requestId, name });
     } catch (e) {
       logError("Failed to send message to daemon", e.message);
       clearTimeout(timeout);
+      if (progressInterval) clearInterval(progressInterval);
       pendingCalls.delete(requestId);
       resolve({ error: `Failed to send to daemon: ${e.message}` });
     }
@@ -1260,15 +1264,38 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools: TOOLS };
 });
 
+// Notify client when tool set expands
+async function notifyToolsChanged() {
+  try {
+    await server.notification({
+      method: "notifications/tools/list_changed",
+    });
+  } catch {}
+}
+
+const RESOURCES = [
+  {
+    uri: "openweb://docs/automation-guide",
+    name: "OpenWeb Automation Guide & Cheat Sheet",
+    mimeType: "text/markdown",
+    description: "A comprehensive, AI-native guide detailing browser automation decision-making, visual priorities, and coordinate self-healing recovery strategies."
+  },
+  {
+    uri: "openweb://status",
+    name: "Current Daemon Status",
+    mimeType: "application/json",
+    description: "Live connection status, metrics, and error log from the daemon."
+  },
+  {
+    uri: "openweb://tools/list",
+    name: "All Available Tools",
+    mimeType: "text/markdown",
+    description: "Full list of every tool with description and input schema."
+  },
+];
+
 server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-  resources: [
-    {
-      uri: "openweb://docs/automation-guide",
-      name: "OpenWeb Automation Guide & Cheat Sheet",
-      mimeType: "text/markdown",
-      description: "A comprehensive, AI-native guide detailing browser automation decision-making, visual priorities, and coordinate self-healing recovery strategies."
-    }
-  ]
+  resources: RESOURCES,
 }));
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
@@ -1292,6 +1319,35 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       ]
     };
   }
+
+  if (uri === "openweb://status") {
+    const status = ws?.readyState === WebSocket.OPEN ? "connected" : "disconnected";
+    return {
+      contents: [{
+        uri: "openweb://status",
+        mimeType: "application/json",
+        text: JSON.stringify({
+          status,
+          daemonUrl: DAEMON_URL,
+          pendingCalls: pendingCalls.size,
+          uptime: status === "connected" ? "connected" : "disconnected",
+          toolCount: TOOLS.length,
+        }, null, 2),
+      }]
+    };
+  }
+
+  if (uri === "openweb://tools/list") {
+    const toolList = TOOLS.map(t => `- **${t.name}**: ${t.description.split('\n')[0]}`).join('\n');
+    return {
+      contents: [{
+        uri: "openweb://tools/list",
+        mimeType: "text/markdown",
+        text: `# All OpenWeb Tools (${TOOLS.length})\n\n${toolList}`,
+      }]
+    };
+  }
+
   throw new Error(`Resource not found: ${uri}`);
 });
 
@@ -1319,10 +1375,24 @@ server.setRequestHandler(SubscribeRequestSchema, async (request) => {
 
 const PROMPTS = [
   {
-    name: "summarize_page",
-    description: "Get a structured summary of the current page content",
+    name: "extract_and_summarize",
+    description: "Extract page content as markdown and produce a structured summary",
     arguments: [
       { name: "detail", description: "Summary detail level: 'brief', 'normal', 'detailed'", required: false },
+    ],
+  },
+  {
+    name: "fill_form_and_submit",
+    description: "Complete a multi-field form and submit it — use when the user asks to fill a form with multiple fields",
+    arguments: [
+      { name: "formDescription", description: "What the form is for (e.g. 'login', 'registration', 'search')", required: true },
+    ],
+  },
+  {
+    name: "check_accessibility",
+    description: "Run an accessibility audit and report findings for the current page",
+    arguments: [
+      { name: "severity", description: "Minimum severity to report: 'error', 'warning', 'notice'", required: false },
     ],
   },
   {
@@ -1337,13 +1407,6 @@ const PROMPTS = [
     description: "Analyze forms on the current page and suggest fill values",
     arguments: [],
   },
-  {
-    name: "check_accessibility",
-    description: "Run a quick accessibility check on the current page and report issues",
-    arguments: [
-      { name: "severity", description: "Minimum severity level: 'error', 'warning', 'notice'", required: false },
-    ],
-  },
 ];
 
 server.setRequestHandler(ListPromptsRequestSchema, async () => ({
@@ -1356,7 +1419,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
   if (!prompt) throw new Error(`Prompt not found: ${name}`);
 
   switch (name) {
-    case "summarize_page": {
+    case "extract_and_summarize": {
       const detail = args?.detail || "normal";
       return {
         messages: [
@@ -1364,21 +1427,21 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             role: "user",
             content: {
               type: "text",
-              text: `Please summarize the current page. First call get_markdown() to get the page content, then provide a ${detail} summary covering: main topic, key points, structure, and any actionable items.`,
+              text: `Please summarize the current page. Call get_markdown() to get the page content, then provide a ${detail} summary covering: main topic, key points, structure, and any actionable items.`,
             },
           },
         ],
       };
     }
-    case "extract_data": {
-      const target = args?.target || "all";
+    case "fill_form_and_submit": {
+      const formDesc = args?.formDescription || "the form";
       return {
         messages: [
           {
             role: "user",
             content: {
               type: "text",
-              text: `Extract structured data from the current page. Target: ${target}. Use table_extract() for tables, get_text() for lists, and organize the results in a structured JSON format.`,
+              text: `Fill and submit ${formDesc} on the current page. First call snapshot() to identify form fields by @e refs. Use fill() for standard inputs. If a field rejects fill(), fall back to humanize(). After filling all fields, find and click the submit button. Finally call wait(type: 'network_idle') and screenshot() to verify the result.`,
             },
           },
         ],
@@ -1458,24 +1521,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   logInfo("MCP tool call received", { name, args });
 
+  const nextStep = NEXT_STEP_HINTS[name];
+
   if (args) {
     healSnapshotRefs(args);
   }
 
   if (name === "discover_tools") {
     const category = args.category || "all";
-    const sessionTools = ["state"];
-    const networkTools = ["network"];
-    const diagnosticsTools = ["console", "dialog", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations", "history"];
-    const auditsTools = ["audit", "security_scan", "coverage"];
-    const advancedTools = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "swagger_parser", "color_palette", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab"];
 
     const categories = {
-      session: sessionTools,
-      network: networkTools,
-      diagnostics: diagnosticsTools,
-      audits: auditsTools,
-      advanced: advancedTools
+      session: SESSION_TOOLS,
+      network: NETWORK_TOOLS,
+      diagnostics: DIAGNOSTICS_TOOLS,
+      audits: AUDITS_TOOLS,
+      advanced: ADVANCED_TOOLS,
     };
 
     if (category === "all") {
@@ -1493,9 +1553,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         responseMarkdown += `\n`;
       }
       
-      return {
-        content: [{ type: "text", text: responseMarkdown }]
-      };
+      return successResult(responseMarkdown);
     }
 
     let targetTools = categories[category] || [];
@@ -1511,9 +1569,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
     }
 
-    return {
-      content: [{ type: "text", text: responseMarkdown }]
-    };
+    return successResult(responseMarkdown);
   }
 
   if (name === "speech_to_text") {
@@ -1521,18 +1577,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const result = await handleSpeechToText(args || {});
     if (result.error) {
       logError("speech_to_text handler returned error", result.error);
-      return {
-        content: [{ type: "text", text: `Error: ${result.error}` }],
-        isError: true,
-      };
+      return errorResult(`Error: ${result.error}`, nextStep);
     }
     logInfo("speech_to_text handler succeeded");
     const output = result.translated
       ? `=== Original ===\n${result.text}\n\n=== Translated ===\n${result.translated}`
       : result.text;
-    return {
-      content: [{ type: "text", text: output }],
-    };
+    return successResult(output, { text: result.text, translated: result.translated, detectedLanguage: result.detected_language || result.detectedLanguage });
   }
 
   if (name === "translate") {
@@ -1540,63 +1591,118 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const result = await handleTranslate(args || {});
     if (result.error) {
       logError("translate handler returned error", result.error);
-      return {
-        content: [{ type: "text", text: `Error: ${result.error}` }],
-        isError: true,
-      };
+      return errorResult(`Error: ${result.error}`, nextStep);
     }
     logInfo("translate handler succeeded");
-    return {
-      content: [{ type: "text", text: result.text }],
-    };
+    return successResult(result.text, { text: result.text, detectedLanguage: result.detected_language || result.detectedLanguage });
   }
 
-  const result = await sendToolCall(name, args || {});
+  // ── Macro tool: extract_page ─────────────────────────────────────────
+  if (name === "extract_page") {
+    logInfo("Macro: extract_page", args);
+    const tabId = args?.tabId;
+    const snapResult = await sendToolCall("snapshot", { selector: args?.selector, tabId });
+    if (snapResult.error) return errorResult(`snapshot failed: ${snapResult.error}`, "Ensure the page is loaded. Try navigate() first.");
+    const mdResult = await sendToolCall("get_markdown", { selector: args?.selector, tabId });
+    if (mdResult.error) return errorResult(`get_markdown failed: ${mdResult.error}`, "The page may be empty or unloaded.");
+    return successResult(
+      `=== Snapshot (${snapResult.data?.refCount || 0} refs) ===\n${snapResult.data?.tree || ""}\n\n=== Markdown ===\n${mdResult.data || ""}`,
+      {
+        snapshot: { refCount: snapResult.data?.refCount, truncated: snapResult.data?.truncated, tree: snapResult.data?.tree },
+        markdown: { text: mdResult.data },
+      }
+    );
+  }
+
+  // ── Macro tool: click_and_verify ─────────────────────────────────────
+  if (name === "click_and_verify") {
+    logInfo("Macro: click_and_verify", args);
+    const clickResult = await sendToolCall("click", { selector: args.selector, mode: args.mode || "synthetic", tabId: args?.tabId });
+    if (clickResult.error) return errorResult(`click failed: ${clickResult.error}`, nextStep);
+    const waitFor = args.waitFor || "network_idle";
+    if (waitFor !== "none") {
+      await sendToolCall("wait", { type: waitFor, tabId: args?.tabId }).catch(() => {});
+    }
+    const screenshotResult = await sendToolCall("screenshot", { tabId: args?.tabId });
+    if (screenshotResult?.data?.data) {
+      const mimeType = (screenshotResult.data.format || "jpeg") === "png" ? "image/png" : "image/jpeg";
+      return {
+        content: [
+          { type: "text", text: `Clicked ${args.selector} and waited for ${waitFor}.` },
+          { type: "image", data: screenshotResult.data.data, mimeType },
+        ],
+      };
+    }
+    return successResult(`Clicked ${args.selector} and waited for ${waitFor}.`);
+  }
+
+  // Idempotency key: if provided and already processed, replay cached result
+  if (args?.idempotencyKey) {
+    const cached = idempotencyCache.get(args.idempotencyKey);
+    if (cached) {
+      logInfo("Idempotency cache hit", { name, key: args.idempotencyKey.substring(0, 8) });
+      return cached;
+    }
+  }
+
+  // Progress token for long operations
+  const progressToken = request.params?.meta?.progressToken || null;
+
+  const result = await sendToolCall(name, args || {}, progressToken);
 
   if (result.error) {
     logError("Tool call returned error", { name, error: result.error });
-    return {
-      content: [{ type: "text", text: `Error: ${result.error}` }],
-      isError: true,
-    };
+    const hint = result.isRetrySafe === false
+      ? `${nextStep || ""} ⚠ This operation left side effects — do NOT retry automatically.`
+      : `${nextStep || ""} ✅ It is safe to retry this operation.`;
+    return errorResult(`Error: ${result.error}`, hint);
   }
 
   const data = result.data;
 
   if (name === "snapshot" && data?.tree) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: data.tree,
-        },
-      ],
+    const snapshotResult = {
+      content: [{ type: "text", text: data.tree }],
+      structuredContent: {
+        format: "snapshot",
+        refCount: data.refCount,
+        maxLength: data.maxLength,
+        truncated: data.truncated,
+        selector: data.selector,
+        suggestedNextTool: "click or fill with @e refs from this snapshot",
+      },
     };
+    if (args?.idempotencyKey) idempotencyCache.set(args.idempotencyKey, snapshotResult);
+    return snapshotResult;
   }
 
   if (name === "screenshot" && data?.data) {
     const format = data.format || "jpeg";
     const mimeType = format === "png" ? "image/png" : "image/jpeg";
-    return {
-      content: [
-        {
-          type: "image",
-          data: data.data,
-          mimeType,
-        },
-      ],
+    const screenshotResult = {
+      content: [{ type: "image", data: data.data, mimeType }],
+      structuredContent: {
+        format,
+        width: data.width,
+        height: data.height,
+        pageTitle: data.pageTitle,
+      },
     };
+    if (args?.idempotencyKey) idempotencyCache.set(args.idempotencyKey, screenshotResult);
+    return screenshotResult;
   }
 
   if (name === "save_as_pdf" && data?.data) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `PDF exported successfully (${data.dataLength} bytes, page: "${data.pageTitle || "untitled"}"). Base64 data length: ${data.dataLength}`,
-        },
-      ],
+    const pdfResult = {
+      content: [{ type: "text", text: `PDF exported (${data.dataLength} bytes, page: "${data.pageTitle || "untitled"}").` }],
+      structuredContent: {
+        dataLength: data.dataLength,
+        pageTitle: data.pageTitle,
+        format: "pdf",
+      },
     };
+    if (args?.idempotencyKey) idempotencyCache.set(args.idempotencyKey, pdfResult);
+    return pdfResult;
   }
 
   const text =
@@ -1610,11 +1716,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     "form_fill", "responsive_test",
   ]);
 
-  const output = { content: [{ type: "text", text }] };
+  const structured = STRUCTURED_RESULT_TOOLS.has(name) && typeof data === "object" && data !== null
+    ? data
+    : undefined;
 
-  if (STRUCTURED_RESULT_TOOLS.has(name) && typeof data === "object" && data !== null) {
-    output.structuredContent = data;
-  }
+  const output = successResult(text, structured);
+
+  if (args?.idempotencyKey) idempotencyCache.set(args.idempotencyKey, output);
 
   return output;
 });
@@ -1658,6 +1766,6 @@ if (transport === "sse") {
 } else {
   const stdioTransport = new StdioServerTransport();
   server.connect(stdioTransport);
-  console.error("[mcp] WebBridge Open MCP server running (stdio transport)");
+  console.error("[mcp] OpenWeb MCP server running (stdio transport)");
   console.error("[mcp] Daemon URL:", DAEMON_URL);
 }

@@ -9,10 +9,18 @@ const statsEl = document.getElementById("stats");
 const filterInput = document.getElementById("filter-input");
 const clearBtn = document.getElementById("clear-btn");
 
+const MAX_CALLS = 200;
 let calls = [];
 let totalCalls = 0;
 let totalErrors = 0;
-let filterText = "";
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
 
 // Connect to background service worker for real-time updates
 const port = chrome.runtime.connect({ name: "devtools-panel" });
@@ -21,14 +29,12 @@ port.onMessage.addListener((msg) => {
   if (msg.type === "TOOL_CALL_EVENT") {
     addCall(msg.data);
   } else if (msg.type === "METRICS_SNAPSHOT") {
-    // Initial load of recent calls
     for (const entry of msg.data.actionLog || []) {
       addCall(entry, true);
     }
   }
 });
 
-// Request initial metrics
 port.postMessage({ type: "GET_METRICS" });
 
 function addCall(entry, prepend) {
@@ -48,13 +54,19 @@ function addCall(entry, prepend) {
     calls.unshift(call);
   }
 
+  // Cap array to prevent unbounded growth
+  if (calls.length > MAX_CALLS) {
+    calls.length = MAX_CALLS;
+    while (callList.children.length > MAX_CALLS) {
+      callList.removeChild(callList.lastChild);
+    }
+  }
+
   updateStats();
   renderCall(call, prepend);
 }
 
 function renderCall(call, append) {
-  if (filterText && !call.name.toLowerCase().includes(filterText)) return;
-
   const div = document.createElement("div");
   div.className = "call-entry";
   div.dataset.name = call.name.toLowerCase();
@@ -97,18 +109,13 @@ function updateStats() {
   statsEl.textContent = `${totalCalls} calls · ${totalErrors} errors`;
 }
 
-function rerender() {
-  callList.innerHTML = "";
-  for (const call of calls) {
-    renderCall(call, true);
+// Filter — toggle display via CSS, no DOM rebuild
+filterInput.addEventListener("input", debounce(() => {
+  const f = filterInput.value.toLowerCase();
+  for (const el of callList.children) {
+    el.style.display = el.dataset.name.includes(f) ? "" : "none";
   }
-}
-
-// Filter
-filterInput.addEventListener("input", () => {
-  filterText = filterInput.value.toLowerCase();
-  rerender();
-});
+}, 100));
 
 // Clear
 clearBtn.addEventListener("click", () => {

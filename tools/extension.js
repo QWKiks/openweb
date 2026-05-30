@@ -60,7 +60,7 @@ export class ExtensionTool {
     if (!id) throw new Error("id is required for disable");
     // Prevent disabling self
     if (id === chrome.runtime.id) {
-      throw new Error("Cannot disable the WebBridge extension itself");
+      throw new Error("Cannot disable the OpenWeb extension itself");
     }
     await chrome.management.setEnabled(id, false);
     return { success: true, id, enabled: false };

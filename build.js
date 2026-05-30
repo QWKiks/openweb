@@ -44,6 +44,9 @@ cpSync(SRC, OUT, { recursive: true, filter: (src) => {
   if (base === "node_modules") return false;
   if (base === "dist") return false;
   if (base === ".git") return false;
+  if (base === ".venv") return false;
+  if (base === ".vscode") return false;
+  if (base === ".windsurf") return false;
   return true;
 }});
 

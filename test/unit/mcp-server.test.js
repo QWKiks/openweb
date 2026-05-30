@@ -13,6 +13,7 @@ const EXPECTED_TOOLS = [
   "dom_mutations", "service_worker", "swagger_parser", "color_palette",
   "form_fill", "dismiss_overlay", "wait_stale", "find_by_text",
   "history", "find_tab", "responsive_test", "discover_tools",
+  "extract_page", "click_and_verify",
 ];
 
 const READ_ONLY_TOOLS = [
@@ -22,6 +23,7 @@ const READ_ONLY_TOOLS = [
   "shadow_dom", "iframe_list", "dom_mutations", "service_worker",
   "swagger_parser", "color_palette", "bookmark", "extension",
   "console", "design_clone", "responsive_test", "discover_tools",
+  "extract_page",
 ];
 
 const DESTRUCTIVE_TOOLS = ["close_tab", "dismiss_overlay"];
@@ -31,12 +33,13 @@ const IDEMPOTENT_TOOLS = [
   "get_element_bounds", "hover", "scroll", "wait", "wait_stale",
   "save_as_pdf", "send_keys", "select", "dismiss_overlay", "find_by_text",
   "find_tab", "history", "dialog", "emulate",
-  "drag_drop", "form_fill",
+  "drag_drop", "form_fill", "extract_page", "click_and_verify",
 ];
 
 const OPEN_WORLD_TOOLS = [
   "navigate", "click", "fill", "humanize", "upload",
   "network", "speech_to_text", "translate", "security_scan",
+  "extract_page", "click_and_verify",
 ];
 
 const STRUCTURED_RESULT_TOOLS = [
@@ -59,7 +62,7 @@ const EXPECTED_RESOURCE_TEMPLATES = [
 
 describe("MCP Server - Tool Definitions", () => {
   it("should have the correct number of tools", () => {
-    assert.strictEqual(EXPECTED_TOOLS.length, 47);
+    assert.strictEqual(EXPECTED_TOOLS.length, 49);
   });
 
   it("should have unique tool names", () => {

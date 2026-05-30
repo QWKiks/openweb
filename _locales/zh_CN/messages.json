@@ -1,6 +1,6 @@
 {
   "description": {
-    "message": "WebBridge Open — 开源的 AI Agent 浏览器插件，让 AI 帮你打开网页、点击按钮、填写表单、提取信息，自动化各种繁琐的网页操作。"
+    "message": "开源的 AI Agent 浏览器插件，让 AI 帮你打开网页、点击按钮、填写表单、提取信息，自动化各种繁琐的网页操作。"
   },
   "readyMessage":      { "message": "已连接" },
   "notReadyMessage":   { "message": "未连接" },

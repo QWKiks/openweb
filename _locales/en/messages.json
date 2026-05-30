@@ -1,6 +1,6 @@
 {
   "description": {
-    "message": "WebBridge Open — open-source browser extension for AI agents. AI can open pages, click, fill forms, extract info, and automate web tasks.",
+    "message": "Open-source browser extension for AI agents. AI can open pages, click, fill forms, extract info, and automate web tasks.",
     "description": "Extension description shown in Chrome Web Store and extension management page."
   },
   "readyMessage": {

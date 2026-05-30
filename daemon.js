@@ -1,5 +1,5 @@
 /**
- * WebBridge Open — WebSocket Daemon
+ * OpenWeb — WebSocket Daemon
  *
  * Start:  node daemon.js
  * Default: ws://127.0.0.1:10086/ws

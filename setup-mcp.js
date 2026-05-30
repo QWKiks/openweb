@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * WebBridge Open — MCP Setup Script
+ * OpenWeb — MCP Setup Script
  *
  * Automatically registers the MCP server with AI coding tools.
  *
@@ -29,7 +29,7 @@ const PROJECT_DIR = import.meta.dirname;
 function makeMcpConfig() {
   return {
     mcpServers: {
-      webbridge: {
+      openweb: {
         command: "node",
         args: [MCP_SERVER_PATH],
         env: {},
@@ -49,7 +49,7 @@ const TOOLS = {
     add: () => {
       // Claude Code CLI: claude mcp add -s user (global scope)
       try {
-        execSync(`claude mcp add webbridge -s user -- node "${MCP_SERVER_PATH}"`, { stdio: "inherit" });
+        execSync(`claude mcp add openweb -s user -- node "${MCP_SERVER_PATH}"`, { stdio: "inherit" });
         console.log("  ✓ Added via 'claude mcp add -s user' (global)");
         return true;
       } catch (e) {
@@ -59,7 +59,7 @@ const TOOLS = {
       }
     },
     remove: () => {
-      try { execSync("claude mcp remove webbridge -s user", { stdio: "pipe" }); } catch {}
+      try { execSync("claude mcp remove openweb -s user", { stdio: "pipe" }); } catch {}
       console.log("  ✓ Removed from Claude Code (global)");
     },
   },
@@ -165,7 +165,7 @@ const TOOLS = {
       // Gemini CLI uses .gemini/settings.json with mcpServers
       // Try gemini mcp add first, then fallback to manual config
       try {
-        execSync(`gemini mcp add webbridge -s user -- node "${MCP_SERVER_PATH}"`, { stdio: "inherit" });
+        execSync(`gemini mcp add openweb -s user -- node "${MCP_SERVER_PATH}"`, { stdio: "inherit" });
         console.log("  ✓ Added via 'gemini mcp add' (global)");
         return true;
       } catch {
@@ -180,7 +180,7 @@ const TOOLS = {
       }
     },
     remove: () => {
-      try { execSync("gemini mcp remove webbridge -s user", { stdio: "pipe" }); } catch {}
+      try { execSync("gemini mcp remove openweb -s user", { stdio: "pipe" }); } catch {}
       const projectConfig = join(PROJECT_DIR, ".gemini", "settings.json");
       removeMcpEntry(projectConfig);
       const globalConfig = join(homedir(), ".gemini", "settings.json");
@@ -234,7 +234,7 @@ function writeClaudeGlobalConfig(configFile) {
     }
 
     config.mcpServers = config.mcpServers || {};
-    config.mcpServers.webbridge = {
+    config.mcpServers.openweb = {
       type: "stdio",
       command: "node",
       args: [MCP_SERVER_PATH],
@@ -260,7 +260,7 @@ function writeGlobalConfig(configDir, configFile) {
     }
 
     config.mcpServers = config.mcpServers || {};
-    config.mcpServers.webbridge = {
+    config.mcpServers.openweb = {
       command: "node",
       args: [MCP_SERVER_PATH],
     };
@@ -285,7 +285,7 @@ function writeMcpJson(filePath) {
     }
 
     config.mcpServers = config.mcpServers || {};
-    config.mcpServers.webbridge = {
+    config.mcpServers.openweb = {
       command: "node",
       args: [MCP_SERVER_PATH],
     };
@@ -308,7 +308,7 @@ function writeOpenCodeConfig(filePath) {
     }
 
     config.mcp = config.mcp || {};
-    config.mcp.webbridge = {
+    config.mcp.openweb = {
       type: "local",
       command: ["node", MCP_SERVER_PATH],
       enabled: true,
@@ -328,8 +328,8 @@ function removeOpenCodeEntry(filePath) {
   if (!existsSync(filePath)) return;
   try {
     let config = JSON.parse(readFileSync(filePath, "utf8"));
-    if (config.mcp?.webbridge) {
-      delete config.mcp.webbridge;
+    if (config.mcp?.openweb) {
+      delete config.mcp.openweb;
       writeFileSync(filePath, JSON.stringify(config, null, 2));
     }
   } catch {}
@@ -339,8 +339,8 @@ function removeMcpEntry(filePath) {
   if (!existsSync(filePath)) return;
   try {
     let config = JSON.parse(readFileSync(filePath, "utf8"));
-    if (config.mcpServers?.webbridge) {
-      delete config.mcpServers.webbridge;
+    if (config.mcpServers?.openweb) {
+      delete config.mcpServers.openweb;
       writeFileSync(filePath, JSON.stringify(config, null, 2));
     }
   } catch {}
@@ -357,7 +357,7 @@ function writeGeminiSettings(filePath) {
     }
 
     config.mcpServers = config.mcpServers || {};
-    config.mcpServers.webbridge = {
+    config.mcpServers.openweb = {
       command: "node",
       args: [MCP_SERVER_PATH],
     };
@@ -378,11 +378,11 @@ function writeCodexTomlConfig(configDir, configFile) {
       content = readFileSync(configFile, "utf8");
     }
 
-    // Remove existing [mcp_servers.webbridge] section
-    content = content.replace(/\n?\[mcp_servers\.webbridge\][^\[]*(?=\n\[|$)/g, "");
+    // Remove existing [mcp_servers.openweb] section
 
-    // Append new section
-    const section = `\n[mcp_servers.webbridge]\ncommand = "node"\nargs = ["${MCP_SERVER_PATH}"]\n`;
+    content = content.replace(/\n?\[mcp_servers\.openweb\][^\[]*(?=\n\[|$)/g, "");
+
+    const section = `\n[mcp_servers.openweb]\ncommand = "node"\nargs = ["${MCP_SERVER_PATH}"]\n`;
 
     content = content.trimEnd() + "\n" + section;
     writeFileSync(configFile, content);
@@ -398,7 +398,7 @@ function removeCodexTomlEntry(configFile) {
   if (!existsSync(configFile)) return;
   try {
     let content = readFileSync(configFile, "utf8");
-    content = content.replace(/\n?\[mcp_servers\.webbridge\][^\[]*(?=\n\[|$)/g, "");
+    content = content.replace(/\n?\[mcp_servers\.openweb\][^\[]*(?=\n\[|$)/g, "");
     writeFileSync(configFile, content.trimEnd() + "\n");
   } catch {}
 }
@@ -408,7 +408,7 @@ function removeCodexTomlEntry(configFile) {
 const args = process.argv.slice(2);
 
 if (args.includes("--remove")) {
-  console.log("Removing WebBridge MCP from all tools...\n");
+  console.log("Removing OpenWeb MCP from all tools...\n");
   for (const [, tool] of Object.entries(TOOLS)) {
     tool.remove();
   }
@@ -421,7 +421,7 @@ const targetTools = args.includes("--all")
 
 if (targetTools.length === 0) {
   // Interactive mode
-  console.log("\n  WebBridge Open — MCP Setup\n");
+  console.log("\n  OpenWeb — MCP Setup\n");
   console.log("  Detected tools:\n");
 
   const detected = [];
@@ -448,7 +448,7 @@ if (targetTools.length === 0) {
   process.exit(0);
 }
 
-console.log("\n  WebBridge Open — MCP Setup\n");
+console.log("\n  OpenWeb — MCP Setup\n");
 
 for (const key of targetTools) {
   const tool = TOOLS[key];

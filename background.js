@@ -1,5 +1,5 @@
 /**
- * WebBridge Open — Background Service Worker
+ * OpenWeb — Background Service Worker
  * Entry point that initializes all tools, the WebSocket client,
  * and message handlers for the popup.
  */
@@ -14,7 +14,6 @@ import { NetworkTool } from "./tools/network.js";
 import { SnapshotTool } from "./tools/snapshot.js";
 import { ClickTool } from "./tools/click.js";
 import { FillTool } from "./tools/fill.js";
-import { KeyTypeTool } from "./tools/key-type.js";
 import { SendKeysTool } from "./tools/send-keys.js";
 import { ScreenshotTool } from "./tools/screenshot.js";
 import { SaveAsPdfTool } from "./tools/save-as-pdf.js";
@@ -25,7 +24,6 @@ import { HoverTool } from "./tools/hover.js";
 import { SelectTool } from "./tools/select.js";
 import { GetTextTool } from "./tools/get-text.js";
 import { HistoryTool } from "./tools/history.js";
-import { ViewportTool } from "./tools/viewport.js";
 import { ConsoleTool } from "./tools/console.js";
 import { DialogTool } from "./tools/dialog.js";
 import { EmulateTool } from "./tools/emulate.js";
@@ -66,7 +64,6 @@ register(new NetworkTool());
 register(new SnapshotTool());
 register(new ClickTool());
 register(new FillTool());
-register(new KeyTypeTool());
 register(new SendKeysTool());
 register(new ScreenshotTool());
 register(new SaveAsPdfTool());
@@ -78,8 +75,7 @@ register(new SelectTool());
 register(new GetTextTool());
 register(new CookieTool());
 register(new HistoryTool());
-register(new ViewportTool());
-register(new ConsoleTool());
+  register(new ConsoleTool());
 register(new DialogTool());
 register(new EmulateTool());
 register(new SessionTool());
