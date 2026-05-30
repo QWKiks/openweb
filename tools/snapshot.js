@@ -22,7 +22,7 @@ export class SnapshotTool {
     await attach(tab.id);
     clearRefs();
 
-    let allowedBackendIds = null;
+    let result = null;
     if (selector) {
       try {
         const doc = await sendCommand("DOM.getDocument", { depth: -1, pierce: true });
@@ -35,50 +35,18 @@ export class SnapshotTool {
         }
 
         if (targetNodeId) {
-          const descRes = await sendCommand("DOM.describeNode", { nodeId: targetNodeId });
-          const targetBackendId = descRes.node?.backendNodeId;
-
-          if (targetBackendId) {
-            const flatDoc = await sendCommand("DOM.getFlattenedDocument", { depth: -1, pierce: true });
-            const nodeMap = new Map();
-            for (const n of flatDoc.nodes) {
-              nodeMap.set(n.nodeId, n);
-            }
-
-            const childrenMap = new Map();
-            
-            for (const node of flatDoc.nodes) {
-              if (node.parentId) {
-                const parentNode = nodeMap.get(node.parentId);
-                if (parentNode) {
-                  const arr = childrenMap.get(parentNode.backendNodeId) || [];
-                  arr.push(node.backendNodeId);
-                  childrenMap.set(parentNode.backendNodeId, arr);
-                }
-              }
-            }
-
-            const descendants = new Set();
-            const collect = (backendId) => {
-              descendants.add(backendId);
-              const children = childrenMap.get(backendId) || [];
-              for (const childId of children) {
-                if (!descendants.has(childId)) collect(childId);
-              }
-            };
-            
-            collect(targetBackendId);
-            allowedBackendIds = descendants;
-          }
+          result = await sendCommand("Accessibility.getPartialAXTree", { nodeId: targetNodeId });
         }
       } catch (err) {
-        // Fallback if DOM tree traversal fails, just skip filtering and capture full tree
-        console.warn(`[Snapshot Filter] Traversal failed: ${err.message}. Capturing full tree.`);
+        // Fallback if partial AX tree retrieval fails, capture full tree
+        console.warn(`[Snapshot Filter] getPartialAXTree failed: ${err.message}. Capturing full tree.`);
       }
     }
 
-    const result = await sendCommand("Accessibility.getFullAXTree");
-    let tree = this.buildTree(result.nodes, allowedBackendIds, interactiveOnly);
+    if (!result) {
+      result = await sendCommand("Accessibility.getFullAXTree");
+    }
+    let tree = this.buildTree(result.nodes, null, interactiveOnly);
     // Batch-save all refs to session storage in one write (instead of per-createRef)
     saveRefs();
     let treeStr;

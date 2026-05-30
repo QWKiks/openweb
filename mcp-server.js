@@ -23,6 +23,7 @@
  */
 
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -142,12 +143,14 @@ const TOOLS = [
   },
   {
     name: "click",
-    description: "Click an element. RECOMMENDATION: Always use standard DOM click (physical: false, default) first. Switch to 'physical: true' ONLY if synthetic click fails to trigger an event, for Canvas/SVG elements, or when custom event listeners block standard clicks. For pages with highly sensitive event listeners or telemetry, use humanize(cmd: mouse_move, click: true) instead of click(physical: true).",
+    description: "Click an element on the page. RECOMMENDATION: Prefer standard DOM click (mode: 'synthetic', default). Switch to mode: 'physical' for Canvas/SVG elements, or when custom event listeners block standard clicks. Use mode: 'humanized' for highly interactive elements or telemetry-heavy interfaces to slide the cursor naturally before clicking.",
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector, @e ref, or semantic selector of the element to click. Examples: '@e5' (snapshot reference), 'button#submit' (standard CSS), 'semantic:Log In button' (semantic)" },
-        physical: { type: "boolean", description: "Perform a physical mouse click using CDP input events instead of a DOM-level synthetic click. (default: false)", default: false },
+        selector: { type: "string", description: "CSS selector, @e ref, or semantic selector of the element to click. Examples: '@e5' (snapshot reference), 'button#submit'." },
+        mode: { type: "string", description: "Click mode: 'synthetic' (default, DOM click), 'physical' (native browser event click), or 'humanized' (natural cursor movement + physical click)", enum: ["synthetic", "physical", "humanized"], default: "synthetic" },
+        steps: { type: "number", description: "Bezier mouse curve movement steps for humanized mode (default: 15)", default: 15 },
+        physical: { type: "boolean", description: "Deprecated: use mode: 'physical' instead.", default: false },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["selector"],
@@ -208,14 +211,30 @@ const TOOLS = [
   },
   {
     name: "network",
-    description: "Capture, list, or inspect HTTP network requests, and manage ad/tracker blocking. RECOMMENDATION: Use `cmd: block_ads` at the start of navigation to block heavy ads/analytics trackers natively via CDP. This speeds up rendering and page interaction by 300%!",
+    description: "Capture, list, inspect HTTP requests, intercept network activity, trace redirects, monitor WebSockets, or discover APIs. RECOMMENDATION: Use cmd: block_ads to block heavy trackers and speed up rendering. Use cmd: intercept to block, redirect, mock, or modify network requests.",
     inputSchema: {
       type: "object",
       properties: {
-        cmd: { type: "string", description: "Sub-command: list, capture, inspect, or block_ads", enum: ["list", "capture", "inspect", "block_ads"] },
-        enable: { type: "boolean", description: "Enable (true) or disable (false) ad/tracker blocking (only for block_ads cmd, default: true)", default: true },
-        filter: { type: "string", description: "Filter string to match URLs (only for list cmd)" },
-        requestId: { type: "string", description: "Request ID to retrieve full response body (only for detail/inspect cmd)" },
+        cmd: {
+          type: "string",
+          description: "Network command to run: 'start' (start capture), 'stop' (stop capture), 'list' (list requests), 'detail' (inspect request), 'block_ads' (block ads/trackers), 'intercept' (modify/mock requests), 'har_export' (export HAR), 'websocket_monitor' (WebSocket logs), 'redirect_chain' (trace redirects), 'api_discovery' (find endpoints)",
+          enum: ["start", "capture", "stop", "list", "detail", "inspect", "block_ads", "intercept", "har_export", "websocket_monitor", "redirect_chain", "api_discovery"]
+        },
+        enable: { type: "boolean", description: "Enable or disable ad blocker (for block_ads cmd, default: true)", default: true },
+        filter: { type: "string", description: "Url filter match (for list cmd)" },
+        requestId: { type: "string", description: "Request ID for detailed inspection (for detail/inspect cmd)" },
+        action: { type: "string", description: "Sub-action: 'start'/'stop'/'add_rule'/'remove_rule'/'list_rules' (for intercept cmd) or 'capture'/'read'/'clear' (for websocket_monitor)", enum: ["start", "stop", "add_rule", "remove_rule", "list_rules", "capture", "read", "clear"] },
+        ruleAction: { type: "string", description: "Interception rule behavior: 'block', 'redirect', 'modify', 'mock'", enum: ["block", "redirect", "modify", "mock"] },
+        pattern: { type: "string", description: "Request pattern to match/intercept (for intercept add_rule)" },
+        redirectUrl: { type: "string", description: "Interception redirect URL" },
+        modifyUrl: { type: "string", description: "Interception modified request URL" },
+        headers: { type: "object", description: "Interception modified request headers" },
+        mockBody: { type: "string", description: "Interception mock response body text" },
+        mockHeaders: { type: "object", description: "Interception mock response headers" },
+        responseCode: { type: "number", description: "Interception response code (for mock/redirect, default: 200/302)" },
+        ruleId: { type: "string", description: "Interception rule ID to remove" },
+        maxMessages: { type: "number", description: "Maximum messages to read/capture (for websocket_monitor, default: 100)", default: 100 },
+        url: { type: "string", description: "Target URL to trace redirect chain for (for redirect_chain cmd)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
@@ -267,18 +286,20 @@ const TOOLS = [
   },
   {
     name: "get_markdown",
-    description: "Extract the active page or a targeted element's content as clean, semantic Markdown. RECOMMENDATION: Use this tool *instead* of get_text(format: 'text') or get_text(format: 'html') when you need to read structured content (articles, documentation, tables, manuals) while keeping list formatting, headers, table grids, and image/link targets perfectly preserved. This saves up to 80% tokens compared to raw HTML while giving high reading comprehension for the model. PREFER get_markdown over get_text for ANY structured content; use get_text ONLY for plain text extraction or when you need raw HTML.",
+    description: "Extract the active page or a targeted element's content as clean, semantic Markdown, or extract structured table data as a JSON array. RECOMMENDATION: Use 'as: \"markdown\"' (default) *instead* of get_text(format: 'text') or get_text(format: 'html') when you need to read structured content (articles, documentation, manuals) while keeping list formatting, headers, table grids, and image/link targets perfectly preserved. Switch to 'as: \"table\"' to extract high-fidelity tabular data from HTML tables with column headers and cell links intact.",
     inputSchema: {
       type: "object",
       properties: {
-        selector: { type: "string", description: "CSS selector or @e ref of the DOM element to convert to Markdown. Examples: '@e12' (snapshot ref), 'article.post-content' (CSS), '#main-article' (CSS). (default: 'body')", default: "body" },
+        selector: { type: "string", description: "CSS selector or @e ref of the DOM element to target. Examples: '@e12' (snapshot ref), 'article.post-content' (CSS). (default: 'body' for markdown, 'table' for table)", default: "body" },
+        as: { type: "string", description: "Extraction format: 'markdown' (default, clean Markdown representation) or 'table' (structured JSON array of extracted table data)", enum: ["markdown", "table"], default: "markdown" },
+        maxRows: { type: "number", description: "Maximum rows to extract when extracting structured table data (default: 500)", default: 500 },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
   },
   {
     name: "get_element_bounds",
-    description: "Locate and retrieve the physical coordinate bounding boxes (x, y, width, height) of all visible interactive elements on the page. RECOMMENDATION: Use this tool to achieve 'visual grounding' when coordinating actions with a 'screenshot' — it maps DOM nodes to precise viewport coordinates. Use the returned (x, y) coordinates as arguments for 'humanize(cmd: mouse_move)' or 'click(physical: true)'.",
+    description: "Locate and retrieve the physical coordinate bounding boxes (x, y, width, height) of all visible interactive elements on the page. RECOMMENDATION: Use this tool to achieve 'visual grounding' when coordinating actions with a 'screenshot' — it maps DOM nodes to precise viewport coordinates. Use the returned (x, y) coordinates as reference parameters.",
     inputSchema: {
       type: "object",
       properties: {
@@ -288,60 +309,55 @@ const TOOLS = [
   },
   {
     name: "humanize",
-    description: "Enhance automation natural input behavior by simulating realistic user interactions. Useful for pages that rely on complex interactive telemetry or dynamic event handlers. It simulates natural mouse movements along cubic Bezier curves and key-by-key typing with randomized intervals (50ms-150ms) to ensure high compatibility and input acceptance. PREFERRED ORDER for typing: 1) fill (fastest, direct DOM value injection), 2) humanize(cmd: type) (for high-fidelity input interaction), 3) key_type (for sending raw keys to focused custom elements). PREFERRED ORDER for clicking: 1) click(physical: false) (standard DOM click), 2) click(physical: true) (native CDP click events), 3) humanize(cmd: mouse_move, click: true) (for high-fidelity mouse coordinate path movements and clicks).",
+    description: "Enhance automation natural input behavior by simulating realistic keystroke typing with randomized intervals (50ms-150ms) to ensure high compatibility with complex React/Vue controls and event listeners. RECOMMENDATION: PREFER fill (fastest direct DOM value assignment) for standard forms. Switch to humanize for fields requiring natural keystroke events.",
     inputSchema: {
       type: "object",
       properties: {
-        cmd: { type: "string", description: "Operation mode: 'mouse_move' (Bezier curve cursor movement) or 'type' (natural keystroke typist)", enum: ["mouse_move", "type"], default: "mouse_move" },
-        selector: { type: "string", description: "Target CSS selector or @e ref (for mouse_move destination or element focusing). Examples: '@e15' (snapshot ref), 'input#agent-name' (CSS)" },
-        x: { type: "number", description: "Target X coordinate (viewport relative pixels, used only for mouse_move if selector is omitted)" },
-        y: { type: "number", description: "Target Y coordinate (viewport relative pixels, used only for mouse_move if selector is omitted)" },
-        steps: { type: "number", description: "Bezier mouse curve movement steps (default: 15). More steps = slower, smoother, more human-like movement.", default: 15 },
-        click: { type: "boolean", description: "Perform a physical coordinates mouse click after Bezier curve reaches destination (default: false, only for mouse_move)", default: false },
-        text: { type: "string", description: "Text content to type. Example: 'Standard Inputs & Wait Timing' (only for type command)" },
-        delayMin: { type: "number", description: "Minimum typing delay per key in milliseconds (default: 50, only for type)", default: 50 },
-        delayMax: { type: "number", description: "Maximum typing delay per key in milliseconds (default: 150, only for type)", default: 150 },
+        text: { type: "string", description: "Text content to type. Example: 'John Doe'" },
+        selector: { type: "string", description: "Target CSS selector or @e ref to focus and type into. Examples: '@e15' (snapshot ref), 'input#username' (CSS)" },
+        delayMin: { type: "number", description: "Minimum typing delay per key in milliseconds (default: 50)", default: 50 },
+        delayMax: { type: "number", description: "Maximum typing delay per key in milliseconds (default: 150)", default: 150 },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
-      required: ["cmd"],
+      required: ["text"],
     },
   },
   {
-    name: "session_manager",
-    description: "Save and restore browser session contexts (cookies, localStorage, sessionStorage) to local files. Useful for preserving authentication states and session data across consecutive runs, avoiding redundant login setup flows and reducing startup latency. DIFFERENT FROM session: session_manager saves/restores storage context (cookies/localStorage), while session saves/restores open tab lists and navigation states.",
+    name: "state",
+    description: "Manage browser state, cookies, storage, and sessions. Unifies saving and restoring open tabs, cookies, local storage, and session storage.",
     inputSchema: {
       type: "object",
       properties: {
-        cmd: { type: "string", description: "Operation: 'save' (returns full serialized session state) or 'load' (restores session state and reloads the page)", enum: ["save", "load"], default: "save" },
+        scope: {
+          type: "string",
+          description: "Target state scope: 'tabs' (save/restore open tab lists), 'cookies' (manage cookie jar), 'local_storage' (read/write localStorage), 'session_storage' (read/write sessionStorage), or 'all' (save/restore complete cookie + storage auth context)",
+          enum: ["tabs", "cookies", "local_storage", "session_storage", "all"],
+          default: "tabs",
+        },
+        cmd: {
+          type: "string",
+          description: "Action to perform: 'save', 'restore'/'load', 'clear', 'info' (for tabs/all/storage scopes) or 'read'/'get', 'write'/'set', 'delete' (for cookies/storage scopes)",
+          enum: ["save", "restore", "load", "clear", "info", "get", "read", "set", "write", "delete"],
+        },
+        name: { type: "string", description: "Cookie name (for cookies scope)" },
+        value: { type: "string", description: "Cookie value (for cookies scope) or storage value (for storage scopes)" },
+        key: { type: "string", description: "Storage key (for local_storage/session_storage scopes)" },
+        domain: { type: "string", description: "Cookie domain (for cookies scope)" },
+        path: { type: "string", description: "Cookie path (for cookies scope)" },
+        secure: { type: "boolean", description: "Cookie secure flag (for cookies scope)" },
+        httpOnly: { type: "boolean", description: "Cookie httpOnly flag (for cookies scope)" },
+        sameSite: { type: "string", description: "Cookie sameSite policy: 'Lax', 'Strict', 'None' (for cookies scope)" },
+        expires: { type: "number", description: "Cookie expiration epoch time in seconds (for cookies scope)" },
         session: {
           type: "object",
-          description: "Full serialized session context JSON object containing cookies and DOM storage states (required only for load). Example: Pass the object returned by the 'save' command.",
+          description: "Full serialized authentication session state JSON object (for scope=all, cmd=load/restore)",
         },
+        url: { type: "string", description: "Target URL (for cookies/all scopes)" },
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
-      required: ["cmd"],
     },
   },
-  {
-    name: "intercept",
-    description: "Intercept, modify, block, or mock HTTP requests. Start interception, add rules, then stop when done.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cmd: { type: "string", description: "Action: start, stop, add_rule, remove_rule, list_rules", enum: ["start", "stop", "add_rule", "remove_rule", "list_rules"] },
-        pattern: { type: "string", description: "URL substring to match (for add_rule)" },
-        action: { type: "string", description: "Intercept action: block, redirect, modify, mock (for add_rule)", enum: ["block", "redirect", "modify", "mock"] },
-        redirectUrl: { type: "string", description: "Redirect target URL (for redirect action)" },
-        headers: { type: "object", description: "Headers to add/modify (for modify action)" },
-        mockBody: { type: "string", description: "Response body for mock action" },
-        mockHeaders: { type: "object", description: "Response headers for mock action" },
-        responseCode: { type: "number", description: "HTTP response code (for mock/redirect)" },
-        ruleId: { type: "string", description: "Rule ID (for remove_rule)" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-      required: ["cmd"],
-    },
-  },
+
   {
     name: "console",
     description: "Capture and read browser console output (log, warn, error, info). Start capture, then list entries.",
@@ -397,17 +413,7 @@ const TOOLS = [
       required: ["cmd"],
     },
   },
-  {
-    name: "session",
-    description: "Save and restore browser session state (open tabs). Persists across service worker restarts. DIFFERENT FROM session_manager: session saves/restores OPEN TABS (navigation state), while session_manager saves/restores AUTHENTICATION context (cookies, localStorage) for passing logins between runs.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cmd: { type: "string", description: "Action: save, restore, clear, or info", enum: ["save", "restore", "clear", "info"] },
-      },
-      required: ["cmd"],
-    },
-  },
+
   {
     name: "scroll",
     description: "Scroll the page or a specific element in a given direction by viewport heights. RECOMMENDATION: Scroll 'down' to trigger lazy loading of page assets, or scroll 'bottom'/'top' to skip page sections.",
@@ -560,28 +566,7 @@ const TOOLS = [
       },
     },
   },
-  {
-    name: "websocket_monitor",
-    description: "Capture, read, or clear intercepted WebSocket send/receive messages on the active page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: { type: "string", description: "Action: capture (install interceptors), read (get messages), clear", enum: ["capture", "read", "clear"], default: "capture" },
-        maxMessages: { type: "number", description: "Max messages to keep in memory (default: 100)", default: 100 },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
-    name: "har_export",
-    description: "Export network activity from the active page in HAR format for offline analysis or DevTools import.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
+
   {
     name: "coverage",
     description: "Analyze CSS and JS coverage — shows percentage of unused code on the active page.",
@@ -593,17 +578,7 @@ const TOOLS = [
       },
     },
   },
-  {
-    name: "redirect_chain",
-    description: "Trace the full redirect chain for a given URL with status codes for each hop.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        url: { type: "string", description: "URL to trace redirects for (required)" },
-      },
-      required: ["url"],
-    },
-  },
+
   {
     name: "shadow_dom",
     description: "List shadow DOM hosts or extract content from a specific web component / shadow root.",
@@ -659,16 +634,7 @@ const TOOLS = [
       },
     },
   },
-  {
-    name: "api_discovery",
-    description: "Automatically find API endpoints in page JS code by scanning fetch, axios, XHR patterns and Performance API history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
+
   {
     name: "swagger_parser",
     description: "Parse Swagger / OpenAPI specification from the active page and extract endpoints, parameters, and schemas.",
@@ -690,19 +656,7 @@ const TOOLS = [
       },
     },
   },
-  {
-    name: "table_extract",
-    description: "Extract structured data from HTML tables on the page. Returns JSON array of rows with column headers as keys. RECOMMENDATION: Prefer table_extract over get_text or get_markdown when you need to analyze tabular data (prices, schedules, stats, comparison tables). Use format='csv' for spreadsheet-ready output. Specify a CSS selector to target a specific table if multiple exist.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        selector: { type: "string", description: "CSS selector for the table (default: 'table'). Examples: 'table.pricing', '#schedule', 'table:first-of-type'", default: "table" },
-        format: { type: "string", description: "Output format: 'json' (default, structured objects) or 'csv' (comma-separated)", enum: ["json", "csv"], default: "json" },
-        maxRows: { type: "number", description: "Maximum rows to extract (default: 500)", default: 500 },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
+
   {
     name: "form_fill",
     description: "Fill a complete form with multiple fields in one call. Handles text inputs, selects, checkboxes, radio buttons, date pickers. RECOMMENDATION: Prefer form_fill over calling fill/select/click separately for each form field. Pass all field values as a JSON object in 'fields' parameter. The tool automatically finds fields by name, id, aria-label, or placeholder.",
@@ -814,28 +768,28 @@ const TOOLS = [
 const READ_ONLY_TOOLS = new Set([
   "snapshot", "screenshot", "get_markdown", "get_text", "get_element_bounds",
   "list_tabs", "evaluate", "find_by_text", "find_tab", "wait", "wait_stale",
-  "history", "session", "audit", "security_scan", "coverage", "redirect_chain",
-  "shadow_dom", "iframe_list", "dom_mutations", "service_worker", "api_discovery",
-  "swagger_parser", "color_palette", "table_extract", "bookmark", "extension",
-  "console", "design_clone", "responsive_test", "websocket_monitor",
-  "har_export", "discover_tools", "hover", "scroll", "save_as_pdf",
+  "history", "audit", "security_scan", "coverage",
+  "shadow_dom", "iframe_list", "dom_mutations", "service_worker",
+  "swagger_parser", "color_palette", "bookmark", "extension",
+  "console", "design_clone", "responsive_test",
+  "discover_tools", "hover", "scroll", "save_as_pdf",
 ]);
 
 const DESTRUCTIVE_TOOLS = new Set([
-  "close_tab", "dismiss_overlay", "intercept",
+  "close_tab", "dismiss_overlay",
 ]);
 
 const IDEMPOTENT_TOOLS = new Set([
   "navigate", "snapshot", "screenshot", "get_markdown", "get_text",
   "get_element_bounds", "hover", "scroll", "wait", "wait_stale",
   "save_as_pdf", "send_keys", "select", "dismiss_overlay", "find_by_text",
-  "find_tab", "history", "session_manager", "dialog", "emulate",
+  "find_tab", "history", "dialog", "emulate",
   "drag_drop", "form_fill",
 ]);
 
 const OPEN_WORLD_TOOLS = new Set([
-  "navigate", "click", "fill", "humanize", "upload", "intercept",
-  "network", "speech_to_text", "translate", "redirect_chain", "security_scan",
+  "navigate", "click", "fill", "humanize", "upload",
+  "network", "speech_to_text", "translate", "security_scan",
 ]);
 
 for (const tool of TOOLS) {
@@ -848,7 +802,6 @@ for (const tool of TOOLS) {
 }
 
 let ws = null;
-let requestIdCounter = 0;
 const pendingCalls = new Map();
 let reconnectTimer = null;
 let reconnectDelay = 1000;
@@ -991,7 +944,7 @@ function sendToolCall(name, args) {
       }
     }
 
-    const requestId = String(++requestIdCounter);
+    const requestId = randomUUID();
     logInfo("Sending tool call", { name, requestId });
 
     // Per-tool timeouts — heavy operations get more time, quick interactions get less
@@ -1003,7 +956,7 @@ function sendToolCall(name, args) {
       design_clone: 60000,
       screenshot: 30000,
       save_as_pdf: 30000,
-      har_export: 30000,
+      network: 30000,
     };
     const DEFAULT_TIMEOUT = 15000;
     const toolTimeout = TOOL_TIMEOUTS[name] || DEFAULT_TIMEOUT;
@@ -1255,11 +1208,13 @@ function healSnapshotRefs(args) {
   }
 }
 
+const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8"));
+
 const server = new Server(
   {
-    name: "openweb",
-    version: "1.4.1",
-    description: "Browser automation server for AI agents. Controls Chrome, Firefox, and Edge through MCP. Provides 50+ tools for navigation, content extraction, form filling, network interception, and more.",
+    name: pkg.name || "openweb",
+    version: pkg.version || "1.4.1",
+    description: pkg.description || "Browser automation server for AI agents. Controls Chrome, Firefox, and Edge through MCP. Provides 50+ tools for navigation, content extraction, form filling, network interception, and more.",
     websiteUrl: "https://github.com/QWKiks/openweb",
     icons: [
       {
@@ -1509,11 +1464,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === "discover_tools") {
     const category = args.category || "all";
-    const sessionTools = ["session_manager", "session"];
-    const networkTools = ["network", "intercept", "websocket_monitor", "har_export", "redirect_chain"];
+    const sessionTools = ["state"];
+    const networkTools = ["network"];
     const diagnosticsTools = ["console", "dialog", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations", "history"];
     const auditsTools = ["audit", "security_scan", "coverage"];
-    const advancedTools = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "api_discovery", "swagger_parser", "color_palette", "table_extract", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab"];
+    const advancedTools = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "swagger_parser", "color_palette", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab"];
 
     const categories = {
       session: sessionTools,
@@ -1608,6 +1563,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   const data = result.data;
 
+  if (name === "snapshot" && data?.tree) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: data.tree,
+        },
+      ],
+    };
+  }
+
   if (name === "screenshot" && data?.data) {
     const format = data.format || "jpeg";
     const mimeType = format === "png" ? "image/png" : "image/jpeg";
@@ -1635,11 +1601,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   const text =
     typeof data === "object" && data !== null
-      ? JSON.stringify(data, null, 2)
+      ? JSON.stringify(data)
       : String(data ?? "");
 
   const STRUCTURED_RESULT_TOOLS = new Set([
-    "table_extract", "audit", "security_scan", "coverage",
+    "get_markdown", "audit", "security_scan", "coverage",
     "design_clone", "color_palette", "get_element_bounds",
     "form_fill", "responsive_test",
   ]);

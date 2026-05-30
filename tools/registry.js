@@ -37,28 +37,12 @@ export async function executeTool(name, args) {
 
   const requestedTabId = args._tabId;
   if (requestedTabId != null && !GLOBAL_TOOLS.has(name)) {
-    // Save current context for restoration after execution
-    const previousTabId = getActiveTabId();
-
     // Switch to requested tab
     await attach(requestedTabId);
     setActiveTabId(requestedTabId);
     delete args._tabId;
 
-    try {
-      const result = await tool.execute(args);
-      return result;
-    } finally {
-      // Restore previous tab context if different
-      if (previousTabId !== null && previousTabId !== requestedTabId) {
-        try {
-          await attach(previousTabId);
-          setActiveTabId(previousTabId);
-        } catch {
-          // Previous tab may have been closed
-        }
-      }
-    }
+    return tool.execute(args);
   }
 
   return tool.execute(args);

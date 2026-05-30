@@ -8,6 +8,9 @@ import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
 import { isSemanticSelector, resolveSelector, parseSemanticSelector, buildTextSearchExpression } from "../lib/semantic-selector.js";
 
+let lastMouseX = 100;
+let lastMouseY = 100;
+
 export class ClickTool {
   name = "click";
 
@@ -15,16 +18,158 @@ export class ClickTool {
     const selector = args.selector;
     if (!selector) throw new Error("click: selector is required (CSS selector or @e ref)");
 
-    const physical = args.physical === true;
+    let mode = args.mode || "synthetic";
+    if (args.physical === true && !args.mode) {
+      mode = "physical";
+    }
 
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    if (physical) {
+    if (mode === "humanized") {
+      return this.clickHumanized(selector, args.steps);
+    }
+
+    if (mode === "physical") {
       return this.clickPhysical(selector);
     }
 
     return isRef(selector) ? this.clickByRef(selector) : this.clickBySelector(selector, args);
+  }
+
+  async clickHumanized(selector, steps = 15) {
+    const { objectId, resolvedWith } = await this.resolveObjectId(selector);
+
+    // Scroll into view
+    await sendCommand("Runtime.callFunctionOn", {
+      objectId,
+      functionDeclaration: `function() { this.scrollIntoView({ block: 'center', inline: 'center' }); }`,
+    });
+
+    // Get box model
+    let boxModel;
+    try {
+      boxModel = await sendCommand("DOM.getBoxModel", { objectId });
+    } catch (err) {
+      try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
+      throw new Error(
+        `click (humanized): element has no layout box (display:none / detached / zero-size). (CDP: ${err.message})`
+      );
+    }
+
+    const content = boxModel.model?.content;
+    if (!content || content.length < 8) {
+      try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
+      throw new Error(
+        "click (humanized): element has no layout box (display:none / detached / zero-size)."
+      );
+    }
+
+    // Calculate center point
+    let x = (content[0] + content[2] + content[4] + content[6]) / 4;
+    let y = (content[1] + content[3] + content[5] + content[7]) / 4;
+
+    // Apply devicePixelRatio correction for Retina displays
+    const dprResult = await sendCommand("Runtime.evaluate", {
+      expression: "window.devicePixelRatio",
+      returnByValue: true,
+    });
+    const dpr = dprResult.result?.value || 1;
+    x = x / dpr;
+    y = y / dpr;
+
+    const startX = lastMouseX;
+    const startY = lastMouseY;
+
+    // Generate cubic Bezier control points with slight natural random offset
+    const dx = x - startX;
+    const dy = y - startY;
+    const offset1 = (Math.random() - 0.5) * 60;
+    const offset2 = (Math.random() - 0.5) * 60;
+
+    const P0 = { x: startX, y: startY };
+    const P1 = { x: startX + dx * 0.25, y: startY + dy * 0.25 - offset1 };
+    const P2 = { x: startX + dx * 0.75, y: startY + dy * 0.75 + offset2 };
+    const P3 = { x, y };
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // Move along the Bezier curve
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const cx = Math.round(
+        (1 - t) ** 3 * P0.x +
+        3 * (1 - t) ** 2 * t * P1.x +
+        3 * (1 - t) * t ** 2 * P2.x +
+        t ** 3 * P3.x
+      );
+      const cy = Math.round(
+        (1 - t) ** 3 * P0.y +
+        3 * (1 - t) ** 2 * t * P1.y +
+        3 * (1 - t) * t ** 2 * P2.y +
+        t ** 3 * P3.y
+      );
+
+      await sendCommand("Input.dispatchMouseEvent", {
+        type: "mouseMoved",
+        x: cx,
+        y: cy,
+        button: "none",
+        buttons: 0,
+      });
+
+      // Natural micro-delay between steps
+      await sleep(10 + Math.random() * 10);
+    }
+
+    // Update global state
+    lastMouseX = x;
+    lastMouseY = y;
+
+    // Dispatch native click events
+    await sendCommand("Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x,
+      y,
+      button: "left",
+      buttons: 1,
+      clickCount: 1,
+    });
+    await sleep(30 + Math.random() * 50); // micro-delay holding click
+    await sendCommand("Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x,
+      y,
+      button: "left",
+      buttons: 0,
+      clickCount: 1,
+    });
+
+    // Get element info
+    const info = await sendCommand("Runtime.callFunctionOn", {
+      objectId,
+      functionDeclaration: `function() { return { tag: this.tagName, text: (this.textContent || '').slice(0, 100) }; }`,
+      returnByValue: true,
+    });
+
+    // Clean up remote object to avoid leaking
+    try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
+
+    const result = {
+      success: true,
+      mode: "humanized",
+      physical: true,
+      x: Math.round(x),
+      y: Math.round(y),
+      tag: info.result.value?.tag ?? "",
+      text: info.result.value?.text ?? "",
+    };
+
+    if (resolvedWith) {
+      result.resolvedWith = resolvedWith;
+    }
+
+    return result;
   }
 
   async clickPhysical(selector) {

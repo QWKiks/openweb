@@ -10,10 +10,74 @@ export class GetMarkdownTool {
   name = "get_markdown";
 
   async execute(args) {
-    const selector = args.selector || "body";
+    const as = args.as || "markdown";
     const tab = await getActiveTab();
     await attach(tab.id);
 
+    if (as === "table") {
+      const selector = args.selector || "table";
+      const maxRows = args.maxRows || 500;
+
+      const result = await sendCommand("Runtime.evaluate", {
+        expression: `(() => {
+          const tables = document.querySelectorAll(${JSON.stringify(selector)});
+          if (tables.length === 0) return { error: 'No tables found matching: ${selector}' };
+
+          const extracted = [];
+          for (let ti = 0; ti < tables.length; ti++) {
+            const table = tables[ti];
+            const rows = table.querySelectorAll('tr');
+            const headers = [];
+            const headerRow = rows[0];
+            if (headerRow) {
+              headerRow.querySelectorAll('th, td').forEach(th => headers.push(th.textContent.trim()));
+            }
+
+            const data = [];
+            const startRow = headers.length > 0 ? 1 : 0;
+            for (let ri = startRow; ri < rows.length && data.length < ${maxRows}; ri++) {
+              const cells = rows[ri].querySelectorAll('td, th');
+              const row = {};
+              cells.forEach((cell, ci) => {
+                const key = headers[ci] || 'col_' + ci;
+                row[key] = cell.textContent.trim();
+                const links = cell.querySelectorAll('a');
+                if (links.length > 0) {
+                  row[key + '_links'] = Array.from(links).map(a => ({ text: a.textContent.trim(), href: a.href }));
+                }
+              });
+              if (Object.keys(row).length > 0) data.push(row);
+            }
+
+            const caption = table.querySelector('caption');
+            extracted.push({
+              index: ti,
+              caption: caption ? caption.textContent.trim() : '',
+              headers,
+              rowCount: data.length,
+              data,
+            });
+          }
+
+          return extracted;
+        })()`,
+        returnByValue: true,
+        awaitPromise: false,
+      });
+
+      if (result.exceptionDetails) throw new Error(`get_markdown(as:table): ${result.exceptionDetails.text}`);
+      const val = result.result.value;
+      if (val?.error) throw new Error(`get_markdown(as:table): ${val.error}`);
+
+      const jsonStr = JSON.stringify(val);
+      return {
+        tables: val,
+        count: val.length,
+        estimatedTokens: Math.round(jsonStr.length / 4),
+      };
+    }
+
+    const selector = args.selector || "body";
     // Evaluate the DOM-to-Markdown converter in the context of the page
     const result = await sendCommand("Runtime.evaluate", {
       expression: `(() => {

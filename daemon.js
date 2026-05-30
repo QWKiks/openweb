@@ -117,6 +117,9 @@ const pendingResults = new Map();
 /** Route tool_calls to specific extension: requestId → WebSocket */
 const requestToExtension = new Map();
 
+/** Associate requestId to dedicated controller WebSocket */
+const requestToController = new Map();
+
 /** Round-robin index for multi-extension routing */
 let rrIndex = 0;
 
@@ -365,6 +368,9 @@ wss.on("connection", (ws, req) => {
         const rid = msg.requestId;
         log.info("tool call received", { name: msg.payload?.name, requestId: rid });
 
+        // Save controller ws context
+        requestToController.set(rid, ws);
+
         // No extensions connected — immediate error
         if (extensions.size === 0) {
           log.warn("tool call failed — no extension connected", { requestId: rid });
@@ -374,6 +380,7 @@ wss.on("connection", (ws, req) => {
             payload: { error: "No extension connected. Open the extension first." },
           });
           for (const ctrl of controllers) if (ctrl.readyState === ctrl.OPEN) ctrl.send(errorResult);
+          requestToController.delete(rid);
           break;
         }
 
@@ -388,17 +395,23 @@ wss.on("connection", (ws, req) => {
           recordToolCall(msg);
           log.info("forwarding tool call to extension", { name: msg.payload?.name, requestId: rid });
 
-          // #11: TTL cleanup for pendingResults — auto-resolve with timeout error
+          // Dynamic TTL logic for different types of tools
+          const LONG_TIMEOUT_TOOLS = new Set(["speech_to_text", "translate", "security_scan", "audit", "design_clone"]);
+          const timeoutMs = LONG_TIMEOUT_TOOLS.has(msg.payload?.name) ? 125000 : 35000;
+
+          // Safe dynamic TTL cleanup — auto-resolve with timeout error and restore load counter
           setTimeout(() => {
             if (requestToExtension.has(rid) && requestToExtension.get(rid) === targetExt) {
               requestToExtension.delete(rid);
-              // Also clean up pendingResults if this request was pending
+              requestToController.delete(rid);
+              const count = (extActiveRequests.get(targetExt) || 0) - 1;
+              extActiveRequests.set(targetExt, Math.max(0, count));
               if (pendingResults.has(rid)) {
-                pendingResults.get(rid)({ payload: { error: "timeout (30s)" } });
+                pendingResults.get(rid)({ payload: { error: `timeout (${Math.round(timeoutMs / 1000)}s)` } });
                 pendingResults.delete(rid);
               }
             }
-          }, 30000);
+          }, timeoutMs);
         }
         break;
       }
@@ -416,10 +429,18 @@ wss.on("connection", (ws, req) => {
           log.info("tool execution success", { requestId: rid, summary });
         }
 
-        // Transparent proxy: forward raw to all controllers (as TEXT)
+        // Target routing to originating controller
+        const ctrl = requestToController.get(rid);
+        requestToController.delete(rid);
+
         let fwdCount = 0;
-        for (const ctrl of controllers) {
+        if (ctrl) {
           if (ctrl.readyState === ctrl.OPEN) { ctrl.send(rawText); fwdCount++; }
+        } else {
+          // Fallback for CLI and external scripts
+          for (const c of controllers) {
+            if (c.readyState === c.OPEN) { c.send(rawText); fwdCount++; }
+          }
         }
         log.info("forwarding result to controllers", { requestId: rid, count: fwdCount });
 
@@ -454,7 +475,14 @@ wss.on("connection", (ws, req) => {
     extBrowserId.delete(ws);
     // Clean up routing entries for this extension
     for (const [rid, ext] of requestToExtension) {
-      if (ext === ws) requestToExtension.delete(rid);
+      if (ext === ws) {
+        requestToExtension.delete(rid);
+        requestToController.delete(rid);
+      }
+    }
+    // Clean up controller entries if controller disconnected
+    for (const [rid, ctrl] of requestToController) {
+      if (ctrl === ws) requestToController.delete(rid);
     }
     // Clear ping heartbeat interval
     clearInterval(pingInterval);
