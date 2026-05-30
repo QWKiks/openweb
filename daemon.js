@@ -46,9 +46,13 @@ setInterval(() => recentNonces.clear(), 120000); // clear every 2 min
 
 function isOriginAllowed(origin, roleHint) {
   if (!origin || origin === "null") return true; // Node.js clients have no origin
-  if (origin.startsWith("chrome-extension://")) return roleHint === "extension" || roleHint === "any";
-  if (origin.startsWith("http://localhost") || origin.startsWith("https://localhost")) return true;
-  if (origin.startsWith("http://127.0.0.1") || origin.startsWith("https://127.0.0.1")) return true;
+  if (origin.startsWith("chrome-extension://")) {
+    const id = origin.slice("chrome-extension://".length);
+    if (!id || id.includes("/")) return false;
+    return roleHint === "extension" || roleHint === "any";
+  }
+  const localhostMatch = origin.match(/^https?:\/\/(localhost|127\.0\.0\.1)(?:[:/]|$)/);
+  if (localhostMatch) return true;
   return false;
 }
 
@@ -82,11 +86,7 @@ const REQUIRE_TLS = AUTH_TOKEN;
 
 const wss = new WebSocketServer({ port: PORT, host: BIND_HOST, path: PATH, perMessageDeflate: false, maxPayload: 50 * 1024 * 1024 });
 
-// Verify auth on upgrade for controller connections
-wss.on("headers", (headers, req) => {
-  // Auth is checked on the "register" message instead of upgrade
-  // so extensions can always connect without a token
-});
+// BIND_HOST, PATH etc. already configured above
 
 /** @type {Set<WebSocket>} extension clients */
 const extensions = new Set();
@@ -142,7 +142,7 @@ setInterval(() => {
   const now = Date.now();
   for (const [ws, lastBeat] of extensionHeartbeats) {
     if (now - lastBeat > STALE_THRESHOLD_MS) {
-      console.log("[heartbeat] extension is stale (no heartbeat for 45s) — removing");
+      log.warn("extension is stale (no heartbeat for 45s) — removing");
       extensions.delete(ws);
       extensionHeartbeats.delete(ws);
       // Clean up routing entries
@@ -157,7 +157,7 @@ setInterval(() => {
 wss.on("connection", (ws, req) => {
   const ip = req.socket.remoteAddress || "unknown";
   const origin = req.headers.origin || "null";
-  console.log(`[+] client connected from ${ip} origin=${origin}`);
+  log.info("client connected", { ip, origin });
 
   let role = null; // "extension" | "controller"
   let isRejected = false;
@@ -182,7 +182,7 @@ wss.on("connection", (ws, req) => {
       rawText = raw.toString();
       msg = JSON.parse(rawText);
     } catch {
-      console.log("[!] invalid JSON:", log.truncate(raw.toString()));
+      log.warn("invalid JSON received", { raw: log.truncate(raw.toString()) });
       return;
     }
 
@@ -190,7 +190,7 @@ wss.on("connection", (ws, req) => {
       case "hello": {
         // Extension sends hello on connect
         if (!isOriginAllowed(origin, "extension")) {
-          console.log(`[security] extension origin rejected: ${origin}`);
+          log.warn("extension origin rejected", { origin });
           isRejected = true;
           ws.close(4003, "Origin not allowed");
           return;
@@ -198,9 +198,10 @@ wss.on("connection", (ws, req) => {
         role = "extension";
         extensions.add(ws);
         extBrowserId.set(ws, msg.payload?.browserId || "default");
-        console.log(
-          `[hello] extension v${msg.payload?.extensionVersion ?? "?"} browser=${msg.payload?.browserId || "default"} connected`
-        );
+        log.info("extension connected", {
+          version: msg.payload?.extensionVersion ?? "?",
+          browserId: msg.payload?.browserId || "default",
+        });
         ws.send(JSON.stringify({ type: "hello_ack" }));
         break;
       }
@@ -211,7 +212,7 @@ wss.on("connection", (ws, req) => {
 
         // Origin check for controllers
         if (!isOriginAllowed(origin, "controller")) {
-          console.log(`[security] controller origin rejected: ${origin}`);
+          log.warn("controller origin rejected", { origin });
           isRejected = true;
           role = "rejected";
           ws.send(JSON.stringify({ type: "register_nack", error: "Origin not allowed" }));
@@ -224,7 +225,7 @@ wss.on("connection", (ws, req) => {
           const now = Date.now();
           const ts = Number(msg.timestamp);
           if (Number.isNaN(ts) || Math.abs(now - ts) > 30000) {
-            console.log(`[security] register rejected — stale timestamp`);
+            log.warn("register rejected — stale timestamp");
             isRejected = true;
             role = "rejected";
             ws.send(JSON.stringify({ type: "register_nack", error: "Timestamp too old or invalid" }));
@@ -234,7 +235,7 @@ wss.on("connection", (ws, req) => {
         }
         if (msg.nonce) {
           if (recentNonces.has(msg.nonce)) {
-            console.log(`[security] register rejected — replayed nonce`);
+            log.warn("register rejected — replayed nonce");
             isRejected = true;
             role = "rejected";
             ws.send(JSON.stringify({ type: "register_nack", error: "Nonce replay detected" }));
@@ -249,7 +250,7 @@ wss.on("connection", (ws, req) => {
           // #7: Reject if connection is not encrypted (ws://)
           const isSecure = req.socket.encrypted || req.headers["x-forwarded-proto"] === "https";
           if (!isSecure) {
-            console.log("[register] rejected — unencrypted connection with auth token configured");
+            log.warn("register rejected — unencrypted connection with auth token configured");
             role = "rejected";
             ws.send(JSON.stringify({ type: "register_nack", error: "Unencrypted connection not allowed when auth token is set. Use wss://." }));
             ws.close(4001, "Unauthorized");
@@ -268,7 +269,7 @@ wss.on("connection", (ws, req) => {
             }
           }
           if (!tokenMatch) {
-            console.log("[register] auth failed — invalid token");
+            log.warn("register auth failed — invalid token");
             role = "rejected";
             ws.send(JSON.stringify({ type: "register_nack", error: "Invalid or missing auth token" }));
             ws.close(4001, "Unauthorized");
@@ -277,7 +278,7 @@ wss.on("connection", (ws, req) => {
         }
         role = "controller";
         controllers.add(ws);
-        console.log("[register] controller connected");
+        log.info("controller registered successfully");
         ws.send(JSON.stringify({ type: "register_ack" }));
         break;
       }
@@ -294,13 +295,11 @@ wss.on("connection", (ws, req) => {
       case "tool_call": {
         // From controller → route to ONE extension (not broadcast)
         const rid = msg.requestId;
-        console.log(
-          `[tool_call] → ${msg.payload?.name} (req ${rid})`
-        );
+        log.info("tool call received", { name: msg.payload?.name, requestId: rid });
 
         // No extensions connected — immediate error
         if (extensions.size === 0) {
-          console.log("[tool_call] no extension connected, returning error");
+          log.warn("tool call failed — no extension connected", { requestId: rid });
           const errorResult = JSON.stringify({
             type: "tool_result",
             responseToRequestId: rid,
@@ -319,7 +318,7 @@ wss.on("connection", (ws, req) => {
           // Forward as TEXT (raw is a Buffer from ws — sending Buffer makes it binary!)
           targetExt.send(rawText);
           recordToolCall(msg);
-          console.log(`[forward→ext] ${msg.payload?.name || msg.type} (req ${rid})`);
+          log.info("forwarding tool call to extension", { name: msg.payload?.name, requestId: rid });
 
           // #11: TTL cleanup for pendingResults — auto-resolve with timeout error
           setTimeout(() => {
@@ -341,12 +340,12 @@ wss.on("connection", (ws, req) => {
         const rid = msg.responseToRequestId;
         const payload = msg.payload;
         if (payload.error) {
-          console.log(`[tool_result:${rid}] ERROR: ${payload.error}`);
+          log.error("tool execution error", { requestId: rid, error: payload.error });
         } else {
           const data = payload.data;
           const summary =
             typeof data === "object" ? JSON.stringify(data).slice(0, 120) : data;
-          console.log(`[tool_result:${rid}] ${summary}`);
+          log.info("tool execution success", { requestId: rid, summary });
         }
 
         // Transparent proxy: forward raw to all controllers (as TEXT)
@@ -354,7 +353,7 @@ wss.on("connection", (ws, req) => {
         for (const ctrl of controllers) {
           if (ctrl.readyState === ctrl.OPEN) { ctrl.send(rawText); fwdCount++; }
         }
-        console.log(`[forward→ctrl×${fwdCount}] tool_result (req ${rid})`);
+        log.info("forwarding result to controllers", { requestId: rid, count: fwdCount });
 
         // Clean up routing
         const extForReq = requestToExtension.get(rid);
@@ -374,12 +373,12 @@ wss.on("connection", (ws, req) => {
       }
 
       default:
-        console.log(`[?] unknown message type: ${msg.type}`);
+        log.warn("unknown message type received", { type: msg.type });
     }
   });
 
   ws.on("close", () => {
-    log.info(`client disconnected`, { role: role || "unknown" });
+    log.info("client disconnected", { role: role || "unknown" });
     extensions.delete(ws);
     controllers.delete(ws);
     extensionHeartbeats.delete(ws);
@@ -389,6 +388,8 @@ wss.on("connection", (ws, req) => {
     for (const [rid, ext] of requestToExtension) {
       if (ext === ws) requestToExtension.delete(rid);
     }
+    // Clear ping heartbeat interval
+    clearInterval(pingInterval);
   });
 
   ws.on("error", (err) => {
@@ -408,7 +409,6 @@ wss.on("connection", (ws, req) => {
       clearInterval(pingInterval);
     }
   }, 20000);
-  ws.on("close", () => clearInterval(pingInterval));
 });
 
 // ── Interactive REPL ─────────────────────────────────────────────────────────
@@ -645,12 +645,12 @@ const healthServer = createServer((req, res) => {
   }
 });
 healthServer.listen(PORT + 1, BIND_HOST || "127.0.0.1", () => {
-  console.log(`[health] http://127.0.0.1:${PORT + 1}/health`);
+  log.info("health endpoint listening", { url: `http://127.0.0.1:${PORT + 1}/health` });
 });
 
 // ── Graceful Shutdown ─────────────────────────────────────────────────────
 function gracefulShutdown(signal) {
-  console.log(`\n[${signal}] shutting down gracefully...`);
+  log.info("shutting down gracefully", { signal });
 
   // Stop recording session
   stopSession();
