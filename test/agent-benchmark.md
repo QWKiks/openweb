@@ -40,6 +40,32 @@ To pass this benchmark successfully, you must strictly follow the visual pipelin
 4. Run `audit` (type: `"accessibility"` or `"a11y"`) to extract accessibility violations (observe the dark gray text violation).
 5. Run `audit` (type: `"links"`) to audit broken links and identify the 404 URL (`https://httpstat.us/404`).
 
+### Step 5: Test 4 - Honeypot Trap & Dynamic Math CAPTCHA
+1. Read the math question on the screen under the **TEST 4** card (e.g. `"Resolve Math: 34 + 12 = ?"`).
+2. Calculate the correct numeric sum.
+3. Locate the correct input box for the math answer.
+4. **CRITICAL HONEYPOT TRAP**: Notice that there is an invisible input field (`id="honeypot-email"`) in the DOM. Do **NOT** fill out this field! If you write any text there, the form will fail validation immediately.
+5. Enter the numeric answer ONLY in the visible input field (`id="math-answer"`).
+6. Click **Verify CAPTCHA** and verify that you get the `"🎉 SUCCESS: Math CAPTCHA resolved..."` feedback.
+
+### Step 6: Test 6 - Hover, Hold & Multi-Click Gestures
+1. Scroll to the **TEST 5** card.
+2. Call the `hover` tool (requires `discover_tools` category `"advanced"` first) to hover over the `🎯 HOVER OVER ME` element (`id="gesture-trigger"`).
+3. **CRITICAL TIMING**: Call `wait` for `1000` ms to allow the menu to animate open.
+4. Locate the newly visible **Double Click Me!** button (`id="btn-double-click"`).
+5. Trigger a **Double-Click** gesture on the button (e.g., using `click` with physical double-click or keys).
+6. Verify that the success banner `"🎉 SUCCESS: Gesture sequence completed perfectly!"` is visible.
+
+### Step 7: Test 7 - Stale Overlay & Nested Shadow DOM
+1. Scroll to the **TEST 6** card.
+2. Click the yellow **Execute Target Action** button (`id="btn-shadow-target"`).
+3. A blocking dark overlay will immediately appear, intercepting input, and a failure notice will print.
+4. **CRITICAL SHADOW DOM BOUNDARY**: The red **Close [x]** button is located inside a dynamic Web Component (#close-btn-container) under an open **Shadow Root**. You must traverse into the shadow root to locate the `#shadow-close-trigger` element.
+5. Click the `#shadow-close-trigger` element inside the shadow root.
+6. Call `wait(type: "network_idle")` or wait 500ms for the fading overlay to disappear from the DOM path.
+7. Click the yellow **Execute Target Action** button a second time.
+8. Verify the success message `"🎉 SUCCESS: Dynamic Stale Overlay dismissed..."` is triggered!
+
 ---
 
 ## 🏆 Success Criteria
@@ -50,5 +76,8 @@ An agent is considered **fully compliant and Antigravity-certified** if it:
 3. Successfully recognizes standard click interception and recovers automatically using `physical: true`.
 4. Handles the JS dialog alert cleanly without blocking the socket.
 5. Successfully identifies the console error, contrast bug, and broken link using diagnostics tools.
+6. Recognizes and ignores honeypots based on visual styles (`opacity: 0`), while executing dynamic math reasoning dynamically.
+7. Integrates advanced gestures (hover-holding + double-click sequence) seamlessly within dynamic timing limits.
+8. Navigates complex Shadow DOM roots to interact with custom encapsulated close triggers and manages stale overlay states.
 
 *Good luck, Agent! Begin the challenge by calling `navigate` now!*
