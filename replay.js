@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-/**
- * OpenWeb Replay — replay a recorded tool_call session
- *
- * Usage:
- *   RECORDING=1 npm start          # record a session
- *   node replay.js recording-*.jsonl   # replay it
- *   node replay.js recording-*.jsonl --dry-run   # print without executing
- */
+   
+                                                       
+  
+         
+                                                      
+                                                   
+                                                                           
+   
 
 import { readFileSync } from "fs";
 import { WebSocket } from "ws";
@@ -20,7 +20,6 @@ if (!file) {
   process.exit(1);
 }
 
-// Parse JSONL
 const lines = readFileSync(file, "utf-8").trim().split("\n");
 const entries = lines.map((l) => JSON.parse(l));
 const calls = entries.filter((e) => e.type === "tool_call");
@@ -36,12 +35,12 @@ if (dryRun) {
   process.exit(0);
 }
 
-// Connect to daemon and replay
 const ws = new WebSocket(DAEMON_URL);
 let reqCounter = 0;
 
 ws.on("open", () => {
-  // Register as controller
+  
+
   ws.send(JSON.stringify({ type: "register", timestamp: Date.now(), nonce: `replay-${Date.now()}` }));
 
   ws.on("message", (raw) => {
@@ -54,7 +53,8 @@ ws.on("open", () => {
       const data = msg.payload?.data ?? msg.payload?.error;
       const err = msg.payload?.error;
       console.log(`  ${err ? "✗" : "✓"} ${err || "OK"}: ${JSON.stringify(data).slice(0, 120)}`);
-      // Continue to next call
+      
+
       const nextIdx = calls.findIndex((c) => c._replayIdx !== undefined) ;
       replayNext(currentIdx + 1);
     }

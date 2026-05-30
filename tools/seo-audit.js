@@ -1,8 +1,3 @@
-/**
- * SEO Audit Tool
- * Extracts title, meta tags, Open Graph, Twitter Cards, canonical, hreflang, and JSON-LD structured data.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

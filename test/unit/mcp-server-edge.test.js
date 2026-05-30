@@ -53,7 +53,6 @@ const OPEN_WORLD_TOOLS = new Set([
 
 const CORE_WORKFLOW = ["navigate", "snapshot", "click", "fill", "screenshot"];
 
-// Track tools that have discover_tools exclusion pass
 const KNOWN_UNCATEGORIZED = new Set(["discover_tools"]);
 
 describe("healSnapshotRefs — Self-Healing Selector Logic", () => {
@@ -138,7 +137,8 @@ describe("Daemon Security — Edge Cases", () => {
         return hostname === "localhost" || hostname === "127.0.0.1";
       }
     } catch (e) {
-      // ignore
+      
+
     }
     return false;
   }

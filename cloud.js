@@ -1,19 +1,3 @@
-/**
- * Remote Browser Cloud Connector
- *
- * Connect to BrowserStack, Sauce Labs, or any WebDriver-compatible cloud
- * provider. Launches a remote browser and tunnels tool calls through the
- * daemon's existing WebSocket pipeline.
- *
- * Usage:
- *   node cloud.js --provider browserstack --user USER --key KEY --url https://example.com
- *   node cloud.js --provider saucelabs --user USER --key KEY --url https://example.com
- *   node cloud.js --provider local --chromiumPath /path/to/chrome --url https://example.com
- *
- * The script starts a remote browser, opens the extension's popup page,
- * and connects it to the local daemon via WebSocket.
- */
-
 import { WebSocket } from "ws";
 
 const args = process.argv.slice(2);
@@ -85,7 +69,6 @@ if (provider === "local") {
   process.exit(0);
 }
 
-// For cloud providers, we register as a controller and send navigate
 console.log(`  Hub: ${config.hubUrl.replace(/:[^@]+@/, ":***@")}`);
 console.log(`  Connecting to daemon: ${daemonUrl}\n`);
 

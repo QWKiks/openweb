@@ -1,9 +1,3 @@
-/**
- * Deep Security Analyzer
- * Advanced behavioral, temporal, and cross-origin analysis
- * Detects complex multi-stage vulnerabilities and hidden attack surfaces
- */
-
 export class DeepSecurityAnalyzer {
   constructor() {
     this.findings = [];
@@ -74,7 +68,7 @@ export class DeepSecurityAnalyzer {
     };
   }
 
-  // ============ BEHAVIORAL & DOM ============
+  
 
   checkBehavioralFingerprinting() {
     const result = {
@@ -94,7 +88,8 @@ export class DeepSecurityAnalyzer {
       functionConstructor: 0
     };
 
-    // Count event listeners (best effort via prototype hooking)
+    
+
     try {
       const proto = EventTarget.prototype;
       const origAddEventListener = proto.addEventListener;
@@ -103,12 +98,15 @@ export class DeepSecurityAnalyzer {
         listenerCount++;
         return origAddEventListener.apply(this, args);
       };
-      // Trigger re-registration if needed (would need page reload)
-      proto.addEventListener = origAddEventListener; // restore
+      
+
+      proto.addEventListener = origAddEventListener; 
+
       result.eventListeners = 'unknown (requires instrumentation)';
     } catch (e) {}
 
-    // Check for prototype pollution sinks
+    
+
     const bodyHTML = document.body.innerHTML;
     const pollutionSinks = [
       /Object\.assign\s*\(/gi,
@@ -125,12 +123,14 @@ export class DeepSecurityAnalyzer {
       }
     }
 
-    // Check for dangerous timer usage
+    
+
     if (bodyHTML.includes('setTimeout') || bodyHTML.includes('setInterval')) {
       result.timers = (bodyHTML.match(/setTimeout/gi) || []).length + (bodyHTML.match(/setInterval/gi) || []).length;
     }
 
-    // Check for WebSocket usage
+    
+
     if (bodyHTML.includes('WebSocket') || typeof WebSocket !== 'undefined') {
       result.websockets = (bodyHTML.match(/new\s+WebSocket/gi) || []).length;
       if (result.websockets > 0) {
@@ -139,19 +139,22 @@ export class DeepSecurityAnalyzer {
       }
     }
 
-    // Check for Server-Sent Events
+    
+
     if (bodyHTML.includes('EventSource')) {
       result.sse = (bodyHTML.match(/new\s+EventSource/gi) || []).length;
     }
 
-    // Check for dynamic imports
+    
+
     if (bodyHTML.includes('import(')) {
       result.dynamicImports = (bodyHTML.match(/import\s*\(/gi) || []).length;
       result.hasIssues = true;
       result.issues.push(`Dynamic imports detected: ${result.dynamicImports} (CSP bypass vector)`);
     }
 
-    // Check for eval and Function constructor
+    
+
     if (bodyHTML.includes('eval(')) {
       result.evalUsage = (bodyHTML.match(/eval\s*\(/gi) || []).length;
       result.hasIssues = true;
@@ -182,7 +185,8 @@ export class DeepSecurityAnalyzer {
         result.shadowRoots++;
         if (el.shadowRoot.mode === 'open') {
           result.openShadowRoots++;
-          // Check for exposed internals
+          
+
           const internals = el.shadowRoot.querySelectorAll('*');
           for (const internal of internals) {
             if (internal.tagName.toLowerCase().includes('password') ||
@@ -220,9 +224,11 @@ export class DeepSecurityAnalyzer {
       slots: 0
     };
 
-    // Check defined custom elements
+    
+
     if (window.customElements) {
-      // Note: customElements.get() and customElements.define() analysis
+      
+
       const bodyHTML = document.body.innerHTML;
       const customTagPattern = /<([a-z]+-[a-z-]+)/gi;
       let match;
@@ -278,13 +284,14 @@ export class DeepSecurityAnalyzer {
     result.backgroundFetchSupported = 'BackgroundFetchManager' in window;
 
     if (result.serviceWorkerSupported && !result.serviceWorkerActive) {
-      // This is actually neutral - just capability
+      
+
     }
 
     return result;
   }
 
-  // ============ CROSS-ORIGIN COMMUNICATION ============
+  
 
   checkCrossOriginCommunication() {
     const result = {
@@ -301,16 +308,19 @@ export class DeepSecurityAnalyzer {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for postMessage usage
+    
+
     result.postMessageListeners = (bodyHTML.match(/message/gi) || []).length;
     result.postMessageSenders = (bodyHTML.match(/postMessage/gi) || []).length;
 
-    // Check for origin validation
+    
+
     if (bodyHTML.includes('event.origin') || bodyHTML.includes('e.origin')) {
       result.originValidation = true;
     }
 
-    // Check for wildcard origin in postMessage
+    
+
     if (bodyHTML.match(/postMessage\s*\(\s*[^,]+,\s*['"]?\*/gi)) {
       result.wildcardOrigin = true;
       result.hasIssues = true;

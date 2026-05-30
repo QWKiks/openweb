@@ -1,8 +1,3 @@
-/**
- * Evaluate Tool
- * Executes JavaScript code on the active page via CDP Runtime.evaluate.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

@@ -1,8 +1,3 @@
-/**
- * Shadow DOM Tool
- * Accesses web components and Shadow DOM content.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

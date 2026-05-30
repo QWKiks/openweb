@@ -1,21 +1,21 @@
 #!/usr/bin/env node
-/**
- * End-to-End Test for OpenWeb MCP Pipeline
- *
- * Tests the full flow: test client → daemon → extension → daemon → test client
- *
- * Usage:
- *   1. Start daemon: npm start (in another terminal)
- *   2. Load extension in Chrome (must be connected)
- *   3. Run: node test-e2e.js
- *
- * Tests:
- *   - Daemon accepts controller connections
- *   - Extension is connected to daemon
- *   - tool_call is forwarded to extension as TEXT (not binary)
- *   - Extension responds with tool_result
- *   - Daemon forwards result back to controller as TEXT
- */
+   
+                                           
+  
+                                                                               
+  
+         
+                                                     
+                                                    
+                             
+  
+         
+                                            
+                                       
+                                                               
+                                          
+                                                        
+   
 
 import WebSocket from "ws";
 
@@ -54,7 +54,8 @@ function connectController() {
     });
 
     ws.on("message", (raw, isBinary) => {
-      // Test: verify daemon sends TEXT frames (not binary)
+      
+
       if (isBinary) {
         fail("daemon should send text frames", `received binary frame of ${raw.length} bytes`);
         return;
@@ -110,7 +111,8 @@ async function main() {
   log("info", `${ANSI.bold}OpenWeb End-to-End Test${ANSI.reset}`);
   log("info", `Daemon: ${DAEMON_URL}`);
 
-  // Test 1: Connect to daemon
+  
+
   try {
     await connectController();
   } catch (e) {
@@ -119,7 +121,8 @@ async function main() {
     process.exit(1);
   }
 
-  // Test 2: list_tabs (global tool, no tab context needed)
+  
+
   try {
     const result = await callTool("list_tabs");
     if (result.error) {
@@ -137,14 +140,16 @@ async function main() {
     log("warn", "Is the Chrome extension loaded and connected to the daemon?");
   }
 
-  // Test 3: navigate (most common tool)
+  
+
   try {
     const result = await callTool("navigate", { url: "https://example.com", newTab: true });
     if (result.error) {
       fail("navigate", result.error);
     } else {
       pass(`navigate to example.com (tabId: ${result.data?.tabId})`);
-      // Close the tab we just opened
+      
+
       if (result.data?.tabId) {
         await callTool("close_tab", { tabId: result.data.tabId });
         pass(`close_tab ${result.data.tabId}`);
@@ -154,7 +159,8 @@ async function main() {
     fail("navigate", e.message);
   }
 
-  // Test 4: Unknown tool — should return error from extension
+  
+
   try {
     const result = await callTool("nonexistent_tool_xyz");
     if (result.error && result.error.includes("Unknown tool")) {

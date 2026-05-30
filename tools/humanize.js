@@ -1,13 +1,7 @@
-/**
- * Humanize Tool
- * Emulates human-like mouse paths (using cubic Bezier curves) and natural typing delays.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
 
-// Cached mouse position
 let lastMouseX = 100;
 let lastMouseY = 100;
 
@@ -38,7 +32,8 @@ export class HumanizeTool {
     const max = delayMax || 150;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    // Focus target element first if selector is passed
+    
+
     if (selector) {
       await sendCommand("Runtime.evaluate", {
         expression: `(() => {
@@ -53,7 +48,8 @@ export class HumanizeTool {
         })()`,
       });
 
-      // If it's a ref, resolve it and focus
+      
+
       if (isRef(selector)) {
         const nodeInfo = resolveRef(selector);
         if (nodeInfo) {
@@ -70,7 +66,8 @@ export class HumanizeTool {
       }
     }
 
-    // Type character by character
+    
+
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
       const keySpec = this.getKeySpec(char);
@@ -84,7 +81,7 @@ export class HumanizeTool {
         text: keySpec.text,
       });
 
-      await sleep(10 + Math.random() * 20); // hold key slightly
+      await sleep(10 + Math.random() * 20); 
 
       await sendCommand("Input.dispatchKeyEvent", {
         type: "keyUp",
@@ -94,7 +91,8 @@ export class HumanizeTool {
         windowsVirtualKeyCode: keySpec.vkc,
       });
 
-      // Natural randomized typing delay
+      
+
       const delay = min + Math.random() * (max - min);
       await sleep(delay);
     }
@@ -113,7 +111,8 @@ export class HumanizeTool {
     if (/^[0-9]$/.test(char)) {
       return { key: char, code: `Digit${char}`, vkc: char.charCodeAt(0), text: char };
     }
-    // Fallback for special symbols
+    
+
     return { key: char, code: "", vkc: char.charCodeAt(0), text: char };
   }
 }

@@ -1,7 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 
-// Mock chrome API before importing registry (which depends on lib/cdp.js)
 globalThis.chrome = {
   tabs: { onRemoved: { addListener: () => {} } },
   runtime: { onMessage: { addListener: () => {} } },
@@ -15,7 +14,6 @@ globalThis.chrome = {
   },
 };
 
-// Mock CDP module functions
 const moduleCache = await import("../../tools/registry.js");
 const { register, executeTool, getToolNames } = moduleCache;
 

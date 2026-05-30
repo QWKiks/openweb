@@ -1,26 +1,24 @@
-/**
- * Dismiss Overlay Tool
- * Detects and dismisses overlays such as cookie banners, modals, popups,
- * and interstitial dialogs that block interaction with the page content.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
 const DISMISS_SELECTORS = [
-  // Cookie banners — common selectors
+  
+
   "button:is([aria-label*='Accept' i],[aria-label*='Consent' i],[aria-label*='Agree' i],[aria-label*='Close' i])",
   "a:is([aria-label*='Accept' i],[aria-label*='Consent' i],[aria-label*='Agree' i])",
   ".cookie-bar button, .cookie-banner button, .cookie-consent button, #cookie-banner button",
   ".cc-btn, .accept-cookies, .cookie-accept, .agree-button",
   "#onetrust-accept-btn-handler, .onetrust-close-btn-handler",
-  // Generic close buttons
+  
+
   'button[class*="close"], button[class*="dismiss"], button[aria-label="Close"]',
   'button:is([class*="modal-close"],[class*="popup-close"],[class*="overlay-close"])',
   '[class*="modal"] button:is([class*="close"],[class*="dismiss"])',
-  // Accept / Agree / Continue buttons
+  
+
   'button:is([class*="accept"],[class*="agree"],[class*="confirm"],[class*="continue"])',
-  // Generic overlay removal
+  
+
   "[class*='overlay'] button, [class*='modal'] button, [class*='popup'] button",
 ];
 
@@ -36,7 +34,8 @@ export class DismissOverlayTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // Step 1: Try clicking known close/accept buttons by selector
+    
+
     const clickedSelectors = [];
     for (const sel of DISMISS_SELECTORS) {
       const result = await sendCommand("Runtime.evaluate", {
@@ -57,7 +56,8 @@ export class DismissOverlayTool {
       }
     }
 
-    // Step 2: If nothing clicked by selector, try text-based search
+    
+
     const textMatched = [];
     if (clickedSelectors.length === 0) {
       const result = await sendCommand("Runtime.evaluate", {
@@ -83,7 +83,8 @@ export class DismissOverlayTool {
       }
     }
 
-    // Step 3: Check if overlays remain
+    
+
     const checkResult = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         const overlays = document.querySelectorAll(

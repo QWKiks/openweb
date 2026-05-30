@@ -1,8 +1,3 @@
-/**
- * Iframe Tool
- * Lists iframes and extracts content from them.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

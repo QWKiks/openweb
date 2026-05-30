@@ -1,8 +1,3 @@
-/**
- * Performance Audit Tool
- * Captures Core Web Vitals, resource metrics, and memory usage for the active page.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -14,7 +9,8 @@ export class PerformanceAuditTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // Collect performance metrics via Performance API
+    
+
     const perfResult = await sendCommand("Runtime.evaluate", {
       expression: this.buildExpression(detailed),
       returnByValue: true,
@@ -27,7 +23,8 @@ export class PerformanceAuditTool {
 
     const data = perfResult.result?.value || {};
 
-    // Add tab metadata
+    
+
     data.url = tab.url;
     data.title = tab.title;
     data.timestamp = new Date().toISOString();

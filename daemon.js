@@ -1,14 +1,3 @@
-/**
- * OpenWeb — WebSocket Daemon
- *
- * Start:  node daemon.js
- * Default: ws://127.0.0.1:10086/ws
- *
- * Routes messages between AI clients and the browser extension:
- *   AI client → daemon → extension  (tool_call)
- *   extension → daemon → AI client  (tool_result)
- */
-
 import { WebSocketServer } from "ws";
 import { timingSafeEqual, randomBytes } from "crypto";
 import { createServer } from "http";
@@ -18,21 +7,20 @@ import { isRecording, startSession, recordToolCall, recordToolResult, stopSessio
 const PORT = 10086;
 const PATH = "/ws";
 const DBG = debug("daemon");
-const DEBUG = process.env.WEBBRIDGE_DEBUG === "1" || process.env.WEBBRIDGE_DEBUG === "true";
+const DEBUG = process.env.OPENWEB_DEBUG === "1" || process.env.OPENWEB_DEBUG === "true";
 
-// Override debug function to respect WEBBRIDGE_DEBUG
 const daemonDebug = DEBUG ? DBG : () => {};
 
-// ── Security Configuration ────────────────────────────────────────────────
+const RATE_LIMIT_WINDOW_MS = 10000;  
 
-const RATE_LIMIT_WINDOW_MS = 10000;  // 10 seconds
-const RATE_LIMIT_MAX_MSG = 100;       // max messages per window per IP
-const RATE_LIMIT_MAX_BURST = 20;      // max messages in a single second
+const RATE_LIMIT_MAX_MSG = 100;       
 
-/** @type {Map<string, { count: number, reset: number, burst: number, burstReset: number }>} */
+const RATE_LIMIT_MAX_BURST = 20;      
+
+                                                                                               
 const rateLimits = new Map();
 
-/** Clean up stale rate limit entries every 5 minutes */
+                                                        
 setInterval(() => {
   const now = Date.now();
   for (const [ip, rl] of rateLimits) {
@@ -40,20 +28,22 @@ setInterval(() => {
   }
 }, 300000);
 
-/** @type {Map<string, number>} recent nonces -> expire time (DoS and replay protection) */
+                                                                                           
 const recentNonces = new Map();
 setInterval(() => {
   const now = Date.now();
   for (const [nonce, expireTime] of recentNonces) {
     if (now > expireTime) recentNonces.delete(nonce);
   }
-}, 10000); // clean expired nonces every 10 seconds
+}, 10000); 
 
 function isOriginAllowed(origin, roleHint) {
-  if (!origin || origin === "null") return true; // Node.js clients have no origin
+  if (!origin || origin === "null") return true; 
+
   try {
     const parsed = new URL(origin);
-    if (parsed.username || parsed.password) return false; // Prevent auth spoofing
+    if (parsed.username || parsed.password) return false; 
+
     if (parsed.protocol === "chrome-extension:") {
       const id = parsed.hostname;
       if (!id || id.includes("/")) return false;
@@ -64,7 +54,8 @@ function isOriginAllowed(origin, roleHint) {
       return hostname === "localhost" || hostname === "127.0.0.1";
     }
   } catch (e) {
-    // Disallow malformed URLs
+    
+
   }
   return false;
 }
@@ -90,50 +81,49 @@ function checkRateLimit(ip) {
   return { allowed: true };
 }
 
-// Auth: Bearer token for controller connections (optional, set via WEBBRIDGE_TOKEN env)
-const AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
+const AUTH_TOKEN = process.env.OPENWEB_TOKEN || null;
 
-// #7: Reject ws:// connections when auth token is configured (token exposed on unencrypted ws://)
-const BIND_HOST = "127.0.0.1"; // Always bind to IPv4 localhost for compatibility
+const BIND_HOST = "127.0.0.1"; 
+
 const REQUIRE_TLS = AUTH_TOKEN;
 
 const wss = new WebSocketServer({ port: PORT, host: BIND_HOST, path: PATH, perMessageDeflate: false, maxPayload: 50 * 1024 * 1024 });
 
-// BIND_HOST, PATH etc. already configured above
-
-/** @type {Set<WebSocket>} extension clients */
+                                               
 const extensions = new Set();
-/** @type {Set<WebSocket>} AI / controller clients */
+                                                     
 const controllers = new Set();
 
-/** Active request counts per extension (for load-aware routing) */
+                                                                   
 const extActiveRequests = new Map();
-/** browserId per extension ws */
+                                 
 const extBrowserId = new Map();
 
-/** Pending tool_results keyed by requestId */
+                                              
 const pendingResults = new Map();
 
-/** Route tool_calls to specific extension: requestId → WebSocket */
+                                                                    
 const requestToExtension = new Map();
 
-/** Associate requestId to dedicated controller WebSocket */
+                                                            
 const requestToController = new Map();
 
-/** Round-robin index for multi-extension routing */
+                                                    
 let rrIndex = 0;
 
 function pickExtension(browserId = null) {
   let arr = [...extensions];
   if (arr.length === 0) return null;
 
-  // Filter by browserId if specified
+  
+
   if (browserId) {
     arr = arr.filter((e) => extBrowserId.get(e) === browserId);
     if (arr.length === 0) return null;
   }
 
-  // 1. Prefer extensions with lowest active request count
+  
+
   arr.sort(
     (a, b) =>
       (extActiveRequests.get(a) || 0) - (extActiveRequests.get(b) || 0)
@@ -143,17 +133,17 @@ function pickExtension(browserId = null) {
     (e) => (extActiveRequests.get(e) || 0) === bestLoad
   );
 
-  // 2. Round-robin among least-loaded
+  
+
   const target = candidates[rrIndex % candidates.length];
   rrIndex++;
   return target;
 }
 
-/** Heartbeat tracking: extension → last heartbeat timestamp */
+                                                               
 const extensionHeartbeats = new Map();
 const STALE_THRESHOLD_MS = 45000;
 
-// #9: Periodically check for stale extensions — remove and close them
 setInterval(() => {
   const now = Date.now();
   for (const [ws, lastBeat] of extensionHeartbeats) {
@@ -161,7 +151,8 @@ setInterval(() => {
       log.warn("extension is stale (no heartbeat for 45s) — removing");
       extensions.delete(ws);
       extensionHeartbeats.delete(ws);
-      // Clean up routing entries
+      
+
       for (const [rid, ext] of requestToExtension) {
         if (ext === ws) requestToExtension.delete(rid);
       }
@@ -207,15 +198,19 @@ wss.on("connection", (ws, req) => {
   const origin = req.headers.origin || "null";
   log.info("client connected", { ip, origin });
 
-  let role = null; // "extension" | "controller"
+  let role = null; 
+
   let isRejected = false;
 
   ws.on("message", (raw, isBinary) => {
-    if (isBinary) return; // reject binary frames
-    // #8: Ignore all messages from rejected connections
+    if (isBinary) return; 
+
+    
+
     if (role === "rejected" || isRejected) return;
 
-    // Rate limit check
+    
+
     const rl = checkRateLimit(ip);
     if (!rl.allowed) {
       log.warn("rate limit exceeded", { ip, reason: rl.reason });
@@ -241,7 +236,8 @@ wss.on("connection", (ws, req) => {
 
     switch (msg.type) {
       case "hello": {
-        // Extension sends hello on connect
+        
+
         if (!isOriginAllowed(origin, "extension")) {
           log.warn("extension origin rejected", { origin });
           isRejected = true;
@@ -260,10 +256,12 @@ wss.on("connection", (ws, req) => {
       }
 
       case "register": {
-        // #8: If already rejected, ignore all messages
+        
+
         if (role === "rejected" || isRejected) return;
 
-        // Origin check for controllers
+        
+
         if (!isOriginAllowed(origin, "controller")) {
           log.warn("controller origin rejected", { origin });
           isRejected = true;
@@ -273,7 +271,8 @@ wss.on("connection", (ws, req) => {
           return;
         }
 
-        // Timestamp / nonce anti-replay check
+        
+
         if (msg.timestamp) {
           const now = Date.now();
           const ts = Number(msg.timestamp);
@@ -297,7 +296,8 @@ wss.on("connection", (ws, req) => {
             return;
           }
           
-          // DoS protection: limit maximum tracked nonces in sliding window
+          
+
           if (recentNonces.size >= 10000) {
             for (const [n, exp] of recentNonces) {
               if (now > exp) recentNonces.delete(n);
@@ -312,13 +312,16 @@ wss.on("connection", (ws, req) => {
             }
           }
           
-          // Expire nonce exactly after 35 seconds (30s window + 5s clock skew buffer)
+          
+
           recentNonces.set(msg.nonce, now + 35000);
         }
 
-        // AI client registers itself — check auth if token is configured
+        
+
         if (AUTH_TOKEN) {
-          // #7: Reject if connection is not encrypted (ws://)
+          
+
           const isSecure = req.socket.encrypted || req.headers["x-forwarded-proto"] === "https";
           if (!isSecure) {
             log.warn("register rejected — unencrypted connection with auth token configured");
@@ -328,7 +331,8 @@ wss.on("connection", (ws, req) => {
             return;
           }
 
-          // #6: Timing-safe token comparison
+          
+
           const token = msg.token || "";
           const expected = AUTH_TOKEN;
           let tokenMatch = false;
@@ -364,14 +368,17 @@ wss.on("connection", (ws, req) => {
         break;
 
       case "tool_call": {
-        // From controller → route to ONE extension (not broadcast)
+        
+
         const rid = msg.requestId;
         log.info("tool call received", { name: msg.payload?.name, requestId: rid });
 
-        // Save controller ws context
+        
+
         requestToController.set(rid, ws);
 
-        // No extensions connected — immediate error
+        
+
         if (extensions.size === 0) {
           log.warn("tool call failed — no extension connected", { requestId: rid });
           const errorResult = JSON.stringify({
@@ -384,22 +391,26 @@ wss.on("connection", (ws, req) => {
           break;
         }
 
-        // Route to extension via load-aware picker (optionally target specific browser)
+        
+
         const targetBrowserId = msg.payload?.args?._browserId || null;
         const targetExt = pickExtension(targetBrowserId);
         if (targetExt) {
           requestToExtension.set(rid, targetExt);
           extActiveRequests.set(targetExt, (extActiveRequests.get(targetExt) || 0) + 1);
-          // Forward as TEXT (raw is a Buffer from ws — sending Buffer makes it binary!)
+          
+
           targetExt.send(rawText);
           recordToolCall(msg);
           log.info("forwarding tool call to extension", { name: msg.payload?.name, requestId: rid });
 
-          // Dynamic TTL logic for different types of tools
+          
+
           const LONG_TIMEOUT_TOOLS = new Set(["speech_to_text", "translate", "security_scan", "audit", "design_clone"]);
           const timeoutMs = LONG_TIMEOUT_TOOLS.has(msg.payload?.name) ? 125000 : 35000;
 
-          // Safe dynamic TTL cleanup — auto-resolve with timeout error and restore load counter
+          
+
           setTimeout(() => {
             if (requestToExtension.has(rid) && requestToExtension.get(rid) === targetExt) {
               requestToExtension.delete(rid);
@@ -417,7 +428,8 @@ wss.on("connection", (ws, req) => {
       }
 
       case "tool_result": {
-        // From extension → route to the controller that made the request
+        
+
         const rid = msg.responseToRequestId;
         const payload = msg.payload;
         if (payload.error) {
@@ -429,7 +441,8 @@ wss.on("connection", (ws, req) => {
           log.info("tool execution success", { requestId: rid, summary });
         }
 
-        // Target routing to originating controller
+        
+
         const ctrl = requestToController.get(rid);
         requestToController.delete(rid);
 
@@ -437,14 +450,16 @@ wss.on("connection", (ws, req) => {
         if (ctrl) {
           if (ctrl.readyState === ctrl.OPEN) { ctrl.send(rawText); fwdCount++; }
         } else {
-          // Fallback for CLI and external scripts
+          
+
           for (const c of controllers) {
             if (c.readyState === c.OPEN) { c.send(rawText); fwdCount++; }
           }
         }
         log.info("forwarding result to controllers", { requestId: rid, count: fwdCount });
 
-        // Clean up routing
+        
+
         const extForReq = requestToExtension.get(rid);
         requestToExtension.delete(rid);
         if (extForReq) {
@@ -452,7 +467,8 @@ wss.on("connection", (ws, req) => {
           extActiveRequests.set(extForReq, Math.max(0, count));
         }
 
-        // #11: Extension finished tool — route to the matching controller
+        
+
         recordToolResult(msg);
         if (pendingResults.has(rid)) {
           pendingResults.get(rid)(msg);
@@ -473,18 +489,21 @@ wss.on("connection", (ws, req) => {
     extensionHeartbeats.delete(ws);
     extActiveRequests.delete(ws);
     extBrowserId.delete(ws);
-    // Clean up routing entries for this extension
+    
+
     for (const [rid, ext] of requestToExtension) {
       if (ext === ws) {
         requestToExtension.delete(rid);
         requestToController.delete(rid);
       }
     }
-    // Clean up controller entries if controller disconnected
+    
+
     for (const [rid, ctrl] of requestToController) {
       if (ctrl === ws) requestToController.delete(rid);
     }
-    // Clear ping heartbeat interval
+    
+
     clearInterval(pingInterval);
   });
 
@@ -497,7 +516,8 @@ wss.on("connection", (ws, req) => {
     extBrowserId.delete(ws);
   });
 
-  // Ping every 20s (must be < MV3 service-worker idle timeout of ~30s)
+  
+
   const pingInterval = setInterval(() => {
     if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify({ type: "ping" }));
@@ -507,7 +527,6 @@ wss.on("connection", (ws, req) => {
   }, 20000);
 });
 
-// ── Interactive REPL ─────────────────────────────────────────────────────────
 import { createInterface } from "readline";
 
 const REPL_ENABLED = process.stdin.isTTY;
@@ -627,7 +646,8 @@ Commands:
       payload: { name, args },
     };
 
-    // Wait for result
+    
+
     const resultPromise = new Promise((resolve) => {
       pendingResults.set(rid, resolve);
       setTimeout(() => {
@@ -638,7 +658,8 @@ Commands:
       }, 30000);
     });
 
-    // Send to extensions
+    
+
     if (extensions.size === 0) {
       console.log("No extension connected. Open the extension first.");
       pendingResults.delete(rid);
@@ -661,7 +682,8 @@ Commands:
       return;
     }
 
-    // Wait for result asynchronously
+    
+
     resultPromise.then((result) => {
       const p = result.payload;
       if (p.error) {
@@ -677,10 +699,12 @@ Commands:
       }
       rl.prompt();
     });
-    return; // don't call rl.prompt() here, it'll be called after result
+    return; 
+
   }
 
-  // raw path
+  
+
   if (extensions.size === 0) {
     console.log("No extension connected.");
     rl.prompt();
@@ -715,9 +739,8 @@ Commands:
     rl.prompt();
   });
 });
-} // if (REPL_ENABLED)
+} 
 
-// ── HTTP Health Endpoint ──────────────────────────────────────────────────
 const healthServer = createServer((req, res) => {
   if (req.url === "/health") {
     const extLoad = [...extActiveRequests.entries()].map(([ws, count]) => count);
@@ -744,23 +767,26 @@ healthServer.listen(PORT + 1, BIND_HOST || "127.0.0.1", () => {
   log.info("health endpoint listening", { url: `http://127.0.0.1:${PORT + 1}/health` });
 });
 
-// ── Graceful Shutdown ─────────────────────────────────────────────────────
 function gracefulShutdown(signal) {
   log.info("shutting down gracefully", { signal });
 
-  // Stop recording session
+  
+
   stopSession();
 
-  // Reject all pending tool calls
+  
+
   for (const [rid, resolve] of pendingResults) {
     resolve({ payload: { error: `Daemon shutting down (${signal})` } });
   }
   pendingResults.clear();
 
-  // Close all WebSocket connections
+  
+
   wss.clients.forEach(ws => ws.close(1001, "Server shutting down"));
 
-  // Close servers
+  
+
   wss.close(() => {
     healthServer.close(() => {
       rl.close();
@@ -768,7 +794,8 @@ function gracefulShutdown(signal) {
     });
   });
 
-  // Force exit after 5s if graceful shutdown hangs
+  
+
   setTimeout(() => {
     console.error("[!] forced exit after timeout");
     process.exit(1);
@@ -787,5 +814,4 @@ console.log(`
 Type "help" for commands.
 `);
 
-// Start recording session if RECORDING=1
 startSession();

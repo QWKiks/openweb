@@ -1,14 +1,10 @@
-/**
- * Dialog Tool
- * Handle JavaScript dialogs (alert, confirm, prompt, beforeunload).
- */
-
 import { attach, sendCommand, getActiveTabId } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
-const autoHandlers = new Map(); // tabId → { accept: boolean, promptText?: string }
+const autoHandlers = new Map(); 
+
 let listenerAdded = false;
-const pendingDialogs = new Map(); // tabId → { type, message }
+const pendingDialogs = new Map(); 
 
 function ensureListener() {
   if (listenerAdded) return;
@@ -23,7 +19,8 @@ function ensureListener() {
         defaultPrompt: params.defaultPrompt || "",
       });
 
-      // Auto-handle if configured
+      
+
       const handler = autoHandlers.get(tabId);
       if (handler) {
         sendCommand("Page.handleJavaScriptDialog", {
@@ -44,7 +41,8 @@ export class DialogTool {
     await attach(tab.id);
     ensureListener();
 
-    // Enable dialog events
+    
+
     await sendCommand("Page.enable");
 
     switch (cmd) {

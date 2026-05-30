@@ -1,8 +1,3 @@
-/**
- * Find Tab Tool
- * Finds an open tab matching a URL pattern.
- */
-
 import { attach } from "../lib/cdp.js";
 import { getActiveTab, setLastReferencedTab, addToTabGroup } from "../lib/tab-manager.js";
 
@@ -46,9 +41,9 @@ export class FindTabTool {
   }
 }
 
-/**
- * Convert a URL to a Chrome tabs.query pattern.
- */
+   
+                                                
+   
 function toQueryPattern(url) {
   if (url.includes("*")) return url;
   try {
@@ -58,9 +53,9 @@ function toQueryPattern(url) {
   }
 }
 
-/**
- * Check if a tab URL's hostname matches a query pattern.
- */
+   
+                                                         
+   
 function hostnameMatches(tabUrl, pattern) {
   try {
     return new URL(tabUrl).hostname === pattern.replace(/^\*:\/\//, "").replace(/\/\*$/, "");

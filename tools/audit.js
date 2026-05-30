@@ -1,8 +1,3 @@
-/**
- * Audit Tool
- * Unifies all website audits: SEO, accessibility (a11y), performance, forms, and broken links.
- */
-
 import { SeoAuditTool } from "./seo-audit.js";
 import { A11yAuditTool } from "./a11y-audit.js";
 import { PerformanceAuditTool } from "./performance-audit.js";

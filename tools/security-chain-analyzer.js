@@ -1,9 +1,3 @@
-/**
- * Vulnerability Chain Analyzer
- * Logical analysis engine that chains vulnerabilities together
- * and generates step-by-step attack paths for neural network analysis.
- */
-
 export class VulnerabilityChainAnalyzer {
   constructor(report) {
     this.report = report;
@@ -13,9 +7,9 @@ export class VulnerabilityChainAnalyzer {
     this.contextScore = 0;
   }
 
-  /**
-   * Main analysis method - chains all vulnerabilities together
-   */
+     
+                                                               
+     
   analyze() {
     this.chains = this.buildVulnerabilityChains();
     this.attackPaths = this.generateAttackPaths();
@@ -33,13 +27,14 @@ export class VulnerabilityChainAnalyzer {
     };
   }
 
-  /**
-   * Build chains of related vulnerabilities
-   */
+     
+                                            
+     
   buildVulnerabilityChains() {
     const chains = [];
 
-    // Chain 1: Missing CSP → XSS → Data Exfiltration
+    
+
     if (this.hasCSPBypass() && this.hasXSSThreats()) {
       chains.push({
         id: 'CHAIN-001',
@@ -55,7 +50,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 2: No X-Frame-Options → Clickjacking → Session Hijacking
+    
+
     if (this.hasClickjacking()) {
       chains.push({
         id: 'CHAIN-002',
@@ -71,7 +67,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 3: Missing CSP + Inline Scripts → DOM XSS → Credential Theft
+    
+
     if (this.hasMissingCSP() && this.hasInlineScripts() && this.hasDOMXSSThreats()) {
       chains.push({
         id: 'CHAIN-003',
@@ -88,7 +85,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 4: Mixed Content → Man-in-the-Middle → Session Hijacking
+    
+
     if (this.hasMixedContent()) {
       chains.push({
         id: 'CHAIN-004',
@@ -104,7 +102,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 5: No SRI + CDN Usage → Supply Chain Attack → Code Execution
+    
+
     if (this.hasCDNWithoutSRI()) {
       chains.push({
         id: 'CHAIN-005',
@@ -120,7 +119,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 6: Missing CSP + No X-Frame-Options → Clickjacking + XSS Combo
+    
+
     if (this.hasMissingCSP() && this.hasClickjacking()) {
       chains.push({
         id: 'CHAIN-006',
@@ -137,7 +137,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 7: No CSRF Token + Forms → CSRF → State Mutation
+    
+
     if (this.hasFormsWithoutCSRF()) {
       chains.push({
         id: 'CHAIN-007',
@@ -153,7 +154,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 8: Session Cookie Issues → Session Fixation → Account Takeover
+    
+
     if (this.hasSessionCookieIssues()) {
       chains.push({
         id: 'CHAIN-008',
@@ -169,7 +171,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 9: API Endpoints + No Rate Limiting → Brute Force → Data Breach
+    
+
     if (this.hasAPIEndpoints() && !this.hasRateLimiting()) {
       chains.push({
         id: 'CHAIN-009',
@@ -186,7 +189,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 10: Hidden Fields + No CSP → Parameter Tampering → Privilege Escalation
+    
+
     if (this.hasHiddenFields() && this.hasMissingCSP()) {
       chains.push({
         id: 'CHAIN-010',
@@ -202,7 +206,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 11: Deep - Prototype Pollution → Property Injection → RCE (5 steps)
+    
+
     if (this.hasPrototypePollution()) {
       chains.push({
         id: 'CHAIN-011',
@@ -220,7 +225,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 12: Deep - WebSocket + No Origin Check → Message Tampering → Server Compromise
+    
+
     if (this.hasWebSockets()) {
       chains.push({
         id: 'CHAIN-012',
@@ -238,7 +244,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 13: Deep - postMessage Wildcard → Iframe Sandboxing Bypass → DOM XSS → Credential Theft
+    
+
     if (this.hasPostMessageWildcard()) {
       chains.push({
         id: 'CHAIN-013',
@@ -256,7 +263,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 14: Deep - eval() + Dynamic Import → CSP Bypass → Script Injection → Full Compromise
+    
+
     if (this.hasEval() && this.hasDynamicImports()) {
       chains.push({
         id: 'CHAIN-014',
@@ -274,7 +282,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 15: Deep - Math.random() Token → Predictable Session → Session Fixation → Account Hijack
+    
+
     if (this.hasWeakRandomness()) {
       chains.push({
         id: 'CHAIN-015',
@@ -292,7 +301,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 16: Deep - Third-Party Scripts + No SRI → CDN Compromise → Keylogger → Data Exfiltration
+    
+
     if (this.hasThirdPartyResources() && this.hasNoSRI()) {
       chains.push({
         id: 'CHAIN-016',
@@ -310,7 +320,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 17: Deep - WebRTC Enabled → Local IP Leak → Network Recon → Internal Attack
+    
+
     if (this.hasWebRTC()) {
       chains.push({
         id: 'CHAIN-017',
@@ -328,7 +339,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 18: Deep - Open Shadow DOM → DOM Traversal → Sensitive Data Exposure → Information Disclosure
+    
+
     if (this.hasOpenShadowRoots()) {
       chains.push({
         id: 'CHAIN-018',
@@ -346,7 +358,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 19: Deep - Fetch Override + No CSP → Request Tampering → API Abuse → Data Manipulation
+    
+
     if (this.hasFetchOverride() && this.hasMissingCSP()) {
       chains.push({
         id: 'CHAIN-019',
@@ -364,7 +377,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Chain 20: Deep - Performance Timing + Resource Timing → Endpoint Enumeration → API Discovery → IDOR
+    
+
     if (this.hasTimingAPIs()) {
       chains.push({
         id: 'CHAIN-020',
@@ -385,9 +399,9 @@ export class VulnerabilityChainAnalyzer {
     return chains;
   }
 
-  /**
-   * Generate step-by-step attack paths
-   */
+     
+                                       
+     
   generateAttackPaths() {
     const paths = [];
 
@@ -414,13 +428,14 @@ export class VulnerabilityChainAnalyzer {
     return paths;
   }
 
-  /**
-   * Find correlations between different vulnerabilities
-   */
+     
+                                                        
+     
   findCorrelations() {
     const correlations = [];
 
-    // Correlation: Missing CSP correlates with XSS
+    
+
     if (this.hasMissingCSP() && this.hasXSSThreats()) {
       correlations.push({
         id: 'CORR-001',
@@ -433,7 +448,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Correlation: No X-Frame-Options + No CSP = Clickjacking + XSS combo
+    
+
     if (this.hasClickjacking() && this.hasMissingCSP()) {
       correlations.push({
         id: 'CORR-002',
@@ -446,7 +462,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Correlation: Inline scripts + Missing CSP = DOM XSS
+    
+
     if (this.hasInlineScripts() && this.hasMissingCSP()) {
       correlations.push({
         id: 'CORR-003',
@@ -459,7 +476,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Correlation: CDN + No SRI = Supply Chain Risk
+    
+
     if (this.hasCDNWithoutSRI()) {
       correlations.push({
         id: 'CORR-004',
@@ -472,7 +490,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Correlation: Forms + No CSRF = State Mutation
+    
+
     if (this.hasFormsWithoutCSRF()) {
       correlations.push({
         id: 'CORR-005',
@@ -485,7 +504,8 @@ export class VulnerabilityChainAnalyzer {
       });
     }
 
-    // Correlation: API + No Rate Limit = Enumeration
+    
+
     if (this.hasAPIEndpoints() && !this.hasRateLimiting()) {
       correlations.push({
         id: 'CORR-006',
@@ -501,27 +521,31 @@ export class VulnerabilityChainAnalyzer {
     return correlations;
   }
 
-  /**
-   * Calculate context-aware risk score
-   */
+     
+                                       
+     
   calculateContextScore() {
     let baseScore = this.report.risk?.score || 0;
     let multiplier = 1.0;
 
-    // Increase multiplier for critical chains
+    
+
     const criticalChains = this.chains.filter(c => c.severity === 'CRITICAL').length;
     multiplier += criticalChains * 0.3;
 
-    // Increase for high correlations
+    
+
     const highCorrelations = this.correlations.filter(c => c.strength > 0.8).length;
     multiplier += highCorrelations * 0.2;
 
-    // Decrease for positive security features
+    
+
     if (this.report.isHTTPS) multiplier -= 0.1;
     if (this.report.headers?.csp) multiplier -= 0.2;
     if (this.report.headers?.xFrameOptions) multiplier -= 0.1;
 
-    // Context adjustments
+    
+
     if (this.hasLoginForms()) multiplier += 0.2;
     if (this.hasPaymentForms()) multiplier += 0.3;
     if (this.hasAdminEndpoints()) multiplier += 0.2;
@@ -530,9 +554,9 @@ export class VulnerabilityChainAnalyzer {
     return finalScore;
   }
 
-  /**
-   * Generate analysis optimized for neural network processing
-   */
+     
+                                                              
+     
   generateNeuralAnalysis() {
     return {
       summary: {
@@ -557,9 +581,9 @@ export class VulnerabilityChainAnalyzer {
     };
   }
 
-  /**
-   * Generate step-by-step analysis for each chain
-   */
+     
+                                                  
+     
   generateStepByStepAnalysis() {
     return this.chains.map(chain => ({
       chainId: chain.id,
@@ -586,16 +610,17 @@ export class VulnerabilityChainAnalyzer {
     }));
   }
 
-  /**
-   * Generate logical summary combining all findings
-   */
+     
+                                                    
+     
   generateLogicalSummary() {
     const criticalIssues = [];
     const highIssues = [];
     const mediumIssues = [];
     const lowIssues = [];
 
-    // Categorize issues by severity
+    
+
     if (this.hasMissingCSP()) criticalIssues.push('Missing CSP allows script injection');
     if (this.hasXSSThreats()) criticalIssues.push('XSS vulnerabilities present');
     if (this.hasMixedContent()) highIssues.push('Mixed content enables MITM');
@@ -618,7 +643,7 @@ export class VulnerabilityChainAnalyzer {
     };
   }
 
-  // ==================== HELPER METHODS ====================
+  
 
   hasMissingCSP() {
     return !this.report.headers?.csp;
@@ -672,7 +697,8 @@ export class VulnerabilityChainAnalyzer {
     return this.report.advanced?.domXssAdvanced?.hasVectors;
   }
 
-  // Deep check helpers
+  
+
   hasPrototypePollution() {
     return this.report.deep?.behavioralFingerprinting?.prototypePollutionSinks > 0;
   }

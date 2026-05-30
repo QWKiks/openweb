@@ -1,10 +1,3 @@
-/**
- * Wait Stale Tool
- * Waits for an element to become stale (removed from DOM) or hidden.
- * Useful after clicking a button that triggers a modal close, navigation,
- * or dynamic content removal.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
@@ -23,7 +16,8 @@ export class WaitStaleTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // Resolve ref to CSS selector if needed
+    
+
     let resolvedSelector = selector;
     if (isRef(selector)) {
       const nodeInfo = resolveRef(selector);

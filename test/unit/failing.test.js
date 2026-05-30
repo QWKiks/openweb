@@ -183,7 +183,8 @@ describe("50 Deliberately Failing Tests Suite", () => {
   it("39: should fail on frozen object mutation check", () => {
     const obj = Object.freeze({ x: 1 });
     try {
-      obj.x = 2; // will fail silently or throw in strict mode, let's assert to fail
+      obj.x = 2; 
+
       assert.strictEqual(obj.x, 2, "Frozen object property was not mutated");
     } catch (e) {
       throw new Error("Failed to mutate frozen object: " + e.message);

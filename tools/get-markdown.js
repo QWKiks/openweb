@@ -1,8 +1,3 @@
-/**
- * Get Markdown Tool
- * Scrapes the active page and converts its DOM (or a specific selector) to structured Markdown.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -78,7 +73,8 @@ export class GetMarkdownTool {
     }
 
     const selector = args.selector || "body";
-    // Evaluate the DOM-to-Markdown converter in the context of the page
+    
+
     const result = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         const root = document.querySelector(${JSON.stringify(selector)});
@@ -222,7 +218,8 @@ export class GetMarkdownTool {
 
     const value = result.result.value;
     if (value?.error) throw new Error(value.error);
-    // Add token estimate for context budget tracking
+    
+
     if (value?.markdown) {
       value.estimatedTokens = Math.round(value.markdown.length / 4);
     }

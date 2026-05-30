@@ -1,24 +1,3 @@
-/**
- * OpenWeb — MCP Server
- *
- * Implements the Model Context Protocol (MCP) for browser automation.
- * Backend:   connects to OpenWeb daemon via WebSocket
- *
- * Usage:
- *   node mcp-server.js                          # stdio transport
- *   node mcp-server.js --transport sse --port 3001  # SSE transport
- *
- * Claude Desktop config (claude_desktop_config.json):
- *   {
- *     "mcpServers": {
- *       "openweb": {
- *         "command": "node",
- *         "args": ["C:/path/to/openweb/mcp-server.js"]
- *       }
- *     }
- *   }
- */
-
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 
@@ -54,8 +33,8 @@ startupLog('MCP server starting...');
 process.on('uncaughtException', (err) => { startupLog('UNCAUGHT EXCEPTION:', err.message, err.stack); throw err; });
 process.on('unhandledRejection', (err) => { startupLog('UNHANDLED REJECTION:', err); });
 
-const DAEMON_URL = process.env.WEBBRIDGE_WS_URL || "ws://127.0.0.1:10086/ws";
-const DEBUG = process.env.WEBBRIDGE_DEBUG === "1" || process.env.WEBBRIDGE_DEBUG === "true";
+const DAEMON_URL = process.env.OPENWEB_WS_URL || "ws://127.0.0.1:10086/ws";
+const DEBUG = process.env.OPENWEB_DEBUG === "1" || process.env.OPENWEB_DEBUG === "true";
 
 function log(level, ...args) {
   const timestamp = new Date().toISOString();
@@ -643,7 +622,8 @@ const TOOLS = [
       },
     },
   },
-  // ── Macro tools (coarse-grained workflows) ─────────────────────────────
+  
+
   {
     name: "extract_page",
     description: "EXTRACT page content in one step. Runs snapshot() + get_markdown() sequentially and returns: element refs, markdown content, and metadata. USE INSTEAD OF: calling snapshot and get_markdown separately. Best for: reading articles, documentation, or any page where you need both interactive refs and readable content.",
@@ -724,7 +704,6 @@ for (const tool of TOOLS) {
   if (Object.keys(annotations).length > 0) tool.annotations = annotations;
 }
 
-// ── Structured result / error helpers ──────────────────────────────────────
 const NEXT_STEP_HINTS = {
   navigate: "On timeout, the page may still be loading. Retry with waitUntil: 'DOMContentLoaded'.",
   snapshot: "If @e refs are stale (element not found), call snapshot again first, then retry.",
@@ -817,7 +796,7 @@ function connectToDaemon() {
       resetReconnect();
       const registerMsg = { type: "register", timestamp: Date.now() };
       registerMsg.nonce = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, "0")).join("");
-      const token = process.env.WEBBRIDGE_TOKEN;
+      const token = process.env.OPENWEB_TOKEN;
       if (token) {
         registerMsg.token = token;
         logDebug("Using auth token for registration");
@@ -916,7 +895,8 @@ function sendToolCall(name, args, progressToken) {
       }
     }
 
-    // Strip idempotencyKey before sending to daemon
+    
+
     const toolArgs = { ...args };
     const idempotencyKey = toolArgs.idempotencyKey;
     delete toolArgs.idempotencyKey;
@@ -924,7 +904,8 @@ function sendToolCall(name, args, progressToken) {
     const requestId = randomUUID();
     logInfo("Sending tool call", { name, requestId });
 
-    // Per-tool timeouts — heavy operations get more time, quick interactions get less
+    
+
     const TOOL_TIMEOUTS = {
       speech_to_text: 120000,
       translate: 120000,
@@ -940,7 +921,8 @@ function sendToolCall(name, args, progressToken) {
 
     const DESTRUCTIVE_TOOL_SET = new Set(["close_tab", "dismiss_overlay"]);
 
-    // Progress reporting interval for long operations
+    
+
     let progressInterval = null;
     if (progressToken && TOOL_TIMEOUTS[name]) {
       let elapsed = 0;
@@ -1264,7 +1246,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools: TOOLS };
 });
 
-// Notify client when tool set expands
 async function notifyToolsChanged() {
   try {
     await server.notification({
@@ -1597,7 +1578,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return successResult(result.text, { text: result.text, detectedLanguage: result.detected_language || result.detectedLanguage });
   }
 
-  // ── Macro tool: extract_page ─────────────────────────────────────────
+  
+
   if (name === "extract_page") {
     logInfo("Macro: extract_page", args);
     const tabId = args?.tabId;
@@ -1614,7 +1596,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     );
   }
 
-  // ── Macro tool: click_and_verify ─────────────────────────────────────
+  
+
   if (name === "click_and_verify") {
     logInfo("Macro: click_and_verify", args);
     const clickResult = await sendToolCall("click", { selector: args.selector, mode: args.mode || "synthetic", tabId: args?.tabId });
@@ -1636,7 +1619,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return successResult(`Clicked ${args.selector} and waited for ${waitFor}.`);
   }
 
-  // Idempotency key: if provided and already processed, replay cached result
+  
+
   if (args?.idempotencyKey) {
     const cached = idempotencyCache.get(args.idempotencyKey);
     if (cached) {
@@ -1645,7 +1629,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
   }
 
-  // Progress token for long operations
+  
+
   const progressToken = request.params?.meta?.progressToken || null;
 
   const result = await sendToolCall(name, args || {}, progressToken);
@@ -1737,7 +1722,7 @@ if (transport === "sse") {
   const port = parseInt(process.argv[process.argv.indexOf("--port") + 1] || "3001", 10);
   const app = express();
 
-  const SSE_AUTH_TOKEN = process.env.WEBBRIDGE_TOKEN || null;
+  const SSE_AUTH_TOKEN = process.env.OPENWEB_TOKEN || null;
   function sseAuth(req, res, next) {
     if (!SSE_AUTH_TOKEN) return next();
     const auth = req.headers.authorization;

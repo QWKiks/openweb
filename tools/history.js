@@ -1,8 +1,3 @@
-/**
- * Navigation History Tool
- * Navigate browser history: go back, go forward, or reload the page.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -30,7 +25,8 @@ export class HistoryTool {
       returnByValue: true,
       awaitPromise: false,
     });
-    // Small delay for navigation to start
+    
+
     await new Promise((r) => setTimeout(r, 500));
     return { success: true, action: "back" };
   }

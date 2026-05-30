@@ -1,8 +1,3 @@
-/**
- * DOM Mutations Tool
- * Observes dynamic DOM changes in SPAs via MutationObserver.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

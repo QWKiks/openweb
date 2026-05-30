@@ -1,13 +1,9 @@
-/**
- * Console Tool
- * Capture and read console logs, warnings, and errors from the page.
- */
-
 import { attach, sendCommand, getActiveTabId } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
 const capturingTabs = new Set();
-const consoleStore = new Map(); // tabId → Array<{type, text, timestamp}>
+const consoleStore = new Map(); 
+
 const MAX_ENTRIES = 500;
 let listenerAdded = false;
 
@@ -22,7 +18,8 @@ function ensureListener() {
     const store = consoleStore.get(tabId) || [];
 
     if (method === "Runtime.consoleAPICalled") {
-      const type = params.type; // log, warn, error, info, debug
+      const type = params.type; 
+
       const text = params.args.map((a) => a.value ?? a.description ?? JSON.stringify(a)).join(" ");
       store.push({ type, text, timestamp: params.timestamp });
       if (store.length > MAX_ENTRIES) store.splice(0, store.length - MAX_ENTRIES);

@@ -1,8 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 
-// Extract security functions from daemon.js for unit testing
-// We re-implement them here to avoid importing the full daemon
 function isOriginAllowed(origin, roleHint) {
   if (!origin || origin === "null") return true;
   try {
@@ -18,7 +16,8 @@ function isOriginAllowed(origin, roleHint) {
       return hostname === "localhost" || hostname === "127.0.0.1";
     }
   } catch (e) {
-    // ignore
+    
+
   }
   return false;
 }

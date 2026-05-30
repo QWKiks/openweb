@@ -1,8 +1,3 @@
-/**
- * Bookmark Tool
- * CRUD operations for Chrome bookmarks.
- */
-
 export class BookmarkTool {
   name = "bookmark";
 
@@ -39,7 +34,8 @@ export class BookmarkTool {
       throw new Error("parentId or url is required for create");
     }
     const bookmark = await chrome.bookmarks.create({
-      parentId: parentId || "1", // Default to Bookmarks Bar
+      parentId: parentId || "1", 
+
       title: title || "",
       url: url || undefined,
       index: index != null ? index : undefined,

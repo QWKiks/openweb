@@ -1,18 +1,14 @@
-/**
- * Network Tool
- * Consolidated network capturing, interception, HAR exporting, WebSocket monitoring,
- * redirect tracing, and API endpoint discovery under a single CDP interface.
- */
-
 import { attach, sendCommand, getActiveTabId } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
 const capturingTabs = new Set();
-const requestStore = new Map(); // tabId → Map<requestId, requestInfo>
+const requestStore = new Map(); 
+
 const MAX_REQUESTS_PER_TAB = 500;
 
 const interceptingTabs = new Set();
-const interceptRules = new Map(); // tabId → Array<{pattern, action, id}>
+const interceptRules = new Map(); 
+
 let ruleCounter = 0;
 
 function getRequestMap(tabId) {
@@ -24,7 +20,6 @@ function getRequestMap(tabId) {
   return map;
 }
 
-// Clean up state when a tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (interceptingTabs.has(tabId)) {
     interceptingTabs.delete(tabId);
@@ -46,7 +41,8 @@ function ensureListener() {
     const tabId = source.tabId;
     if (!tabId) return;
 
-    // 1. Network capturing
+    
+
     if (capturingTabs.has(tabId)) {
       const store = getRequestMap(tabId);
       if (method === "Network.requestWillBeSent") {
@@ -74,7 +70,8 @@ function ensureListener() {
       }
     }
 
-    // 2. Request interception
+    
+
     if (interceptingTabs.has(tabId) && method === "Fetch.requestPaused") {
       const rules = interceptRules.get(tabId) || [];
       const url = params.request.url;
@@ -165,33 +162,40 @@ export class NetworkTool {
     if (!cmd) throw new Error("network: cmd is required (start/stop/list/detail/block_ads/intercept/har_export/websocket_monitor/redirect_chain/api_discovery)");
 
     switch (cmd) {
-      // ── Core Network Capturing ──
+      
+
       case "start": return this.start();
       case "stop": return this.stop();
       case "list": return this.list(args.filter);
       case "detail": return this.detail(args.requestId);
       case "block_ads": return this.blockAds(args.enable !== false);
 
-      // ── Request Interception ──
+      
+
       case "intercept": return this.intercept(args);
 
-      // ── HAR Exporting ──
+      
+
       case "har_export": return this.harExport();
 
-      // ── WebSocket Monitoring ──
+      
+
       case "websocket_monitor": return this.websocketMonitor(args);
 
-      // ── Redirect Tracing ──
+      
+
       case "redirect_chain": return this.redirectChain(args);
 
-      // ── API Endpoint Discovery ──
+      
+
       case "api_discovery": return this.apiDiscovery();
 
       default: throw new Error(`network: unknown cmd "${cmd}"`);
     }
   }
 
-  // ── Network Capturing Methods ──
+  
+
   async start() {
     const tab = await getActiveTab();
     await attach(tab.id);
@@ -279,7 +283,8 @@ export class NetworkTool {
     return { success: true, enabled: true, blockedCount: blockedUrls.length, message: "Ad and tracker blocker enabled successfully." };
   }
 
-  // ── Intercept Methods ──
+  
+
   async intercept(args) {
     const action = args.action;
     if (!action) throw new Error("network(cmd: 'intercept'): action is required (start, stop, add_rule, remove_rule, list_rules)");
@@ -308,7 +313,8 @@ export class NetworkTool {
       }
       case "add_rule": {
         if (!args.pattern) throw new Error("network(cmd: 'intercept', action: 'add_rule'): pattern is required");
-        // ruleAction parameter avoids collision with action
+        
+
         const ruleAction = args.ruleAction || args.action; 
         if (!ruleAction || ruleAction === "add_rule") throw new Error("network(cmd: 'intercept', action: 'add_rule'): ruleAction is required (block, redirect, modify, mock)");
 
@@ -359,7 +365,8 @@ export class NetworkTool {
     }
   }
 
-  // ── HAR Export Method ──
+  
+
   async harExport() {
     const tab = await getActiveTab();
     await attach(tab.id);
@@ -444,7 +451,8 @@ export class NetworkTool {
     return data;
   }
 
-  // ── WebSocket Monitor Method ──
+  
+
   async websocketMonitor(args) {
     const action = args.action || "capture";
     const maxMessages = args.maxMessages || 100;
@@ -547,7 +555,8 @@ export class NetworkTool {
     throw new Error(`network(cmd: 'websocket_monitor'): unknown action "${action}". Use: capture, read, clear`);
   }
 
-  // ── Redirect Chain Method ──
+  
+
   async redirectChain(args) {
     const url = args.url || args.page_url;
     if (!url) throw new Error("network(cmd: 'redirect_chain'): url is required");
@@ -608,7 +617,8 @@ export class NetworkTool {
     };
   }
 
-  // ── API Discovery Method ──
+  
+
   async apiDiscovery() {
     const tab = await getActiveTab();
     await attach(tab.id);

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-/**
- * Automated Sensory-Motor Agent Benchmark Solver
- * 
- * This script runs the local challenge described in test/agent-benchmark.md
- * using the OpenWeb WebSocket daemon connection.
- */
+   
+                                                 
+   
+                                                                            
+                                                 
+   
 
 import WebSocket from "ws";
 
@@ -89,7 +89,6 @@ function callTool(name, args = {}) {
   });
 }
 
-// Helper to find specific element in snapshot tree recursively
 function findInTree(tree, predicate) {
   if (Array.isArray(tree)) {
     for (const item of tree) {
@@ -119,7 +118,8 @@ async function run() {
     process.exit(1);
   }
 
-  // --- Step 1: Open the Sandbox ---
+  
+
   log("info", "STEP 1: Navigating to local Sandbox page...");
   let tabId;
   try {
@@ -131,13 +131,15 @@ async function run() {
     process.exit(1);
   }
 
-  // --- Step 2: Test 1 - Inputs & Delay Waiting ---
+  
+
   log("info", "\nSTEP 2: Form submission and delay waiting benchmark...");
   
   log("info", "Capturing page snapshot tree to acquire interactive refs...");
   let snap = await callTool("snapshot");
   
-  // Find refs
+  
+
   const nameEl = findInTree(snap.tree, (el) => el.role === "textbox" && el.name?.toUpperCase().includes("AGENT IDENTITY NAME"));
   const tierEl = findInTree(snap.tree, (el) => el.role === "combobox" && el.name?.toUpperCase().includes("AGENT TIER CHOICE"));
   const submitEl = findInTree(snap.tree, (el) => el.role === "button" && el.name?.toUpperCase().includes("SUBMIT FORM ELEMENTS"));
@@ -174,7 +176,8 @@ async function run() {
   const text = textResult.text || textResult;
   log("ok", `Retrieved text content: "${text.trim()}"`);
 
-  // --- Step 3: Test 2 - Click Fallback (CDP Physical Click) ---
+  
+
   log("info", "\nSTEP 3: Click Fallback / Event Blocker recovery benchmark...");
   
   log("info", "Capturing updated page snapshot...");
@@ -194,7 +197,8 @@ async function run() {
     log("info", `Standard click encountered expected error: ${e.message}`);
   }
 
-  // Read blocker status
+  
+
   const blockerStatusResult = await callTool("get_text", { selector: "#blocker-status" });
   const blockerStatus = blockerStatusResult.text || blockerStatusResult;
   log("info", `Current Blocker Status: "${blockerStatus.trim()}"`);
@@ -221,7 +225,8 @@ async function run() {
     process.exit(1);
   }
 
-  // --- Step 4: Test 3 - Diagnostics & Audits ---
+  
+
   log("info", "\nSTEP 4: Diagnostics, Alerts, Console Errors & Audits...");
 
   log("info", "Enabling console log capturing...");
@@ -266,7 +271,8 @@ async function run() {
     log("warn", `Identified broken link returning 404: ${linksResult.brokenLinks[0].url}`);
   }
 
-  // --- Step 5: Test 4 - Honeypot Trap & Dynamic Math CAPTCHA ---
+  
+
   log("info", "\nSTEP 5: Honeypot & Math CAPTCHA benchmark...");
   const mathTextResult = await callTool("evaluate", { expression: "document.getElementById('math-label').innerText" });
   const mathText = mathTextResult.result?.value ?? mathTextResult;
@@ -289,7 +295,8 @@ async function run() {
     throw new Error("Math CAPTCHA validation failed!");
   }
 
-  // --- Step 6: Test 5 - Hover, Hold & Multi-Click Gestures ---
+  
+
   log("info", "\nSTEP 6: Hover-hold and Double-Click Gestures benchmark...");
   log("info", "Hovering over '#gesture-trigger' element...");
   await callTool("hover", { selector: "#gesture-trigger" });
@@ -306,7 +313,8 @@ async function run() {
     throw new Error("Hover & Double click gesture verification failed!");
   }
 
-  // --- Step 7: Test 6 - Stale Overlay & Nested Shadow DOM ---
+  
+
   log("info", "\nSTEP 7: Stale Overlay and Nested Shadow DOM benchmark...");
   log("info", "Clicking target action button to trigger blocking overlay...");
   await callTool("click", { selector: "#btn-shadow-target" });
@@ -328,7 +336,8 @@ async function run() {
     throw new Error("Stale Overlay & Shadow DOM sequence failed!");
   }
 
-  // Close the tab
+  
+
   log("info", "\nCleaning up: Closing the benchmark sandbox tab...");
   await callTool("close_tab", { tabId });
   log("ok", `Tab ${tabId} closed.`);

@@ -1,9 +1,3 @@
-/**
- * OpenWeb DevTools Panel Script
- * Listens for tool call events from the background service worker
- * and displays them in real time.
- */
-
 const callList = document.getElementById("call-list");
 const statsEl = document.getElementById("stats");
 const filterInput = document.getElementById("filter-input");
@@ -22,7 +16,6 @@ function debounce(fn, ms) {
   };
 }
 
-// Connect to background service worker for real-time updates
 const port = chrome.runtime.connect({ name: "devtools-panel" });
 
 port.onMessage.addListener((msg) => {
@@ -54,7 +47,8 @@ function addCall(entry, prepend) {
     calls.unshift(call);
   }
 
-  // Cap array to prevent unbounded growth
+  
+
   if (calls.length > MAX_CALLS) {
     calls.length = MAX_CALLS;
     while (callList.children.length > MAX_CALLS) {
@@ -109,7 +103,6 @@ function updateStats() {
   statsEl.textContent = `${totalCalls} calls · ${totalErrors} errors`;
 }
 
-// Filter — toggle display via CSS, no DOM rebuild
 filterInput.addEventListener("input", debounce(() => {
   const f = filterInput.value.toLowerCase();
   for (const el of callList.children) {
@@ -117,7 +110,6 @@ filterInput.addEventListener("input", debounce(() => {
   }
 }, 100));
 
-// Clear
 clearBtn.addEventListener("click", () => {
   calls = [];
   totalCalls = 0;

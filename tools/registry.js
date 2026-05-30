@@ -1,34 +1,27 @@
-/**
- * Tool Registry
- * Registers and executes browser automation tools.
- * Supports multi-tab parallel execution via _tabId parameter.
- */
-
 import { attach, setActiveTabId, getActiveTabId } from "../lib/cdp.js";
 
 const toolMap = new Map();
 
-// Tools that don't need tab context
 const GLOBAL_TOOLS = new Set([
   "close_tab", "list_tabs", "close_session", "session", "bookmark", "extension",
 ]);
 
-/**
- * Register a tool instance.
- * @param {{ name: string, execute: (args: object) => Promise<object> }} tool
- */
+   
+                            
+                                                                             
+   
 export function register(tool) {
   toolMap.set(tool.name, tool);
 }
 
-/**
- * Execute a tool by name.
- * Supports _tabId for multi-tab: saves current tab context,
- * switches to requested tab, executes, then restores context.
- * @param {string} name
- * @param {object} args
- * @returns {Promise<object>}
- */
+   
+                          
+                                                            
+                                                              
+                       
+                       
+                             
+   
 export async function executeTool(name, args) {
   const tool = toolMap.get(name);
   if (!tool) {
@@ -37,7 +30,8 @@ export async function executeTool(name, args) {
 
   const requestedTabId = args._tabId;
   if (requestedTabId != null && !GLOBAL_TOOLS.has(name)) {
-    // Switch to requested tab
+    
+
     await attach(requestedTabId);
     setActiveTabId(requestedTabId);
     delete args._tabId;
@@ -48,10 +42,10 @@ export async function executeTool(name, args) {
   return tool.execute(args);
 }
 
-/**
- * Get all registered tool names.
- * @returns {string[]}
- */
+   
+                                 
+                      
+   
 export function getToolNames() {
   return [...toolMap.keys()];
 }

@@ -247,12 +247,12 @@ node mcp-server.js --transport sse --port 3001
 **自定义守护进程 URL：**
 
 ```bash
-WEBBRIDGE_WS_URL=ws://192.168.1.100:10086/ws node mcp-server.js
+OPENWEB_WS_URL=ws://192.168.1.100:10086/ws node mcp-server.js
 ```
 
 ## 安全性
 
-- **身份验证：** 设置 `WEBBRIDGE_TOKEN` 以保护控制器连接（Bearer 令牌）
+- **身份验证：** 设置 `OPENWEB_TOKEN` 以保护控制器连接（Bearer 令牌）
 - 启用令牌时，守护进程拒绝不安全的 `ws://` 连接 — 请使用 `wss://`
 - SSE 传输也需要 `Authorization` 请求头中的 Bearer 令牌
 - 令牌比较使用 `crypto.timingSafeEqual` 防止时序攻击

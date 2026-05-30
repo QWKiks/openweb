@@ -1,8 +1,3 @@
-/**
- * Click Tool
- * Clicks an element by CSS selector or @e ref via DOM-level click() or physical CDP input events.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
@@ -40,13 +35,15 @@ export class ClickTool {
   async clickHumanized(selector, steps = 15) {
     const { objectId, resolvedWith } = await this.resolveObjectId(selector);
 
-    // Scroll into view
+    
+
     await sendCommand("Runtime.callFunctionOn", {
       objectId,
       functionDeclaration: `function() { this.scrollIntoView({ block: 'center', inline: 'center' }); }`,
     });
 
-    // Get box model
+    
+
     let boxModel;
     try {
       boxModel = await sendCommand("DOM.getBoxModel", { objectId });
@@ -65,11 +62,13 @@ export class ClickTool {
       );
     }
 
-    // Calculate center point
+    
+
     let x = (content[0] + content[2] + content[4] + content[6]) / 4;
     let y = (content[1] + content[3] + content[5] + content[7]) / 4;
 
-    // Apply devicePixelRatio correction for Retina displays
+    
+
     const dprResult = await sendCommand("Runtime.evaluate", {
       expression: "window.devicePixelRatio",
       returnByValue: true,
@@ -81,7 +80,8 @@ export class ClickTool {
     const startX = lastMouseX;
     const startY = lastMouseY;
 
-    // Generate cubic Bezier control points with slight natural random offset
+    
+
     const dx = x - startX;
     const dy = y - startY;
     const offset1 = (Math.random() - 0.5) * 60;
@@ -94,7 +94,8 @@ export class ClickTool {
 
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    // Move along the Bezier curve
+    
+
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;
       const cx = Math.round(
@@ -118,15 +119,18 @@ export class ClickTool {
         buttons: 0,
       });
 
-      // Natural micro-delay between steps
+      
+
       await sleep(10 + Math.random() * 10);
     }
 
-    // Update global state
+    
+
     lastMouseX = x;
     lastMouseY = y;
 
-    // Dispatch native click events
+    
+
     await sendCommand("Input.dispatchMouseEvent", {
       type: "mousePressed",
       x,
@@ -135,7 +139,8 @@ export class ClickTool {
       buttons: 1,
       clickCount: 1,
     });
-    await sleep(30 + Math.random() * 50); // micro-delay holding click
+    await sleep(30 + Math.random() * 50); 
+
     await sendCommand("Input.dispatchMouseEvent", {
       type: "mouseReleased",
       x,
@@ -145,14 +150,16 @@ export class ClickTool {
       clickCount: 1,
     });
 
-    // Get element info
+    
+
     const info = await sendCommand("Runtime.callFunctionOn", {
       objectId,
       functionDeclaration: `function() { return { tag: this.tagName, text: (this.textContent || '').slice(0, 100) }; }`,
       returnByValue: true,
     });
 
-    // Clean up remote object to avoid leaking
+    
+
     try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
 
     const result = {
@@ -175,13 +182,15 @@ export class ClickTool {
   async clickPhysical(selector) {
     const { objectId, resolvedWith } = await this.resolveObjectId(selector);
 
-    // Scroll into view
+    
+
     await sendCommand("Runtime.callFunctionOn", {
       objectId,
       functionDeclaration: `function() { this.scrollIntoView({ block: 'center', inline: 'center' }); }`,
     });
 
-    // Get box model
+    
+
     let boxModel;
     try {
       boxModel = await sendCommand("DOM.getBoxModel", { objectId });
@@ -200,11 +209,13 @@ export class ClickTool {
       );
     }
 
-    // Calculate center point
+    
+
     let x = (content[0] + content[2] + content[4] + content[6]) / 4;
     let y = (content[1] + content[3] + content[5] + content[7]) / 4;
 
-    // Apply devicePixelRatio correction for Retina displays
+    
+
     const dprResult = await sendCommand("Runtime.evaluate", {
       expression: "window.devicePixelRatio",
       returnByValue: true,
@@ -213,7 +224,8 @@ export class ClickTool {
     x = x / dpr;
     y = y / dpr;
 
-    // Dispatch mouse events
+    
+
     await sendCommand("Input.dispatchMouseEvent", {
       type: "mouseMoved", x, y, button: "none", buttons: 0,
     });
@@ -224,14 +236,16 @@ export class ClickTool {
       type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1,
     });
 
-    // Get element info
+    
+
     const info = await sendCommand("Runtime.callFunctionOn", {
       objectId,
       functionDeclaration: `function() { return { tag: this.tagName, text: (this.textContent || '').slice(0, 100) }; }`,
       returnByValue: true,
     });
 
-    // Clean up remote object to avoid leaking
+    
+
     try { await sendCommand("Runtime.releaseObject", { objectId }); } catch {}
 
     const result = {
@@ -293,15 +307,18 @@ export class ClickTool {
   }
 
   async objectIdFromSelector(selector) {
-    // Handle js: prefixed selectors (text content search fallback from semantic-selector)
+    
+
     let expression;
     if (selector.startsWith('js:')) {
-      // Extract the JS expression params: js:findByTextContent("text", "scope")
+      
+
       const match = selector.match(/^js:findByTextContent\("([^"]+)",\s*"([^"]+)"\)$/);
       if (match) {
         expression = buildTextSearchExpression(match[1], match[2]);
       } else {
-        return null; // Malformed js: selector
+        return null; 
+
       }
     } else {
       expression = `document.querySelector(${JSON.stringify(selector)})`;
@@ -312,7 +329,8 @@ export class ClickTool {
       returnByValue: false,
     });
     if (result.exceptionDetails) {
-      // Don't throw on js: selectors — just return null to try next candidate
+      
+
       if (selector.startsWith('js:')) return null;
       throw new Error(`click (physical): ${result.exceptionDetails.text}`);
     }
@@ -348,7 +366,8 @@ export class ClickTool {
       returnByValue: true,
     });
 
-    // Clean up remote object to avoid leaking
+    
+
     try { await sendCommand("Runtime.releaseObject", { objectId: object.objectId }); } catch {}
 
     if (result.exceptionDetails) throw new Error(`click: ${result.exceptionDetails.text}`);
@@ -356,7 +375,8 @@ export class ClickTool {
   }
 
   async clickBySelector(selector, args = {}) {
-    // If semantic selector, resolve to CSS/JS candidates and try each
+    
+
     if (isSemanticSelector(selector)) {
       const candidates = resolveSelector(selector);
       for (const candidate of candidates) {

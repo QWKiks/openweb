@@ -1,12 +1,6 @@
-/**
- * Send Keys Tool
- * Sends key combinations (e.g. Ctrl+A, Shift+Tab, Enter) via CDP Input events.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
-// Modifier key definitions
 const MODIFIERS = {
   alt:   { bit: 1, key: "Alt",       code: "AltLeft",      vkc: 18 },
   ctrl:  { bit: 2, key: "Control",   code: "ControlLeft",  vkc: 17 },
@@ -31,7 +25,6 @@ function getModKey(platform) {
   return platform === "mac" ? MODIFIERS.cmd : MODIFIERS.ctrl;
 }
 
-// Special key definitions
 const SPECIAL_KEYS = {
   enter:     { key: "Enter",      code: "Enter",      vkc: 13, text: "\r" },
   return:    { key: "Enter",      code: "Enter",      vkc: 13, text: "\r" },
@@ -51,22 +44,24 @@ const SPECIAL_KEYS = {
   pagedown:  { key: "PageDown",   code: "PageDown",   vkc: 34 },
 };
 
-/**
- * Parse a single key identifier (e.g. "a", "Enter", "F1").
- */
+   
+                                                           
+   
 function parseKey(key) {
   const lower = key.toLowerCase();
 
   if (SPECIAL_KEYS[lower]) return SPECIAL_KEYS[lower];
 
-  // Function keys F1-F12
+  
+
   const fnMatch = lower.match(/^f(\d{1,2})$/);
   if (fnMatch) {
     const num = parseInt(fnMatch[1], 10);
     if (num >= 1 && num <= 12) return { key: `F${num}`, code: `F${num}`, vkc: 111 + num };
   }
 
-  // Single character
+  
+
   if (key.length === 1) {
     if (/^[a-zA-Z]$/.test(key)) {
       const lower = key.toLowerCase();
@@ -83,9 +78,9 @@ function parseKey(key) {
   );
 }
 
-/**
- * Parse a key segment like "Ctrl+A" or "Shift+Tab".
- */
+   
+                                                    
+   
 function parseSegment(segment, modKey) {
   const parts = segment.split("+").map((s) => s.trim()).filter(Boolean);
   if (parts.length === 0) throw new Error("send_keys: empty segment");
@@ -109,9 +104,9 @@ function parseSegment(segment, modKey) {
   return { modifierBits, modifierKeys, spec };
 }
 
-/**
- * Apply shift uppercase transformation if needed.
- */
+   
+                                                  
+   
 function applyShift(keySpec, modifierBits) {
   if (!modifierBits || keySpec.key.length !== 1 || !/^[a-z]$/.test(keySpec.key)) return keySpec;
   const upper = keySpec.key.toUpperCase();
@@ -148,7 +143,8 @@ export class SendKeysTool {
         const keySpec = applyShift(spec, modifierBits & SHIFT_BIT);
         let currentModifiers = 0;
 
-        // Press modifier keys
+        
+
         for (const mod of modifierKeys) {
           currentModifiers |= mod.bit;
           await sendCommand("Input.dispatchKeyEvent", {
@@ -160,7 +156,8 @@ export class SendKeysTool {
           });
         }
 
-        // Press the main key
+        
+
         const textArg = (modifierBits & ~SHIFT_BIT) === 0 && keySpec.text !== undefined
           ? { text: keySpec.text }
           : {};
@@ -173,7 +170,8 @@ export class SendKeysTool {
           ...textArg,
         });
 
-        // Release the main key
+        
+
         await sendCommand("Input.dispatchKeyEvent", {
           type: "keyUp",
           modifiers: modifierBits,
@@ -182,7 +180,8 @@ export class SendKeysTool {
           windowsVirtualKeyCode: keySpec.vkc,
         });
 
-        // Release modifier keys in reverse order
+        
+
         for (let i = modifierKeys.length - 1; i >= 0; i--) {
           const mod = modifierKeys[i];
           currentModifiers &= ~mod.bit;

@@ -1,8 +1,3 @@
-/**
- * Responsive Test Tool
- * Quick viewport checks at mobile / tablet / desktop breakpoints.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -22,7 +17,8 @@ export class ResponsiveTestTool {
     const results = [];
 
     for (const bp of breakpoints) {
-      // Set viewport via CDP
+      
+
       await sendCommand("Emulation.setDeviceMetricsOverride", {
         width: bp.width,
         height: bp.height,
@@ -30,10 +26,12 @@ export class ResponsiveTestTool {
         mobile: bp.name === "mobile",
       });
 
-      // Wait for layout
+      
+
       await new Promise(r => setTimeout(r, 1500));
 
-      // Collect metrics
+      
+
       const metrics = await sendCommand("Runtime.evaluate", {
         expression: `(() => ({
           scrollWidth: document.documentElement.scrollWidth,
@@ -56,7 +54,8 @@ export class ResponsiveTestTool {
       });
     }
 
-    // Reset viewport
+    
+
     await sendCommand("Emulation.clearDeviceMetricsOverride");
 
     return {

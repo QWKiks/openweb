@@ -1,12 +1,6 @@
-/**
- * Emulate Tool
- * Emulate a mobile device, set geolocation, or change user agent.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
-// Common device presets
 const DEVICE_PRESETS = {
   iphone_14: { width: 390, height: 844, deviceScaleFactor: 3, mobile: true, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1", touch: true },
   iphone_14_pro_max: { width: 430, height: 932, deviceScaleFactor: 3, mobile: true, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1", touch: true },
@@ -116,7 +110,8 @@ export class EmulateTool {
     await sendCommand("Emulation.clearGeolocationOverride");
     await sendCommand("Emulation.setTouchEmulationEnabled", { enabled: false });
 
-    // Reset user agent by setting empty override (falls back to default)
+    
+
     const result = await sendCommand("Runtime.evaluate", {
       expression: "navigator.userAgent",
       returnByValue: true,

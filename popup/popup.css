@@ -1,4 +1,3 @@
-/* ── Design Tokens ──────────────────────────────────────────────────────────── */
 :root {
   --bg: #fff;
   --bg-surface: #f9fafb;
@@ -54,7 +53,7 @@
   --warning-text: #fbbf24;
 }
 
-/* ── Reset & Base ──────────────────────────────────────────────────────────── */
+                                                                                  
 * {
   margin: 0;
   padding: 0;
@@ -79,7 +78,7 @@ body {
   display: none !important;
 }
 
-/* ── Header ──────────────────────────────────────────────────────────────── */
+                                                                                
 .header {
   display: flex;
   justify-content: space-between;
@@ -118,7 +117,7 @@ body {
   font-weight: 400;
 }
 
-/* ── Status ──────────────────────────────────────────────────────────────── */
+                                                                                
 .status {
   display: inline-flex;
   align-items: center;
@@ -174,7 +173,7 @@ body {
   100% { background-position: 0% 0%, 200% 50%; }
 }
 
-/* ── Hint Text ───────────────────────────────────────────────────────────── */
+                                                                                
 .hint {
   font-size: 13px;
   color: var(--fg-muted);
@@ -182,7 +181,7 @@ body {
   margin-bottom: 12px;
 }
 
-/* ── URL Box (disconnected) ──────────────────────────────────────────────── */
+                                                                                
 .url-box {
   display: flex;
   align-items: center;
@@ -210,7 +209,7 @@ body {
   padding: 8px 0;
 }
 
-/* ── Copy Button ─────────────────────────────────────────────────────────── */
+                                                                                
 .copy-btn {
   flex-shrink: 0;
   width: 28px;
@@ -240,7 +239,7 @@ body {
   color: var(--fg);
 }
 
-/* ── URL Row (connected) ─────────────────────────────────────────────────── */
+                                                                                
 .url-row {
   display: flex;
   align-items: center;
@@ -258,7 +257,7 @@ body {
   word-break: break-all;
 }
 
-/* ── Stats Row ──────────────────────────────────────────────────────────── */
+                                                                               
 .stats-row {
   display: flex;
   justify-content: space-between;
@@ -295,7 +294,7 @@ body {
   margin-top: 1px;
 }
 
-/* ── Action Log ──────────────────────────────────────────────────────────── */
+                                                                                
 .action-log {
   margin-bottom: 8px;
 }
@@ -345,7 +344,7 @@ body {
   color: var(--error);
 }
 
-/* ── MCP Section ─────────────────────────────────────────────────────────── */
+                                                                                
 .mcp-section {
   margin-top: 12px;
   padding: 10px;
@@ -405,7 +404,7 @@ body {
   transform: rotate(-180deg);
 }
 
-/* Collapsible via max-height (avoids reflow, composited) */
+                                                            
 .mcp-body {
   overflow: hidden;
   max-height: 300px;
@@ -480,7 +479,7 @@ body {
   line-height: 1.4;
 }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
+                                                                                
 .btn {
   display: block;
   width: 100%;
@@ -548,7 +547,7 @@ body {
   border-color: #b91c1c;
 }
 
-/* ── Dev Trigger ─────────────────────────────────────────────────────────── */
+                                                                                
 .dev-trigger {
   display: block;
   width: 100%;
@@ -559,7 +558,7 @@ body {
   cursor: default;
 }
 
-/* ── Dev Settings ────────────────────────────────────────────────────────── */
+                                                                                
 #dev-settings {
   margin-top: 14px;
   padding-top: 14px;
@@ -693,7 +692,7 @@ body {
   text-align: center;
 }
 
-/* ── Trust Dialog ────────────────────────────────────────────────────────── */
+                                                                                
 #trust-dialog {
   margin-top: 12px;
   padding: 12px;
@@ -735,7 +734,7 @@ body {
   flex: 1;
 }
 
-/* ── Dark Mode (color-scheme only — all palette via tokens) ───────────────── */
+                                                                                 
 @media (prefers-color-scheme: dark) {
   :root { color-scheme: dark; }
 }
@@ -744,7 +743,7 @@ body {
   color-scheme: dark;
 }
 
-/* ── Error Banner ──────────────────────────────────────────────────────────── */
+                                                                                  
 .error-banner {
   display: flex;
   align-items: center;

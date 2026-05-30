@@ -1,8 +1,3 @@
-/**
- * Select Tool
- * Selects an option in a <select> element by CSS selector or snapshot ref.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
@@ -61,7 +56,8 @@ export class SelectTool {
     const val = result.result.value;
     if (val?.error) throw new Error(val.error);
 
-    // Get objectId for the element
+    
+
     const objResult = await sendCommand("Runtime.evaluate", {
       expression: `document.querySelector(${JSON.stringify(selector)})`,
       returnByValue: false,

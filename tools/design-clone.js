@@ -1,9 +1,3 @@
-/**
- * Design Clone Tool
- * Analyzes a website's design, layout, typography, colors, and components,
- * then generates a detailed prompt for any AI to replicate the frontend.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -14,7 +8,8 @@ export class DesignCloneTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // Run a comprehensive design audit via CDP
+    
+
     const auditResult = await sendCommand("Runtime.evaluate", {
       expression: this.buildExpression(),
       returnByValue: true,
@@ -29,7 +24,8 @@ export class DesignCloneTool {
     data.url = tab.url;
     data.title = tab.title;
 
-    // Build the prompt
+    
+
     const prompt = this.buildPrompt(data);
 
     return {
@@ -219,14 +215,16 @@ export class DesignCloneTool {
     lines.push(`URL: ${data.url}`);
     lines.push('');
 
-    // Overview
+    
+
     lines.push('## 1. Overview');
     lines.push(`- **Viewport**: ${data.viewport?.width || '?'} × ${data.viewport?.height || '?'}`);
     lines.push(`- **Dark Mode Support**: ${data.darkMode ? 'Yes' : 'No'}`);
     lines.push(`- **CSS Layout**: ${data.hasGrid ? 'CSS Grid + ' : ''}${data.hasFlex ? 'Flexbox' : 'Block/Inline'}`);
     lines.push('');
 
-    // Color Palette
+    
+
     lines.push('## 2. Color Palette');
     if (data.colors?.length) {
       lines.push('Use these exact colors:');
@@ -236,7 +234,8 @@ export class DesignCloneTool {
     }
     lines.push('');
 
-    // Typography
+    
+
     lines.push('## 3. Typography');
     if (data.fonts?.length) {
       lines.push(`**Fonts**: ${data.fonts.join(', ')}`);
@@ -252,7 +251,8 @@ export class DesignCloneTool {
     }
     lines.push('');
 
-    // Layout
+    
+
     lines.push('## 4. Layout & Grid');
     if (data.containers?.length) {
       data.containers.forEach(c => {
@@ -266,7 +266,8 @@ export class DesignCloneTool {
     }
     lines.push('');
 
-    // Navigation
+    
+
     if (data.nav) {
       lines.push('## 5. Navigation Bar');
       lines.push(`- **Height**: ${data.nav.height}`);
@@ -276,7 +277,8 @@ export class DesignCloneTool {
       lines.push('');
     }
 
-    // Hero
+    
+
     if (data.hero) {
       lines.push('## 6. Hero / Main Visual');
       lines.push(`- **Height**: ${data.hero.height}`);
@@ -288,7 +290,8 @@ export class DesignCloneTool {
       lines.push('');
     }
 
-    // Buttons
+    
+
     if (data.buttons?.length) {
       lines.push('## 7. Buttons');
       data.buttons.forEach((b, i) => {
@@ -307,7 +310,8 @@ export class DesignCloneTool {
       });
     }
 
-    // Cards
+    
+
     if (data.cards?.length) {
       lines.push('## 8. Cards / Content Blocks');
       data.cards.forEach((c, i) => {
@@ -321,7 +325,8 @@ export class DesignCloneTool {
       });
     }
 
-    // Forms
+    
+
     if (data.inputs?.length) {
       lines.push('## 9. Form Inputs');
       data.inputs.forEach((inp, i) => {
@@ -335,21 +340,24 @@ export class DesignCloneTool {
       });
     }
 
-    // Spacing
+    
+
     if (data.spacings?.length) {
       lines.push('## 10. Spacing Scale');
       lines.push('Observed spacing values: ' + data.spacings.join(', '));
       lines.push('');
     }
 
-    // Animations
+    
+
     if (data.animations?.length) {
       lines.push('## 11. Animations & Transitions');
       data.animations.forEach(a => lines.push(`- \`${a}\``));
       lines.push('');
     }
 
-    // Images
+    
+
     if (data.images?.length) {
       lines.push('## 12. Images & Media');
       data.images.forEach((img, i) => {
@@ -362,7 +370,8 @@ export class DesignCloneTool {
       });
     }
 
-    // Instructions
+    
+
     lines.push('## 13. Implementation Instructions');
     lines.push('');
     lines.push('### Tech Stack');

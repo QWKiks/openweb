@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-/**
- * OpenWeb — CLI
- *
- * One-command setup: npx openweb setup
- */
+   
+                
+  
+                                       
+   
 
 import { execSync, spawn } from "child_process";
 import { existsSync, mkdirSync } from "fs";
@@ -21,7 +21,8 @@ switch (command) {
   case "setup": {
     console.log("\n  OpenWeb — Setup\n");
 
-    // 1. Clone repo if not already installed
+    
+
     if (existsSync(join(INSTALL_DIR, "package.json"))) {
       console.log("  ✓ Already installed at " + INSTALL_DIR);
     } else {
@@ -35,7 +36,8 @@ switch (command) {
       }
     }
 
-    // 2. Install dependencies
+    
+
     console.log("  Installing dependencies...");
     try {
       execSync(`npm install`, { cwd: INSTALL_DIR, stdio: "inherit" });
@@ -44,7 +46,8 @@ switch (command) {
       process.exit(1);
     }
 
-    // 3. Register MCP with all detected AI tools
+    
+
     console.log("\n  Registering MCP server with AI tools...\n");
     try {
       execSync(`node setup-mcp.js --all`, { cwd: INSTALL_DIR, stdio: "inherit" });
@@ -52,7 +55,8 @@ switch (command) {
       console.log("  ⚠ Some AI tools could not be detected, but setup can continue.");
     }
 
-    // 4. Start the daemon
+    
+
     console.log("  Starting daemon...\n");
     const daemonPath = join(INSTALL_DIR, "daemon.js");
     try {
@@ -61,7 +65,8 @@ switch (command) {
       console.log("  ℹ Daemon stopped by user.");
     }
 
-    // 5. Print extension instructions
+    
+
     console.log("\n  ─────────────────────────────────────────────");
     console.log("  Load the Chrome extension:");
     console.log("    1. Open chrome://extensions");
@@ -81,7 +86,8 @@ switch (command) {
     try {
       execSync(`node "${daemonPath}"`, { stdio: "inherit" });
     } catch (e) {
-      // Silent ignore as it's often just a Ctrl+C in the daemon case
+      
+
     }
     break;
   }
@@ -93,7 +99,8 @@ switch (command) {
     try {
       execSync(`node "${mcpPath}"`, { stdio: "inherit" });
     } catch (e) {
-      // Silent ignore
+      
+
     }
     break;
   }
@@ -103,7 +110,8 @@ switch (command) {
 
     const checks = [];
 
-    // 1. Check daemon health endpoint
+    
+
     const healthPromise = new Promise((resolve) => {
       http.get("http://127.0.0.1:10087/health", (res) => {
         let data = "";
@@ -123,7 +131,8 @@ switch (command) {
       });
     });
 
-    // 2. Check daemon WebSocket
+    
+
     const wsPromise = new Promise(async (resolve) => {
       const { default: WebSocket } = await import("ws");
       const ws = new WebSocket("ws://127.0.0.1:10086/ws");
@@ -139,7 +148,8 @@ switch (command) {
       setTimeout(() => { ws.close(); resolve(); }, 3000);
     });
 
-    // 3. Check MCP config registered
+    
+
     const mcpPromise = new Promise((resolve) => {
       const windsurfConfig = join(homedir(), ".codeium", "windsurf", "mcp_config.json");
       const claudeConfig = join(homedir(), "Library", "Application Support", "Claude", "claude_desktop_config.json");

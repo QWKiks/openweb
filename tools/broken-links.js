@@ -1,8 +1,3 @@
-/**
- * Broken Links Tool
- * Checks all <a href> on the page, returns 404/500/redirects.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -14,7 +9,8 @@ export class BrokenLinksTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // Collect all unique hrefs
+    
+
     const hrefResult = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         const links = [...document.querySelectorAll('a[href]')];
@@ -32,7 +28,8 @@ export class BrokenLinksTool {
     const urls = hrefResult.result?.value || [];
     if (urls.length === 0) return { checked: 0, broken: [], redirects: [], ok: [] };
 
-    // Check each URL via fetch in the page context
+    
+
     const checkResult = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         const urls = ${JSON.stringify(urls)};

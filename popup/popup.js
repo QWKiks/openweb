@@ -15,14 +15,13 @@ const CLICKS_TO_ENABLE = 7;
 let listenersAttached = false;
 let currentTheme = "auto";
 
-// Sync i18n fallback until init() completes
 let t = (key, subs) => {
   let s = chrome.i18n.getMessage(key);
   if (subs) subs.forEach((v, i) => s = s.replace(`$${i + 1}$`, v));
   return s || key;
 };
 
-const THEME_KEY = "webbridge_theme";
+const THEME_KEY = "OpenWeb_theme";
 
 function applyTheme(theme) {
   currentTheme = theme;
@@ -324,17 +323,20 @@ let metricsInterval = null;
 async function boot() {
   await loadTheme();
   initUI();
-  // Init i18n async; replace t() with full version when ready
+  
+
   await initI18n();
   t = _t;
   initUI();
-  // Single GET_STATUS call for rate-limit + status
+  
+
   chrome.runtime.sendMessage({ type: "GET_STATUS" }).then(status => {
     if (!status) return;
     $("rate-limit-input").value = status.metrics?.rateLimitPerSec ?? 0;
     updateStatus(status);
   });
-  // Live metrics update while popup is open
+  
+
   metricsInterval = setInterval(() => {
     chrome.runtime.sendMessage({ type: "GET_STATUS" }).then(s => s && updateStatus(s)).catch(() => {});
   }, 5000);

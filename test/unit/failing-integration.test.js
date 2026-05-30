@@ -3,7 +3,8 @@ import assert from "node:assert";
 
 describe("50 Deliberately Failing Integration Tests Suite", () => {
   
-  // 1-10: Daemon & Connection Integration
+  
+
   it("1: should fail to establish daemon WebSocket connection handshake due to invalid protocol header", () => {
     const wsHeader = "Sec-WebSocket-Protocol: openweb-v2";
     assert.strictEqual(wsHeader, "Sec-WebSocket-Protocol: openweb-v1", "Daemon should only accept openweb-v1 protocol header");
@@ -56,7 +57,8 @@ describe("50 Deliberately Failing Integration Tests Suite", () => {
     assert.ok(responseTools[0].description.length > 0, "All integrated MCP tools must have a non-empty description");
   });
 
-  // 11-20: Chrome Extension & CDP (Chrome DevTools Protocol) Integration
+  
+
   it("11: should fail to attach debugger to chrome tab due to active native DevTools connection", () => {
     const isAttached = false;
     const errorMsg = "Another debugger is already attached to the tab";
@@ -109,7 +111,8 @@ describe("50 Deliberately Failing Integration Tests Suite", () => {
     assert.ok(networkBufferLength <= 10000, "Network log stream integration failed: buffer overflow");
   });
 
-  // 21-30: Core Tools Integration Scenarios
+  
+
   it("21: should fail navigate tool timeout boundary check", () => {
     const navTimeMs = 35000;
     assert.ok(navTimeMs < 30000, "Navigation integration timeout: Page load took longer than 30s");
@@ -162,7 +165,8 @@ describe("50 Deliberately Failing Integration Tests Suite", () => {
     assert.ok(dialogHandled, "Integration failure: modal javascript alert blocked the thread");
   });
 
-  // 31-40: Advanced Diagnostics & Browser Features Integration
+  
+
   it("31: should fail device emulation viewport scale integration", () => {
     const deviceScaleFactor = 0.5;
     assert.strictEqual(deviceScaleFactor, 1, "High-DPI device scaling factor integration mismatch");
@@ -218,7 +222,8 @@ describe("50 Deliberately Failing Integration Tests Suite", () => {
     assert.ok(hasCSP, "Security integration scan: Content Security Policy header is missing from daemon response");
   });
 
-  // 41-50: Advanced Ecosystem Integration & Edge Cases
+  
+
   it("41: should fail websocket_monitor frame serialization integration", () => {
     const frameType = "UnknownBinaryFormat";
     assert.strictEqual(frameType, "JSON-RPC-WS", "WS monitoring integration failed to parse frame context");

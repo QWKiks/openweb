@@ -1,7 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 
-// 1. Mock chrome API globally BEFORE dynamic imports
 globalThis.chrome = {
   tabs: {
     onRemoved: { addListener: () => {}, removeListener: () => {} },
@@ -40,7 +39,6 @@ globalThis.chrome = {
   },
 };
 
-// 2. Perform dynamic imports to bypass ESM hoisting
 const { SnapshotTool } = await import("../../tools/snapshot.js");
 const { NavigateTool } = await import("../../tools/navigate.js");
 const { NetworkTool } = await import("../../tools/network.js");
@@ -50,7 +48,8 @@ describe("Phase 6 Innovations & Optimizations", () => {
   
   describe("Snapshot Pruning & Interactive Pruning", () => {
     it("should return the entire tree when interactiveOnly=false and selector is omitted", async () => {
-      // Mock chrome.debugger.sendCommand to return custom AXTree nodes
+      
+
       const originalSendCommand = chrome.debugger.sendCommand;
       chrome.debugger.sendCommand = async (target, method, params) => {
         if (method === "Accessibility.getFullAXTree") {
@@ -256,7 +255,8 @@ describe("Phase 6 Innovations & Optimizations", () => {
           const res = await screenshot.execute({ lowRes: true });
           assert.ok(captureParams);
           assert.ok(captureParams.clip);
-          assert.strictEqual(captureParams.clip.scale, 0.5); // 800 / 1600 = 0.5
+          assert.strictEqual(captureParams.clip.scale, 0.5); 
+
           assert.strictEqual(captureParams.clip.width, 1600);
         } finally {
           chrome.debugger.sendCommand = originalSendCommand;

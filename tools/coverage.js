@@ -1,8 +1,3 @@
-/**
- * Coverage Tool
- * CSS and JS coverage analysis — shows unused percentage via Chrome DevTools Protocol.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -14,14 +9,17 @@ export class CoverageTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // Enable profiler
+    
+
     await sendCommand("Profiler.enable");
     await sendCommand("Profiler.startPreciseCoverage", { callCount: false, detailed: false });
 
-    // Reload page to collect coverage
+    
+
     await sendCommand("Page.reload", { ignoreCache: true });
 
-    // Wait a bit for page to load
+    
+
     await new Promise(r => setTimeout(r, 3000));
 
     const coverageResult = await sendCommand("Profiler.takePreciseCoverage");

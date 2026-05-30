@@ -1,9 +1,3 @@
-/**
- * State Management Tool
- * Consolidated state controller for browser tabs, cookie jars, localStorage, sessionStorage,
- * and unified authentication contexts (mv3 MV3, CDP based).
- */
-
 import { attach, sendCommand, setActiveTabId } from "../lib/cdp.js";
 import { getActiveTab, setLastReferencedTab } from "../lib/tab-manager.js";
 
@@ -17,7 +11,8 @@ export class StateTool {
     const scope = args.scope || "tabs";
     let cmd = args.cmd;
 
-    // Smart default commands per scope if omitted
+    
+
     if (!cmd) {
       if (scope === "tabs") {
         cmd = "save";
@@ -45,7 +40,8 @@ export class StateTool {
     }
   }
 
-  // ── Tabs Scope ─────────────────────────────────────────────────────────────
+  
+
   async handleTabs(cmd, args) {
     switch (cmd) {
       case "save":
@@ -113,7 +109,8 @@ export class StateTool {
         }
         restoredCount++;
       } catch (err) {
-        // Skip failed tabs
+        
+
       }
     }
 
@@ -155,7 +152,8 @@ export class StateTool {
     };
   }
 
-  // ── Cookies Scope ──────────────────────────────────────────────────────────
+  
+
   async handleCookies(cmd, args, tab) {
     await attach(tab.id);
     switch (cmd) {
@@ -174,7 +172,8 @@ export class StateTool {
 
   async getCookies(name, url) {
     await sendCommand("Network.enable");
-    // Retrieve cookies scoped specifically to the page URL for high-fidelity symmetry
+    
+
     const { cookies } = await sendCommand("Network.getCookies", { urls: [url] });
     let filtered = cookies || [];
     if (name) {
@@ -213,7 +212,8 @@ export class StateTool {
     return { success: true, deleted: name };
   }
 
-  // ── Storage Scope ──────────────────────────────────────────────────────────
+  
+
   async handleStorage(scope, cmd, args, tab) {
     await attach(tab.id);
     const storageType = scope === "session_storage" ? "sessionStorage" : "localStorage";
@@ -225,7 +225,8 @@ export class StateTool {
     switch (cmd) {
       case "read":
       case "get":
-        // Fix: Clean ReferenceError by defining key within page context
+        
+
         expression = `(() => {
           try {
             const storage = window[${JSON.stringify(storageType)}];
@@ -250,7 +251,8 @@ export class StateTool {
       case "write":
       case "set":
         if (!key) throw new Error(`state (${scope}): key is required for write/set`);
-        // Handles proper object serialization
+        
+
         const serializedValue = typeof value === "object" && value !== null ? JSON.stringify(value) : String(value == null ? "" : value);
         expression = `(() => {
           try {
@@ -310,7 +312,8 @@ export class StateTool {
     return val;
   }
 
-  // ── All (Auth Context) Scope ────────────────────────────────────────────────
+  
+
   async handleAll(cmd, args, tab) {
     switch (cmd) {
       case "save":
@@ -330,10 +333,12 @@ export class StateTool {
     await attach(tab.id);
     await sendCommand("Network.enable");
 
-    // Retrieve cookies scoped specifically to the page URL
+    
+
     const { cookies } = await sendCommand("Network.getCookies", { urls: [tab.url] });
 
-    // Fetch storage entries via page context
+    
+
     const storageResult = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         return {
@@ -357,7 +362,8 @@ export class StateTool {
       sessionStorage: storage.sessionStorage || {},
     };
 
-    // Symmetric persistence
+    
+
     await chrome.storage.local.set({ [AUTH_STORAGE_KEY]: sessionData });
 
     return {
@@ -371,7 +377,8 @@ export class StateTool {
   async loadAll(args, tab) {
     let activeSession = args.session;
 
-    // Symmetry: load from local storage if argument is omitted
+    
+
     if (!activeSession) {
       const data = await chrome.storage.local.get(AUTH_STORAGE_KEY);
       activeSession = data[AUTH_STORAGE_KEY];
@@ -385,7 +392,8 @@ export class StateTool {
 
     await attach(tab.id);
 
-    // 1. Restore cookies
+    
+
     if (Array.isArray(cookies) && cookies.length > 0) {
       await sendCommand("Network.enable");
       for (const cookie of cookies) {
@@ -405,7 +413,8 @@ export class StateTool {
       }
     }
 
-    // 2. Restore storage key-values
+    
+
     if (localData || sessionDataStore) {
       const escapedLocal = JSON.stringify(localData || {});
       const escapedSession = JSON.stringify(sessionDataStore || {});
@@ -443,7 +452,8 @@ export class StateTool {
       }
     }
 
-    // Optionally reload active page (reload is true by default)
+    
+
     if (args?.reload !== false) {
       await sendCommand("Page.reload", { ignoreCache: true });
     }
@@ -454,8 +464,6 @@ export class StateTool {
     };
   }
 }
-
-// ── Backwards-Compatible Proxy Classes ───────────────────────────────────────
 
 export class SessionTool {
   name = "session";

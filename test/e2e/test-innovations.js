@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-/**
- * End-to-End Test Suite for Phase 5 Advanced Innovations
- * 
- * Verifies all 4 newly created state-of-the-art tools:
- * 1. get_element_bounds (Visual Grounding)
- * 2. get_markdown (Markdown Reader Mode)
- * 3. humanize (Mouse Curve and Typist Emulation)
- * 4. session_manager (Session State Save & Restore)
- */
+   
+                                                         
+   
+                                                       
+                                           
+                                         
+                                                 
+                                                    
+   
 
 import WebSocket from "ws";
 
@@ -118,7 +118,8 @@ async function main() {
     process.exit(1);
   }
 
-  // --- Test 1: get_element_bounds ---
+  
+
   try {
     log("info", "Testing get_element_bounds (Visual Grounding)...");
     const bounds = await callTool("get_element_bounds");
@@ -140,7 +141,8 @@ async function main() {
     fail("get_element_bounds tool execution", e.message);
   }
 
-  // --- Test 2: get_markdown ---
+  
+
   try {
     log("info", "Testing get_markdown (Reader Mode Extractor)...");
     const result = await callTool("get_markdown", { selector: "#card-form" });
@@ -159,7 +161,8 @@ async function main() {
     fail("get_markdown tool execution", e.message);
   }
 
-  // --- Test 3: humanize ---
+  
+
   try {
     log("info", "Testing humanize (Emulated mouse cursor Bezier curve movement)...");
     const moveResult = await callTool("humanize", {
@@ -187,7 +190,8 @@ async function main() {
     if (typeResult.success && typeResult.length === 12) {
       pass(`humanize type completed successfully typing ${typeResult.length} characters.`);
       
-      // Verify input value was indeed set
+      
+
       const getValResult = await callTool("evaluate", {
         code: `document.getElementById('agent-name').value`
       });
@@ -205,11 +209,13 @@ async function main() {
     fail("humanize tool execution", e.message);
   }
 
-  // --- Test 4: session_manager ---
+  
+
   try {
     log("info", "Testing session_manager (Save & Restore Authentication)...");
     
-    // Set custom storage values to simulate login active state
+    
+
     await callTool("evaluate", {
       code: `(() => {
         localStorage.setItem("mcpToken", "agentSecretToken123");
@@ -218,7 +224,8 @@ async function main() {
     });
     pass("Injected mock session storage state");
 
-    // Save session
+    
+
     const saveResult = await callTool("session_manager", { cmd: "save" });
     
     if (saveResult.success && saveResult.session) {
@@ -231,7 +238,8 @@ async function main() {
         fail("Storage serialization verification", "Saved context does not match injected state");
       }
 
-      // Clear storage to simulate fresh session
+      
+
       await callTool("evaluate", {
         code: `(() => {
           localStorage.clear();
@@ -240,7 +248,8 @@ async function main() {
       });
       pass("Cleared storage elements (simulating fresh browser launch)");
 
-      // Load session
+      
+
       log("info", "Restoring session states via session_manager load...");
       const loadResult = await callTool("session_manager", {
         cmd: "load",
@@ -250,10 +259,12 @@ async function main() {
       if (loadResult.success) {
         pass("session_manager load completed successfully and page reloaded.");
         
-        // Wait slightly for reload
+        
+
         await new Promise(r => setTimeout(r, 1000));
 
-        // Read variables back
+        
+
         const checkResult = await callTool("evaluate", {
           code: `JSON.stringify({
             token: localStorage.getItem("mcpToken"),
@@ -277,7 +288,8 @@ async function main() {
     fail("session_manager tool execution", e.message);
   }
 
-  // --- Cleanup ---
+  
+
   log("info", "Closing the test sandbox tab...");
   await callTool("close_tab", { tabId });
   pass("Tab closed.");

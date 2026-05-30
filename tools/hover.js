@@ -1,8 +1,3 @@
-/**
- * Hover Tool
- * Hovers over an element by CSS selector or snapshot ref via CDP Input events.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
@@ -29,7 +24,8 @@ export class HoverTool {
     });
     if (!object?.objectId) throw new Error(`hover: could not resolve ref "${ref}" to DOM element`);
 
-    // Scroll into view first
+    
+
     await sendCommand("Runtime.callFunctionOn", {
       objectId: object.objectId,
       functionDeclaration: `function() {
@@ -39,7 +35,8 @@ export class HoverTool {
       returnByValue: true,
     });
 
-    // Get box model for coordinates
+    
+
     const boxModel = await sendCommand("DOM.getBoxModel", { objectId: object.objectId });
     try { await sendCommand("Runtime.releaseObject", { objectId: object.objectId }); } catch {}
     const border = boxModel.model?.border;
@@ -74,14 +71,16 @@ export class HoverTool {
   }
 
   async dispatchMouseEvents(x, y) {
-    // Move mouse to the target position
+    
+
     await sendCommand("Input.dispatchMouseEvent", {
       type: "mouseMoved",
       x,
       y,
     });
 
-    // Also dispatch DOM-level mouseover/mouseenter for JS handlers
+    
+
     await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         const el = document.elementFromPoint(${x}, ${y});

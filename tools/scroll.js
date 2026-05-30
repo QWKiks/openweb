@@ -1,8 +1,3 @@
-/**
- * Scroll Tool
- * Scroll the page or a specific element in a given direction.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -11,7 +6,8 @@ export class ScrollTool {
 
   async execute(args) {
     const direction = args.direction || "down";
-    const amount = args.amount || 3; // number of viewport heights to scroll
+    const amount = args.amount || 3; 
+
     const selector = args.selector || null;
 
     const tab = await getActiveTab();

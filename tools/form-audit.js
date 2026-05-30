@@ -1,8 +1,3 @@
-/**
- * Form Audit Tool
- * Analyzes all forms: fields, types, validation, CSRF tokens, autofill.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

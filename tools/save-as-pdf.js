@@ -1,8 +1,3 @@
-/**
- * Save as PDF Tool
- * Exports the current page as a PDF using CDP Page.printToPDF.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

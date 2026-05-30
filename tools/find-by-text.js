@@ -1,10 +1,3 @@
-/**
- * Find By Text Tool
- * Searches the DOM for an element containing specific text content,
- * aria-label, or placeholder, and returns a robust CSS selector
- * that can be used with click, fill, hover, etc.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

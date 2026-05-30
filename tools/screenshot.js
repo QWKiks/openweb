@@ -1,8 +1,3 @@
-/**
- * Screenshot Tool
- * Captures a screenshot of the page or a specific element.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
@@ -34,13 +29,15 @@ export class ScreenshotTool {
         ? await this.objectIdFromRef(selector)
         : await this.objectIdFromSelector(selector);
 
-      // Scroll into view
+      
+
       await sendCommand("Runtime.callFunctionOn", {
         objectId,
         functionDeclaration: `function() { this.scrollIntoView({ block: 'center', inline: 'center' }); }`,
       });
 
-      // Get box model
+      
+
       let boxModel;
       try {
         boxModel = await sendCommand("DOM.getBoxModel", { objectId });
@@ -70,7 +67,8 @@ export class ScreenshotTool {
     } else if (hasCoordsCrop) {
       options.clip = { x: cropX, y: cropY, width: cropW, height: cropH, scale: 1 };
     } else if (lowRes) {
-      // Capture full viewport scaled down to max-width 800px
+      
+
       try {
         const layout = await sendCommand("Page.getLayoutMetrics");
         const viewW = layout.cssVisualViewport?.clientWidth || 1280;
@@ -80,7 +78,8 @@ export class ScreenshotTool {
           options.clip = { x: 0, y: 0, width: viewW, height: viewH, scale };
         }
       } catch (err) {
-        // Fallback to standard full screenshot if metrics call fails
+        
+
         console.warn(`[Screenshot Scale] Failed to get layout metrics: ${err.message}. Capturing full resolution.`);
       }
     }

@@ -1,8 +1,3 @@
-/**
- * Close Tab Tool
- * Closes a specific tab or all tabs (session).
- */
-
 export class CloseTabTool {
   name = "close_tab";
 

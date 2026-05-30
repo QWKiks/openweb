@@ -1,8 +1,3 @@
-/**
- * Get Element Bounds Tool
- * Finds all visible interactive elements on the page and returns their exact physical viewport coordinates.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -13,7 +8,8 @@ export class GetElementBoundsTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // Evaluate the coordinates scraper in the context of the page
+    
+
     const result = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         const interactiveRoles = new Set([

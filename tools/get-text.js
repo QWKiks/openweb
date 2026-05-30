@@ -1,8 +1,3 @@
-/**
- * Get Text Tool
- * Extracts text or HTML source content from the page or a specific element.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
@@ -19,12 +14,14 @@ export class GetTextTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // If requesting page-wide source formats (full, head_only, body_only, structured)
+    
+
     if (["structured", "full", "head_only", "body_only"].includes(format)) {
       return this.getPageSource(format);
     }
 
-    // If requesting raw HTML outer/inner HTML
+    
+
     if (format === "html") {
       if (!selector) {
         return this.getPageHtml();
@@ -32,7 +29,8 @@ export class GetTextTool {
       return isRef(selector) ? this.getHtmlByRef(selector) : this.getHtmlBySelector(selector);
     }
 
-    // Default: clean text format
+    
+
     if (!selector) {
       return this.getPageText(maxLength, includeHidden);
     }

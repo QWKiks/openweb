@@ -1,9 +1,3 @@
-/**
- * OpenWeb — Background Service Worker
- * Entry point that initializes all tools, the WebSocket client,
- * and message handlers for the popup.
- */
-
 import { register, getToolNames } from "./tools/registry.js";
 import { wsClient, setTrackToolCall, setTrackError, setRateLimit as setWsRateLimit } from "./lib/ws-client.js";
 
@@ -52,7 +46,6 @@ import { WaitStaleTool } from "./tools/wait-stale.js";
 import { FindByTextTool } from "./tools/find-by-text.js";
 import { StateTool, SessionTool, SessionManagerTool, CookieTool, LocalStorageTool } from "./tools/state.js";
 
-// ── Register all tools ──────────────────────────────────────────────────────
 register(new NavigateTool());
 register(new FindTabTool());
 register(new EvaluateTool());
@@ -102,12 +95,12 @@ register(new DismissOverlayTool());
 register(new WaitStaleTool());
 register(new FindByTextTool());
 
-// ── Rate Limiting ────────────────────────────────────────────────────────────
-const RATE_LIMIT_KEY = "webbridge_rate_limit";
-const DEFAULT_RATE_LIMIT = 0; // 0 = unlimited
+const RATE_LIMIT_KEY = "OpenWeb_rate_limit";
+const DEFAULT_RATE_LIMIT = 0; 
+
 let rateLimitPerSec = DEFAULT_RATE_LIMIT;
 
-/** Load rate limit setting from storage */
+                                           
 async function loadRateLimit() {
   try {
     const result = await chrome.storage.local.get(RATE_LIMIT_KEY);
@@ -118,19 +111,18 @@ async function loadRateLimit() {
 }
 loadRateLimit().then(() => setWsRateLimit(rateLimitPerSec));
 
-/** Set rate limit (0 = unlimited) */
+                                     
 export async function setRateLimit(perSec) {
   rateLimitPerSec = perSec;
   await chrome.storage.local.set({ [RATE_LIMIT_KEY]: perSec });
   setWsRateLimit(perSec);
 }
 
-/** Get current rate limit */
+                             
 export function getRateLimit() {
   return rateLimitPerSec;
 }
 
-// ── Metrics & Action Log ────────────────────────────────────────────────────
 const metrics = {
   toolCallCount: 0,
   errorCount: 0,
@@ -138,7 +130,8 @@ const metrics = {
   connectedAt: null,
   lastError: null,
 };
-const actionLog = []; // { name, time, error? }
+const actionLog = []; 
+
 const MAX_LOG_ENTRIES = 20;
 
 export function trackToolCall(name, durationMs, error) {
@@ -156,7 +149,8 @@ export function trackToolCall(name, durationMs, error) {
   };
   actionLog.unshift(entry);
   if (actionLog.length > MAX_LOG_ENTRIES) actionLog.pop();
-  // Broadcast to DevTools panels
+  
+
   broadcastToDevTools({ type: "TOOL_CALL_EVENT", data: entry });
 }
 
@@ -174,11 +168,9 @@ export function trackError(message) {
   broadcastToDevTools({ type: "TOOL_CALL_EVENT", data: entry });
 }
 
-// Wire callbacks into ws-client (avoids circular dynamic imports)
 setTrackToolCall(trackToolCall);
 setTrackError(trackError);
 
-// ── DevTools Panel Connections ──────────────────────────────────────────────
 const devtoolsPorts = new Set();
 
 function broadcastToDevTools(msg) {
@@ -215,7 +207,6 @@ export function getMetrics() {
   };
 }
 
-// ── Keepalive port from offscreen document ────────────────────────────────────
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "keepalive") {
     port.onMessage.addListener((msg) => {
@@ -224,12 +215,12 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
-// ── Offscreen keepalive for MV3 service worker (Chrome only) ───────────────
 const OFFSCREEN_URL = chrome.runtime.getURL("offscreen.html");
-const KEEPALIVE_INTERVAL_MS = 25000; // Chrome kills SW after 30s idle
+const KEEPALIVE_INTERVAL_MS = 25000; 
 
 async function ensureOffscreen() {
-  if (!chrome.offscreen) return; // Firefox MV2 doesn't have offscreen API
+  if (!chrome.offscreen) return; 
+
   try {
     const existing = await chrome.offscreen.hasDocument();
     if (!existing) {
@@ -240,27 +231,24 @@ async function ensureOffscreen() {
       });
     }
   } catch {
-    // offscreen API may not be available in all contexts
+    
+
   }
 }
 
-// Ensure offscreen is created early and kept alive
 if (chrome.offscreen) {
   ensureOffscreen();
   setInterval(() => { ensureOffscreen(); }, KEEPALIVE_INTERVAL_MS);
 }
 
-// ── Reconnect WebSocket on service worker wake-up ───────────────────────────
 wsClient.reconnectIfNeeded();
 
-// ── Alarm-based reconnection fallback ───────────────────────────────────────
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "webbridge-reconnect") {
+  if (alarm.name === "OpenWeb-reconnect") {
     wsClient.reconnectIfNeeded();
   }
 });
 
-// ── Message handler for popup communication ─────────────────────────────────
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   (async () => {
     try {
@@ -315,6 +303,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
   })();
 
-  // Return true to indicate async sendResponse
+  
+
   return true;
 });

@@ -1,8 +1,3 @@
-/**
- * Drag & Drop Tool
- * Drag an element and drop it onto another element.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
@@ -22,7 +17,8 @@ export class DragDropTool {
     const sourcePos = await this.getElementCenter(sourceSelector);
     const targetPos = await this.getElementCenter(targetSelector);
 
-    // CDP drag simulation: mousePressed → mouseMoved → mouseReleased
+    
+
     await sendCommand("Input.dispatchMouseEvent", {
       type: "mousePressed",
       x: sourcePos.x,
@@ -31,7 +27,8 @@ export class DragDropTool {
       clickCount: 1,
     });
 
-    // Move in steps for smoother drag
+    
+
     const steps = 5;
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;

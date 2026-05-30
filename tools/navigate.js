@@ -1,8 +1,3 @@
-/**
- * Navigate Tool
- * Opens a URL in the current or new tab with highly optimized early resolution thresholds.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab, setLastReferencedTab, addToTabGroup } from "../lib/tab-manager.js";
 
@@ -13,10 +8,11 @@ export class NavigateTool {
     const url = args.url;
     if (!url) throw new Error("navigate: url is required");
 
-    const newTab = args.newTab !== false; // default to true
+    const newTab = args.newTab !== false; 
+
     const session = args._session;
     const groupTitle = args.group_title;
-    const waitUntil = args.waitUntil || "DOMContentLoaded"; // default to DOMContentLoaded for 3x speedup
+    const waitUntil = args.waitUntil || "DOMContentLoaded"; 
 
     let tab;
 
@@ -32,7 +28,8 @@ export class NavigateTool {
 
     tab = await getActiveTab();
 
-    // Cannot navigate chrome:// or edge:// URLs directly via CDP
+    
+
     if (tab.url?.startsWith("chrome://") || tab.url?.startsWith("edge://")) {
       tab = await chrome.tabs.create({ url, active: true });
       setLastReferencedTab(tab.id);
@@ -60,16 +57,17 @@ export class NavigateTool {
     return { success: true, url, tabId: tab.id, frameId, suggestedNextTool: "snapshot" };
   }
 
-  /**
-   * Wait for a tab to hit DOMContentLoaded or Load Complete (up to 30s).
-   * @param {number} tabId
-   * @param {string} waitUntil
-   */
+     
+                                                                         
+                          
+                              
+     
   waitForLoad(tabId, waitUntil) {
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
         cleanup();
-        resolve({ success: false, timeout: true }); // resolve gracefully instead of crashing on slow analytics
+        resolve({ success: false, timeout: true }); 
+
       }, 30000);
 
       const cleanup = () => {
@@ -78,7 +76,8 @@ export class NavigateTool {
         chrome.tabs.onUpdated.removeListener(tabsListener);
       };
 
-      // 1. Fallback: complete check via standard chrome.tabs
+      
+
       const tabsListener = (id, changeInfo) => {
         if (id === tabId && changeInfo.status === "complete") {
           cleanup();
@@ -86,7 +85,8 @@ export class NavigateTool {
         }
       };
 
-      // 2. CDP specific lifecycle events for fast early resolution
+      
+
       const cdpListener = (source, method) => {
         if (source.tabId !== tabId) return;
         
@@ -102,7 +102,8 @@ export class NavigateTool {
       chrome.debugger.onEvent.addListener(cdpListener);
       chrome.tabs.onUpdated.addListener(tabsListener);
 
-      // Verify current tab status immediately
+      
+
       chrome.tabs.get(tabId, (tab) => {
         if (tab && tab.status === "complete") {
           cleanup();

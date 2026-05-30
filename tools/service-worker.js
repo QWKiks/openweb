@@ -1,8 +1,3 @@
-/**
- * Service Worker Tool
- * Checks SW registration, status, cache, and push subscription.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -34,7 +29,8 @@ export class ServiceWorkerTool {
       return { supported: true, registered: false, message: "No active service worker for this page" };
     }
 
-    // Get full details via async calls
+    
+
     const detailResult = await sendCommand("Runtime.evaluate", {
       expression: `(() => {
         return Promise.all([

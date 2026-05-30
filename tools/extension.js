@@ -1,8 +1,3 @@
-/**
- * Extension Management Tool
- * Enable, disable, or list installed Chrome extensions.
- */
-
 export class ExtensionTool {
   name = "extension";
 
@@ -24,7 +19,8 @@ export class ExtensionTool {
   }
 
   async list(args) {
-    const { type } = args; // optional filter: "extension", "theme", "hosted_app", etc.
+    const { type } = args; 
+
     let extensions;
     if (type) {
       extensions = await chrome.management.getAll();
@@ -32,7 +28,8 @@ export class ExtensionTool {
     } else {
       extensions = await chrome.management.getAll();
     }
-    // Exclude self
+    
+
     const selfId = chrome.runtime.id;
     const filtered = extensions
       .filter((e) => e.id !== selfId)
@@ -58,7 +55,8 @@ export class ExtensionTool {
   async disable(args) {
     const { id } = args;
     if (!id) throw new Error("id is required for disable");
-    // Prevent disabling self
+    
+
     if (id === chrome.runtime.id) {
       throw new Error("Cannot disable the OpenWeb extension itself");
     }

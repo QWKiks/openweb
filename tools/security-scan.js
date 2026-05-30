@@ -1,9 +1,3 @@
-/**
- * Security Scan Tool
- * Comprehensive security assessment of the current page.
- * Checks security headers, mixed content, XSS vulnerabilities, SSL/TLS, and more.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { VulnerabilityChainAnalyzer } from "./security-chain-analyzer.js";
@@ -212,7 +206,8 @@ export class SecurityScanTool {
 
     const report = result.result.value;
 
-    // Run advanced security checks server-side
+    
+
     report.advanced = {
       cspBypass: this.checkCSPBypass(report),
       corsMisconfig: this.checkCORSMisconfig(),
@@ -249,14 +244,16 @@ export class SecurityScanTool {
       massAssignment: this.checkMassAssignment(),
     };
 
-    // Full risk score including advanced checks
+    
+
     report.risk.score = this.calculateFullRisk(report);
     if (report.risk.score >= 80) report.risk.level = 'CRITICAL';
     else if (report.risk.score >= 60) report.risk.level = 'HIGH';
     else if (report.risk.score >= 30) report.risk.level = 'MEDIUM';
     else report.risk.level = 'LOW';
 
-    // Run deep behavioral analysis (second browser evaluate)
+    
+
     const deepResult = await sendCommand("Runtime.evaluate", {
       expression: this.getDeepAnalysisScript(),
       returnByValue: true,
@@ -266,14 +263,17 @@ export class SecurityScanTool {
       report.deep = deepResult.result.value;
     }
 
-    // Add vulnerability recommendations
+    
+
     report.recommendations = this.generateRecommendations(report);
 
-    // Run advanced chain analysis
+    
+
     const chainAnalyzer = new VulnerabilityChainAnalyzer(report);
     report.chainAnalysis = chainAnalyzer.analyze();
 
-    // Update risk score with chain analysis context
+    
+
     if (report.chainAnalysis.contextScore > report.risk.score) {
       report.risk.score = report.chainAnalysis.contextScore;
       if (report.risk.score >= 80) report.risk.level = 'CRITICAL';
@@ -281,7 +281,8 @@ export class SecurityScanTool {
       else if (report.risk.score >= 30) report.risk.level = 'MEDIUM';
     }
 
-    // Add chain-based recommendations
+    
+
     if (report.chainAnalysis.chains.length > 0) {
       for (const chain of report.chainAnalysis.chains) {
         report.recommendations.push({
@@ -302,7 +303,8 @@ export class SecurityScanTool {
     let score = 0;
     const adv = report.advanced || {};
 
-    // Basic score from page context
+    
+
     if (!report.headers?.csp) score += 20;
     if (!report.headers?.xFrameOptions) score += 15;
     if (report.mixedContent?.hasMixedContent) score += 25;
@@ -313,7 +315,8 @@ export class SecurityScanTool {
     if (report.cookies?.hasCookies) score += 5;
     if (report.iframes?.withoutSandbox > 0) score += 10;
 
-    // Advanced checks
+    
+
     if (adv.cspBypass?.hasBypass) score += 15;
     if (adv.corsMisconfig?.hasMisconfig) score += 20;
     if (adv.domXssSinks?.hasSinks) score += 25;
@@ -323,7 +326,8 @@ export class SecurityScanTool {
     if (adv.prototypePollution?.hasPollution) score += 25;
     if (adv.ssrfPatterns?.hasPatterns) score += 20;
 
-    // HIGH PRIORITY
+    
+
     if (adv.idorPatterns?.hasPatterns) score += 30;
     if (adv.csrfAnalysis?.hasIssues) score += 25;
     if (adv.sessionCookieSecurity?.hasIssues) score += 20;
@@ -331,13 +335,15 @@ export class SecurityScanTool {
     if (adv.authorizationPatterns?.hasIssues) score += 25;
     if (adv.parameterTampering?.hasIssues) score += 20;
 
-    // MEDIUM PRIORITY
+    
+
     if (adv.cacheHeaders?.hasIssues) score += 15;
     if (adv.advancedClickjacking?.hasIssues) score += 15;
     if (adv.apiEndpoints?.hasEndpoints) score += 10;
     if (adv.raceConditions?.hasIndicators) score += 20;
 
-    // LOW PRIORITY
+    
+
     if (adv.businessLogic?.hasPatterns) score += 15;
     if (adv.supplyChain?.hasIssues) score += 10;
     if (adv.errorHandling?.hasLeaks) score += 15;
@@ -460,42 +466,49 @@ export class SecurityScanTool {
     };
 
     if (!report.headers.csp) {
-      return bypass; // Already covered by missing CSP
+      return bypass; 
+
     }
 
     const csp = report.headers.csp.toLowerCase();
     
-    // Check for unsafe-eval
+    
+
     if (csp.includes('unsafe-eval')) {
       bypass.hasBypass = true;
       bypass.techniques.push('script-src includes unsafe-eval');
     }
 
-    // Check for unsafe-inline
+    
+
     if (csp.includes('unsafe-inline')) {
       bypass.hasBypass = true;
       bypass.techniques.push('script-src/style-src includes unsafe-inline');
     }
 
-    // Check for wildcard domains
+    
+
     if (csp.includes('*')) {
       bypass.hasBypass = true;
       bypass.techniques.push('Wildcard domains in CSP');
     }
 
-    // Check for data: URIs
+    
+
     if (csp.includes('data:')) {
       bypass.hasBypass = true;
       bypass.techniques.push('data: URIs allowed');
     }
 
-    // Check for missing object-src
+    
+
     if (!csp.includes('object-src')) {
       bypass.hasBypass = true;
       bypass.techniques.push('Missing object-src directive');
     }
 
-    // Check for missing base-uri
+    
+
     if (!csp.includes('base-uri')) {
       bypass.hasBypass = true;
       bypass.techniques.push('Missing base-uri directive');
@@ -510,15 +523,18 @@ export class SecurityScanTool {
       issues: []
     };
 
-    // Check for wildcard origins (this would need server-side response headers)
-    // For now, we check for common patterns that might indicate CORS issues
+    
+
+    
+
     const fetchCalls = document.body.innerHTML.match(/fetch\s*\(/g) || [];
     if (fetchCalls.length > 0) {
       misconfig.hasMisconfig = true;
       misconfig.issues.push(`${fetchCalls.length} fetch() calls detected - verify CORS headers`);
     }
 
-    // Check for XHR requests
+    
+
     const xhrCalls = document.body.innerHTML.match(/XMLHttpRequest/g) || [];
     if (xhrCalls.length > 0) {
       misconfig.hasMisconfig = true;
@@ -536,7 +552,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for dangerous DOM sinks
+    
+
     const sinkPatterns = [
       { pattern: 'innerHTML', name: 'innerHTML sink' },
       { pattern: 'outerHTML', name: 'outerHTML sink' },
@@ -572,7 +589,8 @@ export class SecurityScanTool {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       sw.registered = true;
       
-      // Check for potential scope issues
+      
+
       if (window.location.pathname.includes('/')) {
         sw.hasIssues = true;
         sw.scopeIssues.push('Service worker registered at root - check scope boundaries');
@@ -591,7 +609,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
     
-    // Check for WebSocket connections
+    
+
     const wsPatterns = [
       /new\s+WebSocket\s*\(/g,
       /ws:\/\//g,
@@ -618,7 +637,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for timing-sensitive patterns
+    
+
     const timingPatterns = [
       /Date\.now\(\)/g,
       /performance\.now\(\)/g,
@@ -645,7 +665,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for prototype pollution vectors
+    
+
     const pollutionPatterns = [
       /__proto__/g,
       /constructor\.prototype/g,
@@ -675,7 +696,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for SSRF patterns
+    
+
     const ssrfPatterns = [
       /fetch\s*\(\s*['"]http/g,
       /XMLHttpRequest.*open\s*\(\s*['"]GET/g,
@@ -1068,7 +1090,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for race condition indicators
+    
+
     const racePatterns = [
       /setTimeout\s*\(/g,
       /setInterval\s*\(/g,
@@ -1097,7 +1120,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for business logic patterns
+    
+
     const logicPatterns = [
       /price\s*[:=]/gi,
       /discount\s*[:=]/gi,
@@ -1131,7 +1155,8 @@ export class SecurityScanTool {
     for (const script of scripts) {
       const src = script.src;
       
-      // Check for CDN usage
+      
+
       if (src.includes('cdn') || src.includes('cdnjs') || src.includes('unpkg') || src.includes('jsdelivr')) {
         supply.externalLibraries.push({
           src: src,
@@ -1157,7 +1182,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for error handling patterns
+    
+
     const errorPatterns = [
       /console\.(log|error|warn|debug)\s*\(/g,
       /console\.trace\s*\(/g,
@@ -1191,7 +1217,8 @@ export class SecurityScanTool {
       fileTypes: []
     };
 
-    // Check for file upload forms
+    
+
     const forms = document.querySelectorAll('form');
     for (const form of forms) {
       const fileInput = form.querySelector('input[type="file"]');
@@ -1219,7 +1246,8 @@ export class SecurityScanTool {
       }
     }
 
-    // Check for file type validation in JavaScript
+    
+
     const bodyHTML = document.body.innerHTML;
     const fileTypePatterns = [
       /\.png|\.jpg|\.jpeg|\.gif/gi,
@@ -1245,8 +1273,10 @@ export class SecurityScanTool {
       headers: []
     };
 
-    // Check for rate limiting headers (this would need HTTP response headers)
-    // For now, we check for rate limiting patterns in JavaScript
+    
+
+    
+
     const bodyHTML = document.body.innerHTML;
 
     const rateLimitPatterns = [
@@ -1276,7 +1306,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for advanced DOM XSS vectors
+    
+
     const domXssPatterns = [
       /location\.hash/gi,
       /location\.search/gi,
@@ -1298,7 +1329,8 @@ export class SecurityScanTool {
       }
     }
 
-    // Check for self-XSS patterns
+    
+
     if (bodyHTML.includes('self') || bodyHTML.includes('this')) {
       domXss.hasVectors = true;
       domXss.vectors.push('Potential self-XSS patterns detected');
@@ -1315,7 +1347,8 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for web cache poisoning patterns
+    
+
     const cachePoisonPatterns = [
       /X-Forwarded-For/gi,
       /X-Real-IP/gi,
@@ -1346,21 +1379,24 @@ export class SecurityScanTool {
 
     const bodyHTML = document.body.innerHTML;
 
-    // Check for GraphQL introspection
+    
+
     if (bodyHTML.includes('__schema') || bodyHTML.includes('__type') || bodyHTML.includes('introspection')) {
       graphql.introspection = true;
       graphql.hasIssues = true;
       graphql.issues.push('GraphQL introspection may be enabled');
     }
 
-    // Check for deep query patterns
+    
+
     if (bodyHTML.includes('fragment') || bodyHTML.includes('query depth')) {
       graphql.queryDepth = true;
       graphql.hasIssues = true;
       graphql.issues.push('Potential GraphQL depth analysis issues');
     }
 
-    // Check for N+1 query patterns
+    
+
     if (bodyHTML.includes('batch') || bodyHTML.includes('parallel')) {
       graphql.hasIssues = true;
       graphql.issues.push('Potential N+1 query patterns');
@@ -1381,7 +1417,8 @@ export class SecurityScanTool {
     const bodyHTML = document.body.innerHTML;
     const url = window.location.href;
 
-    // Check for technology indicators
+    
+
     const techPatterns = [
       { pattern: /react/gi, name: 'React' },
       { pattern: /vue/gi, name: 'Vue.js' },
@@ -1407,7 +1444,8 @@ export class SecurityScanTool {
       }
     }
 
-    // Check for framework indicators
+    
+
     const frameworkPatterns = [
       /next\.js/gi,
       /nuxt/gi,
@@ -1423,7 +1461,8 @@ export class SecurityScanTool {
       }
     }
 
-    // Check for revealing comments
+    
+
     const commentPatterns = [
       /<!--.*TODO.*-->/gi,
       /<!--.*FIXME.*-->/gi,
@@ -1468,8 +1507,10 @@ export class SecurityScanTool {
       ssl.issues.push('Not in secure context');
     }
 
-    // Check for SSL/TLS related headers (limited in client-side)
-    // This would need to be checked via HTTP response headers
+    
+
+    
+
     const metaTags = document.querySelectorAll('meta');
     for (const meta of metaTags) {
       const httpEquiv = meta.getAttribute('http-equiv');
@@ -1494,7 +1535,8 @@ export class SecurityScanTool {
     const bodyHTML = document.body.innerHTML;
     const url = window.location.href;
 
-    // Check for SQL injection patterns in JavaScript
+    
+
     const sqliPatterns = [
       /SELECT\s+\*/gi,
       /UNION\s+SELECT/gi,

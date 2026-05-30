@@ -1,8 +1,3 @@
-/**
- * Wait Tool
- * Wait for a specific condition on the page: selector, navigation, network idle, or timeout.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 

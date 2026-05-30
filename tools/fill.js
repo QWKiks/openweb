@@ -1,8 +1,3 @@
-/**
- * Fill Tool
- * Fills a form field or contentEditable element with a value.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { resolveRef, isRef } from "../lib/snapshot-refs.js";
@@ -43,7 +38,8 @@ export class FillTool {
   }
 
   async fillBySelector(selector, value) {
-    // If semantic selector, resolve to CSS candidates and try each
+    
+
     if (isSemanticSelector(selector)) {
       const candidates = resolveSelector(selector);
       for (const css of candidates) {
@@ -79,13 +75,13 @@ export class FillTool {
   }
 }
 
-/**
- * Generate JavaScript code to fill a form element.
- * Handles both contentEditable and input/textarea elements.
- * @param {string} targetExpr - JS expression for the target element
- * @param {string} value - Value to fill
- * @returns {string} JavaScript code
- */
+   
+                                                   
+                                                            
+                                                                    
+                                        
+                                    
+   
 function generateFillCode(targetExpr, value) {
   const jsonValue = JSON.stringify(value);
   return `

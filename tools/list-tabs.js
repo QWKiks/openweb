@@ -1,8 +1,3 @@
-/**
- * List Tabs Tool
- * Lists all tabs in the current session, optionally with group titles.
- */
-
 export class ListTabsTool {
   name = "list_tabs";
 
@@ -10,7 +5,8 @@ export class ListTabsTool {
     const tabIds = extractTabIds(args);
 
     if (tabIds.length === 0) {
-      // No specific tabs requested — list all tabs
+      
+
       const allTabs = await chrome.tabs.query({});
       const tabs = await Promise.all(allTabs.map(async (tab) => {
         let groupTitle;

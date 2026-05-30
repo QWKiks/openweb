@@ -1,8 +1,3 @@
-/**
- * Snapshot Tool
- * Captures the accessibility tree of the active page and creates element refs.
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 import { clearRefs, createRef, INTERACTIVE_ROLES, saveRefs } from "../lib/snapshot-refs.js";
@@ -12,11 +7,11 @@ export class SnapshotTool {
 
   async execute(args) {
     const selector = args.selector;
-    const interactiveOnly = args.interactiveOnly !== false; // defaults to true for maximum token savings
+    const interactiveOnly = args.interactiveOnly !== false; 
+
     const format = args.format || "text";
     const maxLength = args.maxLength || 50000;
     const maxDepth = args.maxDepth || 8;
-
 
     const tab = await getActiveTab();
     await attach(tab.id);
@@ -38,7 +33,8 @@ export class SnapshotTool {
           result = await sendCommand("Accessibility.getPartialAXTree", { nodeId: targetNodeId });
         }
       } catch (err) {
-        // Fallback if partial AX tree retrieval fails, capture full tree
+        
+
         console.warn(`[Snapshot Filter] getPartialAXTree failed: ${err.message}. Capturing full tree.`);
       }
     }
@@ -47,7 +43,8 @@ export class SnapshotTool {
       result = await sendCommand("Accessibility.getFullAXTree");
     }
     let tree = this.buildTree(result.nodes, null, interactiveOnly);
-    // Batch-save all refs to session storage in one write (instead of per-createRef)
+    
+
     saveRefs();
     let treeStr;
     let isTruncated = false;
@@ -90,7 +87,8 @@ export class SnapshotTool {
     const results = [];
 
     const format = (node) => {
-      // 1. Prune nodes outside of our target selector subtree
+      
+
       if (allowedBackendIds && node.backendDOMNodeId != null && !allowedBackendIds.has(node.backendDOMNodeId)) {
         return null;
       }
@@ -141,7 +139,8 @@ export class SnapshotTool {
         if (children.length > 0) entry.children = children;
       }
 
-      // 2. Token economy pruning: Exclude non-interactive static text nodes and branches
+      
+
       if (interactiveOnly) {
         if (isInteractive || entry.children?.length > 0) {
           return entry;

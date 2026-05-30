@@ -278,7 +278,6 @@ describe("AI Tool Selection — Confusion Matrix", () => {
     }
   });
 
-
 });
 
 describe("Tool Description Quality — AI Disambiguation", () => {

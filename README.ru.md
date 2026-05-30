@@ -247,12 +247,12 @@ node mcp-server.js --transport sse --port 3001
 **Свой URL демона:**
 
 ```bash
-WEBBRIDGE_WS_URL=ws://192.168.1.100:10086/ws node mcp-server.js
+OPENWEB_WS_URL=ws://192.168.1.100:10086/ws node mcp-server.js
 ```
 
 ## Безопасность
 
-- **Аутентификация:** установите `WEBBRIDGE_TOKEN` для защиты контроллерных подключений (Bearer token)
+- **Аутентификация:** установите `OPENWEB_TOKEN` для защиты контроллерных подключений (Bearer token)
 - При включённом токене демон отклоняет незащищённые `ws://` подключения — используйте `wss://`
 - SSE-транспорт также требует Bearer-токен в заголовке `Authorization`
 - Сравнение токенов использует `crypto.timingSafeEqual` для защиты от timing-атак

@@ -1,25 +1,25 @@
 #!/usr/bin/env node
-/**
- * Comprehensive Tool Test Suite for OpenWeb MCP
- *
- * Tests every registered tool through the full pipeline:
- *   test controller → daemon → extension → daemon → test controller
- *
- * Usage:
- *   1. Start daemon: npm start
- *   2. Load extension in Chrome (must be connected)
- *   3. Run: node test-all-tools.js
- *
- * Categories:
- *   A. Global tools     — no tab context needed
- *   B. Page inspection  — snapshot, screenshot, get_text, evaluate
- *   C. Navigation       — navigate, history, scroll, wait
- *   D. Mouse & keyboard   — click, mouse_click, hover, send_keys, key_type
- *   E. Forms            — fill, select, upload
- *   F. Browser control    — viewport, console, cookie, dialog, emulate, session
- *   G. Network          — network, intercept
- *   H. Advanced         — content_script, drag_drop, save_as_pdf, bookmark, extension
- */
+   
+                                                
+  
+                                                         
+                                                                    
+  
+         
+                               
+                                                    
+                                   
+  
+              
+                                                
+                                                                   
+                                                          
+                                                                           
+                                               
+                                                                                
+                                             
+                                                                                      
+   
 
 import WebSocket from "ws";
 
@@ -119,7 +119,6 @@ async function runSkipped(name, reason) {
   return { skipped: true };
 }
 
-// ── Main test suite ─────────────────────────────────────────────────────────
 async function main() {
   log("info", `${ANSI.bold}OpenWeb All-Tools Test Suite${ANSI.reset}`);
   log("info", `Daemon: ${DAEMON_URL}`);
@@ -132,7 +131,8 @@ async function main() {
   }
   log("ok", "Controller registered");
 
-  // ── Category A: Global tools (no tab needed) ──────────────────────────────
+  
+
   heading("A. Global Tools (no tab context)");
 
   const listTabs = await runTest("list_tabs", async () => {
@@ -153,10 +153,12 @@ async function main() {
     return r.error ? r : { data: { ok: true } };
   }, { detail: "lists extensions" });
 
-  // ── Category B: Page inspection ────────────────────────────────────────
+  
+
   heading("B. Page Inspection (needs active tab)");
 
-  // Open a test page first
+  
+
   let testTabId;
   const navResult = await runTest("navigate (setup)", async () => {
     const r = await callTool("navigate", { url: "https://example.com", newTab: true });
@@ -168,7 +170,8 @@ async function main() {
   if (!testTabId) {
     log("fail", "Cannot continue without an active tab — navigate failed");
   } else {
-    // Small delay for page load
+    
+
     await new Promise(r => setTimeout(r, 800));
 
     await runTest("snapshot", async () => {
@@ -208,7 +211,8 @@ async function main() {
       return b64 && b64.length > 100 ? { data: { size: b64.length } } : { error: "empty screenshot" };
     }, { detail: "returns base64 image" });
 
-    // ── Category C: Navigation & scrolling ────────────────────────────────
+    
+
     heading("C. Navigation & Scrolling");
 
     await runTest("history (refresh)", async () => {
@@ -229,7 +233,8 @@ async function main() {
       return r.error ? r : { data: { ok: true } };
     });
 
-    // ── Category D: Mouse & keyboard ────────────────────────────────────
+    
+
     heading("D. Mouse & Keyboard");
 
     await runTest("hover", async () => {
@@ -242,17 +247,20 @@ async function main() {
       return r.error ? r : { data: { ok: true } };
     });
 
-    // Navigate to a page with an input for key_type test
+    
+
     await callTool("navigate", { url: "https://httpbin.org/forms/post" });
     await new Promise(r => setTimeout(r, 1500));
 
     await runTest("click + fill + key_type", async () => {
-      // Use a simple page with inputs (DuckDuckGo search)
+      
+
       await callTool("navigate", { url: "https://duckduckgo.com", newTab: false });
       await new Promise(r => setTimeout(r, 1500));
       const r1 = await callTool("click", { selector: "#searchbox_input" });
       if (r1.error) {
-        // Fallback: try body click
+        
+
         const r1b = await callTool("click", { selector: "body" });
         if (r1b.error) return { error: `click failed: ${r1b.error}` };
       }
@@ -268,14 +276,16 @@ async function main() {
       return r.error ? r : { data: { ok: true } };
     });
 
-    // ── Category E: Forms ────────────────────────────────────────────────
+    
+
     heading("E. Forms");
 
     await runSkipped("select", "no <select> element on test pages — requires dedicated test page with dropdown");
 
     await runSkipped("upload", "requires file input interaction — not reliably testable in E2E");
 
-    // ── Category F: Browser control ──────────────────────────────────────
+    
+
     heading("F. Browser Control");
 
     await runTest("viewport (get)", async () => {
@@ -310,7 +320,8 @@ async function main() {
       return r.error ? r : { data: { ok: true } };
     });
 
-    // ── Category G: Network ──────────────────────────────────────────────
+    
+
     heading("G. Network");
 
     await runTest("network (list)", async () => {
@@ -326,7 +337,8 @@ async function main() {
       return r2.error ? r2 : { data: { ok: true } };
     });
 
-    // ── Category H: Advanced ────────────────────────────────────────────
+    
+
     heading("H. Advanced / Misc");
 
     await runTest("audit (seo)", async () => {
@@ -338,7 +350,8 @@ async function main() {
     });
 
     await runTest("drag_drop", async () => {
-      // May fail if page has no draggable elements — that's ok
+      
+
       const r = await callTool("drag_drop", { source: "body", target: "body" });
       return r.error ? r : { data: { ok: true } };
     });
@@ -351,13 +364,15 @@ async function main() {
     });
 
     await runTest("find_tab", async () => {
-      // After navigating to example.com, search for it
+      
+
       const r = await callTool("find_tab", { url: "example.com" });
       if (r.error) return r;
       return r.data && (r.data.tabId || r.data.id) ? { data: { found: true } } : { error: "no tab found" };
     });
 
-    // ── Cleanup ─────────────────────────────────────────────────────────
+    
+
     heading("Cleanup");
     await runTest("close_tab (cleanup)", async () => {
       const r = await callTool("close_tab", { tabId: testTabId });
@@ -365,7 +380,8 @@ async function main() {
     });
   }
 
-  // ── Summary ───────────────────────────────────────────────────────────
+  
+
   console.log("\n" + "=".repeat(50));
   const total = passCount + failCount + skipCount;
   log("ok", `${passCount}/${total} passed`);

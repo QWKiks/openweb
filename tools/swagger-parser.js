@@ -1,8 +1,3 @@
-/**
- * Swagger Parser Tool
- * Parses Swagger/OpenAPI spec from the active page (e.g. localhost:5131/swagger).
- */
-
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
 
@@ -13,7 +8,8 @@ export class SwaggerParserTool {
     const tab = await getActiveTab();
     await attach(tab.id);
 
-    // Try to find swagger.json URL first
+    
+
     const urlResult = await sendCommand("Runtime.evaluate", {
       expression: "document.querySelector('link[rel=\"swagger\"]')?.href || document.querySelector('script[src*=\"swagger\"]')?.src || null",
       returnByValue: true,
@@ -22,12 +18,14 @@ export class SwaggerParserTool {
 
     let swaggerUrl = urlResult.result?.value;
     if (!swaggerUrl) {
-      // Guess common paths
+      
+
       const base = new URL(tab.url).origin;
       swaggerUrl = base + "/swagger/v1/swagger.json";
     }
 
-    // Fetch the spec
+    
+
     const specResult = await sendCommand("Runtime.evaluate", {
       expression: `fetch(${JSON.stringify(swaggerUrl)}).then(r => r.ok ? r.json() : { error: "HTTP " + r.status }).catch(e => ({ error: e.message }))`,
       returnByValue: true,
@@ -42,7 +40,8 @@ export class SwaggerParserTool {
     if (spec?.error) return { error: spec.error, url: swaggerUrl };
     if (!spec) return { error: "Could not fetch Swagger spec", url: swaggerUrl };
 
-    // Parse endpoints
+    
+
     const endpoints = [];
     const paths = spec.paths || {};
     for (const [path, methods] of Object.entries(paths)) {
