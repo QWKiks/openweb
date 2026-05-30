@@ -311,6 +311,71 @@
         <a class="broken-link" href="https://httpstat.us/404" target="_blank">broken-links-target-url (returns 404)</a>
       </div>
     </div>
+
+    <!-- Step 4: Honeypot & Dynamic Math CAPTCHA Trap -->
+    <div class="step-card" id="card-honeypot">
+      <div class="step-title"><span class="step-badge">TEST 4</span> Honeypot Trap & Dynamic Math CAPTCHA</div>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+        An agent must successfully distinguish visible inputs from invisible honeypot traps and solve a dynamic math problem.
+      </p>
+      
+      <!-- Honeypot Input: Hidden visually but present in DOM -->
+      <div class="form-group" style="opacity: 0; position: absolute; width: 0; height: 0; z-index: -1; overflow: hidden;">
+        <label for="honeypot-email">Honeypot Email (Leave Empty!)</label>
+        <input type="text" id="honeypot-email" placeholder="agent-trap@openweb.com" value="">
+      </div>
+
+      <div class="form-group">
+        <label id="math-label">Resolve Math: Loading CAPTCHA...</label>
+        <input type="text" id="math-answer" placeholder="Your numeric answer">
+      </div>
+
+      <button class="btn" id="btn-submit-captcha" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">Verify CAPTCHA</button>
+      <div class="status-msg" id="captcha-status"></div>
+    </div>
+
+    <!-- Step 5: Hover, Hold & Multi-Click Gestures -->
+    <div class="step-card" id="card-gestures">
+      <div class="step-title"><span class="step-badge">TEST 5</span> Hover, Hold & Multi-Click Gestures</div>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+        Hover over the element below to activate the micro-animation. Maintain hover to reveal the hidden menu, then double-click the target within 3 seconds!
+      </p>
+
+      <div style="display: flex; gap: 1rem; align-items: center; position: relative; min-height: 80px;">
+        <div id="gesture-trigger" style="padding: 1.5rem; background: rgba(99, 102, 241, 0.1); border: 2px dashed var(--accent); border-radius: 12px; cursor: pointer; text-align: center; font-weight: 600; width: 220px; transition: all 0.3s ease;">
+          🎯 HOVER OVER ME
+        </div>
+
+        <div id="gesture-menu" style="opacity: 0; transform: scale(0.9); pointer-events: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; display: flex; align-items: center; justify-content: center; width: 220px; height: 75px;">
+          <button class="btn" id="btn-double-click" style="padding: 0.5rem 1rem; font-size: 0.85rem; background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); box-shadow: none;">Double Click Me!</button>
+        </div>
+      </div>
+
+      <div class="status-msg" id="gesture-status"></div>
+    </div>
+
+    <!-- Step 6: Stale Overlay & Nested Shadow DOM Boundary -->
+    <div class="step-card" id="card-shadow">
+      <div class="step-title"><span class="step-badge">TEST 6</span> Stale Overlay & Nested Shadow DOM</div>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+        Clicking the target action button triggers a stale overlay. The "Dismiss" button is located inside a Shadow DOM. You must close the overlay, wait for it to vanish, and then click the target button.
+      </p>
+
+      <div style="position: relative; width: 100%; border-radius: 12px; padding: 1.5rem; background: rgba(0,0,0,0.2); overflow: hidden; min-height: 120px;">
+        <!-- The Target Button -->
+        <button class="btn" id="btn-shadow-target" style="width: auto; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">Execute Target Action</button>
+
+        <!-- Stale Dynamic Overlay Component -->
+        <div id="stale-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); align-items: center; justify-content: space-between; padding: 1.5rem; z-index: 100; transition: opacity 0.3s ease;">
+          <span style="color: var(--text-secondary); font-size: 0.9rem;">⚠️ Warning: Click intercepted. Dismiss overlay to continue.</span>
+          <!-- Web Component containing the Close button in its Shadow DOM -->
+          <div id="close-btn-container"></div>
+        </div>
+      </div>
+
+      <div class="status-msg" id="shadow-status"></div>
+    </div>
+
   </div>
 
   <script>
@@ -358,6 +423,171 @@
       console.error('[Sandbox Diagnostics] Uncaught ReferenceError: simulatedAgentFault is not defined at triggerDiagnostics()');
       alert('Uncaught ReferenceError thrown to console logs successfully!');
     }
+
+    // TEST 4: Honeypot & Math CAPTCHA Logic
+    let captchaNum1 = 0;
+    let captchaNum2 = 0;
+    let captchaAnswer = 0;
+
+    function generateCaptcha() {
+      captchaNum1 = Math.floor(Math.random() * 50) + 10;
+      captchaNum2 = Math.floor(Math.random() * 40) + 5;
+      captchaAnswer = captchaNum1 + captchaNum2;
+      document.getElementById('math-label').innerText = `Resolve Math: ${captchaNum1} + ${captchaNum2} = ?`;
+    }
+    generateCaptcha();
+
+    document.getElementById('btn-submit-captcha').addEventListener('click', () => {
+      const honeypotVal = document.getElementById('honeypot-email').value;
+      const answerVal = parseInt(document.getElementById('math-answer').value, 10);
+      const status = document.getElementById('captcha-status');
+      status.style.display = 'block';
+
+      if (honeypotVal !== '') {
+        status.className = 'status-msg status-error';
+        status.innerText = 'FAIL: Honeypot input was filled! AI Agent failed visual filtering rules.';
+        console.warn('[Sandbox] Honeypot field filled. Submission blocked.');
+        return;
+      }
+
+      if (answerVal === captchaAnswer) {
+        status.className = 'status-msg status-success';
+        status.innerText = '🎉 SUCCESS: Math CAPTCHA resolved and Honeypot correctly ignored!';
+        console.log('[Sandbox] CAPTCHA verification success.');
+      } else {
+        status.className = 'status-msg status-error';
+        status.innerText = `FAIL: Incorrect CAPTCHA answer! Expected ${captchaAnswer}, received: "${document.getElementById('math-answer').value}".`;
+        console.warn('[Sandbox] CAPTCHA failed.');
+      }
+    });
+
+    // TEST 5: Gestures Hover & Double Click Logic
+    const trigger = document.getElementById('gesture-trigger');
+    const menu = document.getElementById('gesture-menu');
+    const dblClickBtn = document.getElementById('btn-double-click');
+    const gestureStatus = document.getElementById('gesture-status');
+    let hoverTimeout = null;
+    let menuCloseTimeout = null;
+
+    trigger.addEventListener('mouseenter', () => {
+      trigger.style.background = 'rgba(99, 102, 241, 0.3)';
+      trigger.innerText = '⏳ MAINTAIN HOVER...';
+      hoverTimeout = setTimeout(() => {
+        menu.style.opacity = '1';
+        menu.style.transform = 'scale(1)';
+        menu.style.pointerEvents = 'auto';
+        trigger.innerText = '✨ HOVER ACTIVE!';
+        console.log('[Sandbox] Hover verified. Sub-menu revealed.');
+        
+        // Menu disappears after 3 seconds if not completed
+        clearTimeout(menuCloseTimeout);
+        menuCloseTimeout = setTimeout(() => {
+          hideGestureMenu();
+        }, 3000);
+      }, 800);
+    });
+
+    trigger.addEventListener('mouseleave', () => {
+      clearTimeout(hoverTimeout);
+      if (menu.style.opacity !== '1') {
+        trigger.style.background = 'rgba(99, 102, 241, 0.1)';
+        trigger.innerText = '🎯 HOVER OVER ME';
+      }
+    });
+
+    function hideGestureMenu() {
+      menu.style.opacity = '0';
+      menu.style.transform = 'scale(0.9)';
+      menu.style.pointerEvents = 'none';
+      trigger.style.background = 'rgba(99, 102, 241, 0.1)';
+      trigger.innerText = '🎯 HOVER OVER ME';
+    }
+
+    dblClickBtn.addEventListener('dblclick', () => {
+      clearTimeout(menuCloseTimeout);
+      hideGestureMenu();
+      gestureStatus.className = 'status-msg status-success';
+      gestureStatus.innerText = '🎉 SUCCESS: Gesture sequence completed perfectly! (Hover-hold + Double Click resolved)';
+      gestureStatus.style.display = 'block';
+      console.log('[Sandbox] Gesture double-click verified.');
+    });
+
+    // Fallback click on double-click button
+    dblClickBtn.addEventListener('click', (e) => {
+      // If it was just a single click, show warnings
+      if (e.detail === 1) {
+        setTimeout(() => {
+          if (gestureStatus.innerText.indexOf('SUCCESS') === -1) {
+            gestureStatus.className = 'status-msg status-error';
+            gestureStatus.innerText = 'FAIL: Button clicked but not double-clicked! Standard click is insufficient.';
+            gestureStatus.style.display = 'block';
+            console.warn('[Sandbox] Target button single-clicked instead of double-clicked.');
+          }
+        }, 300);
+      }
+    });
+
+    // TEST 6: Nested Shadow DOM & Overlay Logic
+    const shadowTarget = document.getElementById('btn-shadow-target');
+    const staleOverlay = document.getElementById('stale-overlay');
+    const shadowStatus = document.getElementById('shadow-status');
+    const closeContainer = document.getElementById('close-btn-container');
+
+    // Create dynamic Shadow DOM element for the Close button
+    const shadowHost = document.createElement('div');
+    closeContainer.appendChild(shadowHost);
+    const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+    
+    // Add close button styled inside Shadow DOM
+    shadowRoot.innerHTML = `
+      <style>
+        .close-btn {
+          background: #ef4444;
+          color: white;
+          border: none;
+          padding: 0.35rem 0.75rem;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 700;
+          font-size: 0.8rem;
+          box-shadow: 0 2px 5px rgba(239, 68, 68, 0.3);
+          transition: background 0.2s ease;
+        }
+        .close-btn:hover {
+          background: #dc2626;
+        }
+      </style>
+      <button class="close-btn" id="shadow-close-trigger">Close [x]</button>
+    `;
+
+    // Intercept clicks on target
+    shadowTarget.addEventListener('click', () => {
+      if (staleOverlay.style.display === 'none') {
+        // First click triggers the blocking overlay
+        staleOverlay.style.display = 'flex';
+        staleOverlay.style.opacity = '1';
+        shadowStatus.className = 'status-msg status-error';
+        shadowStatus.innerText = 'FAIL: Interaction blocked by Stale Dynamic Overlay! Close the overlay first.';
+        shadowStatus.style.display = 'block';
+        console.warn('[Sandbox] Target clicked, stale overlay activated.');
+      } else {
+        // Second click (after close) succeeds
+        shadowStatus.className = 'status-msg status-success';
+        shadowStatus.innerText = '🎉 SUCCESS: Dynamic Stale Overlay dismissed and Target Button successfully activated!';
+        shadowStatus.style.display = 'block';
+        console.log('[Sandbox] Target button successfully activated after overlay removal.');
+      }
+    });
+
+    // Close button event inside Shadow DOM
+    shadowRoot.getElementById('shadow-close-trigger').addEventListener('click', () => {
+      staleOverlay.style.opacity = '0';
+      setTimeout(() => {
+        staleOverlay.style.display = 'none';
+        shadowStatus.style.display = 'none';
+        console.log('[Sandbox] Shadow DOM close button clicked. Stale overlay dismissed.');
+      }, 300);
+    });
   </script>
 </body>
 </html>
