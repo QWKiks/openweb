@@ -414,7 +414,7 @@ export class NetworkTool {
         return {
           log: {
             version: '1.2',
-            creator: { name: 'OpenWeb', version: '1.5.1' },
+            creator: { name: 'OpenWeb', version: '1.6.1' },
             browser: { name: navigator.userAgent.split('/')[0] || 'Chrome', version: navigator.userAgent },
             pages: [{
               startedDateTime: new Date().toISOString(),
