@@ -142,7 +142,7 @@ const TOOLS = [
   },
   {
     name: "click",
-    description: "Click an element. RECOMMENDATION: Always use standard DOM click (physical: false, default) first. Switch to 'physical: true' ONLY if synthetic click fails to trigger an event, for Canvas/SVG elements, or when custom event listeners block standard clicks. For anti-bot protected pages, use humanize(cmd: mouse_move, click: true) instead of click(physical: true).",
+    description: "Click an element. RECOMMENDATION: Always use standard DOM click (physical: false, default) first. Switch to 'physical: true' ONLY if synthetic click fails to trigger an event, for Canvas/SVG elements, or when custom event listeners block standard clicks. For pages with highly sensitive event listeners or telemetry, use humanize(cmd: mouse_move, click: true) instead of click(physical: true).",
     inputSchema: {
       type: "object",
       properties: {
@@ -155,7 +155,7 @@ const TOOLS = [
   },
   {
     name: "fill",
-    description: "Fill a form field with a value by CSS selector or snapshot ref. RECOMMENDATION: Use the stable snapshot @e ref (e.g. '@e5') obtained from the 'snapshot' tool to target the input. PREFER fill over humanize for standard form inputs (no anti-bot). Switch to 'humanize(cmd: type)' ONLY if the input rejects standard fill (hidden, anti-bot, React-controlled, or Cloudflare protected).",
+    description: "Fill a form field with a value by CSS selector or snapshot ref. RECOMMENDATION: Use the stable snapshot @e ref (e.g. '@e5') obtained from the 'snapshot' tool to target the input. PREFER fill over humanize for standard form inputs. Switch to 'humanize(cmd: type)' ONLY if the input rejects standard fill (such as certain hidden, complex React-controlled, or highly sensitive dynamic input fields).",
     inputSchema: {
       type: "object",
       properties: {
@@ -288,7 +288,7 @@ const TOOLS = [
   },
   {
     name: "humanize",
-    description: "Humanize your automation by adding anti-bot bypass with human-like inputs. RECOMMENDATION: Use this tool *instead* of standard 'click' or 'fill' when interacting with pages protected by strict firewalls/anti-bot systems (Cloudflare, Datadome, Akamai). It bypasses detection by simulating natural mouse movements along cubic Bezier curves and key-by-key typing with randomized human intervals (50ms-150ms). PREFERED ORDER for typing: 1) fill (fastest, works on most inputs), 2) humanize(cmd: type) (for anti-bot inputs), 3) key_type (for already-focused custom elements). PREFERED ORDER for clicking: 1) click(physical: false) (DOM click), 2) click(physical: true) (CDP click), 3) humanize(cmd: mouse_move, click: true) (for anti-bot).",
+    description: "Enhance automation natural input behavior by simulating realistic user interactions. Useful for pages that rely on complex interactive telemetry or dynamic event handlers. It simulates natural mouse movements along cubic Bezier curves and key-by-key typing with randomized intervals (50ms-150ms) to ensure high compatibility and input acceptance. PREFERRED ORDER for typing: 1) fill (fastest, direct DOM value injection), 2) humanize(cmd: type) (for high-fidelity input interaction), 3) key_type (for sending raw keys to focused custom elements). PREFERRED ORDER for clicking: 1) click(physical: false) (standard DOM click), 2) click(physical: true) (native CDP click events), 3) humanize(cmd: mouse_move, click: true) (for high-fidelity mouse coordinate path movements and clicks).",
     inputSchema: {
       type: "object",
       properties: {
@@ -308,7 +308,7 @@ const TOOLS = [
   },
   {
     name: "session_manager",
-    description: "Save and restore browser authentication session contexts (cookies, localStorage, sessionStorage). RECOMMENDATION: Use this tool to serialize the authentication context to a local JSON file in your workspace after logging in, and load it back during subsequent runs to instantly bypass repeated logins, MFA prompts, or CAPTCHAs. DIFFERENT FROM session: session_manager saves AUTH/cookies/localStorage, while session saves/restores OPEN TABS (navigation state).",
+    description: "Save and restore browser session contexts (cookies, localStorage, sessionStorage) to local files. Useful for preserving authentication states and session data across consecutive runs, avoiding redundant login setup flows and reducing startup latency. DIFFERENT FROM session: session_manager saves/restores storage context (cookies/localStorage), while session saves/restores open tab lists and navigation states.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1293,7 +1293,7 @@ You are connected to a browser via OpenWeb. Follow this workflow for reliable au
 - Run **snapshot() FIRST** on every new page — it returns stable @e refs
 - Use @e refs for click/fill (e.g. @e12), not CSS selectors
 - If click(@eN) fails → try click(@eN, physical: true)
-- If fill fails on anti-bot inputs → use humanize(cmd: type)
+- If fill fails on dynamic inputs → use humanize(cmd: type)
 - Call dismiss_overlay() after navigate to clear cookie banners / modals
 - Prefer get_markdown over get_text for structured content
 - Call wait(network_idle) after form submits
