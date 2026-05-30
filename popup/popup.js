@@ -96,6 +96,9 @@ async function initUI() {
 
   // Theme selector
   $("theme-label").textContent = await _msg("themeLabel");
+  $("theme-option-auto").textContent = await _msg("themeAuto");
+  $("theme-option-light").textContent = await _msg("themeLight");
+  $("theme-option-dark").textContent = await _msg("themeDark");
   $("theme-select").value = currentTheme;
 
   // Attach event listeners only once

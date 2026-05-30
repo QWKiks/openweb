@@ -20,7 +20,7 @@
     "description": "Button to open connection settings."
   },
   "devClickHint": {
-    "message": "$N$ more clicks to enable advanced options",
+    "message": "Clicks left to enable advanced options: $N$",
     "placeholders": { "n": { "content": "$1" } }
   },
   "devAdvancedSettings": { "message": "Connection Settings" },
@@ -45,11 +45,14 @@
   "mcpBadgeReady": { "message": "Ready" },
   "mcpHint": { "message": "Copy this config into your AI client (Claude Desktop, Cursor, Windsurf) to let it control the browser." },
   "statToolsLabel": { "message": "tools" },
-  "statActionsLabel": { "message": "actions" },
+  "statActionsLabel": { "message": "calls" },
   "statUptimeLabel": { "message": "uptime" },
   "logLabel": { "message": "Recent" },
   "languageLabel": { "message": "Language" },
   "languageAuto": { "message": "Auto (system)" },
   "rateLimitLabel": { "message": "Rate limit (calls/sec, 0 = unlimited)" },
-  "themeLabel": { "message": "Theme" }
+  "themeLabel": { "message": "Theme" },
+  "themeAuto": { "message": "Auto (system)" },
+  "themeLight": { "message": "Light" },
+  "themeDark": { "message": "Dark" }
 }

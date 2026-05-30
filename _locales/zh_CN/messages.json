@@ -23,8 +23,8 @@
   "devUrlEmpty": { "message": "地址不能为空" },
   "devUrlInvalid": { "message": "地址格式不正确" },
   "devUrlWrongProtocol": { "message": "地址必须以 ws:// 或 wss:// 开头" },
-  "devTrustWarningTitle": { "message": "该服务将获得控制你浏览器的权限" },
-  "devTrustWarningBody": { "message": "它能点击、打字、读取页面内容、操作标签页。仅在你完全信任该服务端时继续。" },
+  "devTrustWarningTitle": { "message": "该服务器将获得控制你浏览器的权限" },
+  "devTrustWarningBody": { "message": "它能点击、打字、读取页面内容、操作标签页。仅在你完全信任该服务器时继续。" },
   "devTrustWarningInsecure": { "message": "⚠ 连接未加密（ws://），同网络的人可监听或篡改流量。" },
   "devTrustCancel": { "message": "取消" },
   "devTrustConfirm": { "message": "我信任 — 连接" },
@@ -38,5 +38,8 @@
   "languageLabel": { "message": "语言" },
   "languageAuto": { "message": "自动（系统）" },
   "rateLimitLabel": { "message": "调用速率限制（次/秒，0 = 无限制）" },
-  "themeLabel": { "message": "主题" }
+  "themeLabel": { "message": "主题" },
+  "themeAuto": { "message": "自动（系统）" },
+  "themeLight": { "message": "浅色" },
+  "themeDark": { "message": "深色" }
 }
