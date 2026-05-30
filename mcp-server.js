@@ -26,7 +26,14 @@ import "dotenv/config";
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { ListToolsRequestSchema, CallToolRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  ListToolsRequestSchema, CallToolRequestSchema,
+  ListResourcesRequestSchema, ReadResourceRequestSchema,
+  ListPromptsRequestSchema, GetPromptRequestSchema,
+  SubscribeRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  CompleteRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import WebSocket from "ws";
 import { appendFileSync, writeFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
@@ -72,7 +79,7 @@ function logError(...args) {
 const TOOLS = [
   {
     name: "navigate",
-    description: "Open a URL in the browser. RECOMMENDATION: Set 'newTab: true' (default) to start a clean session or isolate the page context. Set 'newTab: false' when continuing a search chain, submitting multiple steps, or navigating deep within the active domain.",
+    description: "Navigate to a URL in the browser. RECOMMENDATION: Set 'newTab: true' (default) to start a clean session or isolate the page context. Set 'newTab: false' when continuing a search chain, submitting multiple steps, or navigating deep within the active domain.",
     inputSchema: {
       type: "object",
       properties: {
@@ -91,7 +98,7 @@ const TOOLS = [
   },
   {
     name: "snapshot",
-    description: "Capture the accessibility tree of the active page. RECOMMENDATION: Run this tool *first* on every new page load. It returns stable element references (like @e1, @e2) which you MUST use with 'click' and 'fill' tools to prevent selector errors and ensure 100% correct selector targeting.",
+    description: "Snapshot the accessibility tree of the active page. RECOMMENDATION: Run this tool *first* on every new page load. It returns stable element references (like @e1, @e2) which you MUST use with 'click' and 'fill' tools to prevent selector errors and ensure 100% correct selector targeting.",
     inputSchema: {
       type: "object",
       properties: {
@@ -155,20 +162,8 @@ const TOOLS = [
     },
   },
   {
-    name: "key_type",
-    description: "Type text into the currently focused element. RECOMMENDATION: Prefer fill or humanize(cmd: type) over key_type for form inputs. Use key_type ONLY when the input is already focused (e.g., after clicking into a contenteditable div, textarea, or terminal-like input) and you need character-by-character typing.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        text: { type: "string", description: "Text to type" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-      required: ["text"],
-    },
-  },
-  {
     name: "send_keys",
-    description: "Send key combinations (e.g. Enter, Ctrl+A, Tab).",
+    description: "Send keyboard key combinations (e.g. Enter, Ctrl+A, Tab) to the currently focused element.",
     inputSchema: {
       type: "object",
       properties: {
@@ -180,7 +175,7 @@ const TOOLS = [
   },
   {
     name: "evaluate",
-    description: "Execute JavaScript code on the active page and return the result. RECOMMENDATION: Use this tool ONLY when you need to inspect custom window states, trigger custom DOM methods, or read complex states not available via standard get_text or snapshot. Always keep code blocks short and handle exceptions inside.",
+    description: "Evaluate JavaScript code on the active page and return the result. RECOMMENDATION: Use this tool ONLY when you need to inspect custom window states, trigger custom DOM methods, or read complex states not available via standard get_text or snapshot. Always keep code blocks short and handle exceptions inside.",
     inputSchema: {
       type: "object",
       properties: {
@@ -288,7 +283,7 @@ const TOOLS = [
   },
   {
     name: "humanize",
-    description: "Anti-bot human-like inputs emulator. RECOMMENDATION: Use this tool *instead* of standard 'click' or 'fill' when interacting with pages protected by strict firewalls/anti-bot systems (Cloudflare, Datadome, Akamai). It bypasses detection by simulating natural mouse movements along cubic Bezier curves and key-by-key typing with randomized human intervals (50ms-150ms). PREFERED ORDER for typing: 1) fill (fastest, works on most inputs), 2) humanize(cmd: type) (for anti-bot inputs), 3) key_type (for already-focused custom elements). PREFERED ORDER for clicking: 1) click(physical: false) (DOM click), 2) click(physical: true) (CDP click), 3) humanize(cmd: mouse_move, click: true) (for anti-bot).",
+    description: "Humanize your automation by adding anti-bot bypass with human-like inputs. RECOMMENDATION: Use this tool *instead* of standard 'click' or 'fill' when interacting with pages protected by strict firewalls/anti-bot systems (Cloudflare, Datadome, Akamai). It bypasses detection by simulating natural mouse movements along cubic Bezier curves and key-by-key typing with randomized human intervals (50ms-150ms). PREFERED ORDER for typing: 1) fill (fastest, works on most inputs), 2) humanize(cmd: type) (for anti-bot inputs), 3) key_type (for already-focused custom elements). PREFERED ORDER for clicking: 1) click(physical: false) (DOM click), 2) click(physical: true) (CDP click), 3) humanize(cmd: mouse_move, click: true) (for anti-bot).",
     inputSchema: {
       type: "object",
       properties: {
@@ -323,26 +318,6 @@ const TOOLS = [
     },
   },
   {
-    name: "cookie",
-    description: "Get, set, or delete cookies for the current page. DIFFERENT FROM session_manager: cookie manipulates individual cookies (get/set/delete one at a time), while session_manager saves/restores the FULL cookie jar + localStorage together for auth persistence.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cmd: { type: "string", description: "Action: get, set, or delete", enum: ["get", "set", "delete"] },
-        name: { type: "string", description: "Cookie name" },
-        value: { type: "string", description: "Cookie value (for set)" },
-        domain: { type: "string", description: "Cookie domain (for set)" },
-        path: { type: "string", description: "Cookie path (for set)" },
-        secure: { type: "boolean", description: "Secure flag (for set)" },
-        httpOnly: { type: "boolean", description: "HttpOnly flag (for set)" },
-        sameSite: { type: "string", description: "SameSite policy (for set): Strict, Lax, None" },
-        expires: { type: "number", description: "Expiration timestamp in seconds since epoch (for set)" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-      required: ["cmd"],
-    },
-  },
-  {
     name: "intercept",
     description: "Intercept, modify, block, or mock HTTP requests. Start interception, add rules, then stop when done.",
     inputSchema: {
@@ -360,22 +335,6 @@ const TOOLS = [
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
       required: ["cmd"],
-    },
-  },
-  {
-    name: "viewport",
-    description: "Change the browser viewport size, device scale factor, and touch mode. Useful for responsive testing. DIFFERENT FROM emulate: viewport only changes WINDOW SIZE and touch settings. For full device emulation (with user agent, device presets, geolocation), use emulate instead.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cmd: { type: "string", description: "Action: set, get, or reset", enum: ["set", "get", "reset"] },
-        width: { type: "number", description: "Viewport width in pixels (default: 1280)" },
-        height: { type: "number", description: "Viewport height in pixels (default: 720)" },
-        deviceScaleFactor: { type: "number", description: "Device pixel ratio (default: 1)" },
-        mobile: { type: "boolean", description: "Enable mobile mode (default: false)" },
-        touch: { type: "boolean", description: "Enable touch emulation (default: same as mobile)" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
     },
   },
   {
@@ -500,7 +459,7 @@ const TOOLS = [
   },
   {
     name: "upload",
-    description: "Set files on a file input element (<input type=\"file\">) by CSS selector or @e ref.",
+    description: "Upload files by setting them on a file input element (<input type=\"file\">) by CSS selector or @e ref.",
     inputSchema: {
       type: "object",
       properties: {
@@ -543,7 +502,7 @@ const TOOLS = [
   },
   {
     name: "speech_to_text",
-    description: "Transcribe audio from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Optional: auto-translate to target language. Requires local Whisper server to be running (services/whisper/whisper-server.py).",
+    description: "Transcribe speech to text from a video on the active page using local Whisper (offline, no API key). Automatically extracts the direct video URL from the page (Twitter/X, YouTube, etc.), downloads it, and returns the transcript text. Optional: auto-translate to target language. Requires local Whisper server to be running (services/whisper/whisper-server.py).",
     inputSchema: {
       type: "object",
       properties: {
@@ -796,20 +755,6 @@ const TOOLS = [
     },
   },
   {
-    name: "local_storage",
-    description: "Read, write, delete, or clear localStorage and sessionStorage entries on the active page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: { type: "string", description: "Action: read (default), write, delete, clear", enum: ["read", "write", "delete", "clear"], default: "read" },
-        storage: { type: "string", description: "Storage type: localStorage (default) or sessionStorage", enum: ["localStorage", "sessionStorage"], default: "localStorage" },
-        key: { type: "string", description: "Storage key (required for write and delete, optional for read — reads all if omitted)" },
-        value: { type: "string", description: "Value to store (for write action)" },
-        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
-      },
-    },
-  },
-  {
     name: "history",
     description: "Navigate browser history: go back, go forward, or reload the page.",
     inputSchema: {
@@ -822,7 +767,80 @@ const TOOLS = [
       required: ["cmd"],
     },
   },
+  {
+    name: "find_tab",
+    description: "Find an open tab by URL pattern and make it the active tab. Returns the tab ID for subsequent operations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "URL or hostname to search for in open tabs" },
+        active: { type: "boolean", description: "Only search in the active window (default: false)", default: false },
+      },
+      required: ["url"],
+    },
+  },
+  {
+    name: "responsive_test",
+    description: "Quick responsive design check — takes screenshots at mobile, tablet, and desktop breakpoints and reports layout metrics.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "discover_tools",
+    description: "Browse and get full usage documentation for all specialized tools by category. Use this to find the right tool for your task and get its complete schema with examples.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        category: {
+          type: "string",
+          description: "Tool category to discover: 'session' (session/cookies), 'network' (request interceptors/HAR), 'diagnostics' (console/emulation/dialogs), 'audits' (security/accessibility/links), 'advanced' (viewport/bounds/bookmarks), or 'all' (compact list of all categories)",
+          enum: ["session", "network", "diagnostics", "audits", "advanced", "all"],
+          default: "all"
+        }
+      }
+    }
+  },
 ];
+
+const READ_ONLY_TOOLS = new Set([
+  "snapshot", "screenshot", "get_markdown", "get_text", "get_element_bounds",
+  "list_tabs", "evaluate", "find_by_text", "find_tab", "wait", "wait_stale",
+  "history", "session", "audit", "security_scan", "coverage", "redirect_chain",
+  "shadow_dom", "iframe_list", "dom_mutations", "service_worker", "api_discovery",
+  "swagger_parser", "color_palette", "table_extract", "bookmark", "extension",
+  "console", "design_clone", "responsive_test", "websocket_monitor",
+  "har_export", "discover_tools", "hover", "scroll", "save_as_pdf",
+]);
+
+const DESTRUCTIVE_TOOLS = new Set([
+  "close_tab", "dismiss_overlay", "intercept",
+]);
+
+const IDEMPOTENT_TOOLS = new Set([
+  "navigate", "snapshot", "screenshot", "get_markdown", "get_text",
+  "get_element_bounds", "hover", "scroll", "wait", "wait_stale",
+  "save_as_pdf", "send_keys", "select", "dismiss_overlay", "find_by_text",
+  "find_tab", "history", "session_manager", "dialog", "emulate",
+  "drag_drop", "form_fill",
+]);
+
+const OPEN_WORLD_TOOLS = new Set([
+  "navigate", "click", "fill", "humanize", "upload", "intercept",
+  "network", "speech_to_text", "translate", "redirect_chain", "security_scan",
+]);
+
+for (const tool of TOOLS) {
+  const annotations = {};
+  if (READ_ONLY_TOOLS.has(tool.name)) annotations.readOnlyHint = true;
+  if (DESTRUCTIVE_TOOLS.has(tool.name)) annotations.destructiveHint = true;
+  if (IDEMPOTENT_TOOLS.has(tool.name)) annotations.idempotentHint = true;
+  if (OPEN_WORLD_TOOLS.has(tool.name)) annotations.openWorldHint = true;
+  if (Object.keys(annotations).length > 0) tool.annotations = annotations;
+}
 
 let ws = null;
 let requestIdCounter = 0;
@@ -1231,62 +1249,54 @@ function healSnapshotRefs(args) {
   }
 }
 
-const CORE_TOOL_NAMES = new Set([
-  "navigate", "snapshot", "screenshot", "click", "fill", "get_markdown", "discover_tools"
-]);
-
-const discover_tools_schema = {
-  name: "discover_tools",
-  description: `Unlocks specialized browser automation tools hidden from the initial tool list to save tokens.
-
-⚠️ CRITICAL RULE: You start with only 7 core tools. Before calling ANY tool not in your list, call discover_tools first.
-
-WHEN TO CALL (choose the right category):
-- "session"     → save/load browser sessions, manage cookies, localStorage
-- "network"     → intercept requests, monitor WebSocket, export HAR, block ads
-- "diagnostics" → read console errors, emulate mobile device, handle JS dialogs, scroll/wait
-- "audits"      → SEO audit, accessibility check, performance metrics, security scan
-- "advanced"    → element coordinates, keyboard input, hover, drag-drop, save PDF, upload files
-- "all"         → show everything (use only if you don't know which category)
-
-EXAMPLE WORKFLOW:
-  User: "save the session"
-  Wrong ❌: session_manager({action:"save"}) → ERROR: Unknown tool
-  Right  ✅: discover_tools({category:"session"}) → then session_manager({action:"save",name:"my-session"})
-
-After calling discover_tools, you receive full schemas + usage examples for each unlocked tool.`,
-  inputSchema: {
-    type: "object",
-    properties: {
-      category: {
-        type: "string",
-        description: "Tool category to discover: 'session' (session/cookies), 'network' (request interceptors/HAR), 'diagnostics' (console/emulation/dialogs), 'audits' (security/accessibility/links), 'advanced' (viewport/bounds/bookmarks), or 'all' (all categories)",
-        enum: ["session", "network", "diagnostics", "audits", "advanced", "all"],
-        default: "all"
-      }
-    }
-  }
-};
-
-
 const server = new Server(
   {
-    name: "webbridge-open",
-    version: "1.0.0",
+    name: "openweb",
+    version: "1.4.1",
+    description: "Browser automation server for AI agents. Controls Chrome, Firefox, and Edge through MCP. Provides 50+ tools for navigation, content extraction, form filling, network interception, and more.",
+    websiteUrl: "https://github.com/QWKiks/openweb",
+    icons: [
+      {
+        src: "https://raw.githubusercontent.com/QWKiks/openweb/main/icon/icon-128.png",
+        mimeType: "image/png",
+        sizes: ["128x128"],
+      },
+    ],
   },
   {
     capabilities: {
       tools: {},
       resources: {},
+      prompts: {},
+      logging: {},
+      completions: {},
     },
+    instructions: `# OpenWeb — Browser Automation for AI Agents
+
+You are connected to a browser via OpenWeb. Follow this workflow for reliable automation:
+
+## Core Workflow (ALWAYS follow this order)
+
+1. **navigate(url)** — open the target URL
+2. **snapshot()** — capture accessibility tree, get @e refs
+3. **click/fill/@eN** — interact using snapshot refs (NOT CSS selectors)
+4. **screenshot()** — verify the action succeeded
+
+## Key Rules
+
+- Run **snapshot() FIRST** on every new page — it returns stable @e refs
+- Use @e refs for click/fill (e.g. @e12), not CSS selectors
+- If click(@eN) fails → try click(@eN, physical: true)
+- If fill fails on anti-bot inputs → use humanize(cmd: type)
+- Call dismiss_overlay() after navigate to clear cookie banners / modals
+- Prefer get_markdown over get_text for structured content
+- Call wait(network_idle) after form submits
+- All 56+ tools are available — just call them by name`,
   }
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  const coreTools = TOOLS.filter(t => CORE_TOOL_NAMES.has(t.name));
-  return {
-    tools: [...coreTools, discover_tools_schema],
-  };
+  return { tools: TOOLS };
 });
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => ({
@@ -1324,6 +1334,165 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   throw new Error(`Resource not found: ${uri}`);
 });
 
+server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+  resourceTemplates: [
+    {
+      uriTemplate: "openweb://session/{sessionId}",
+      name: "Session Data",
+      description: "Serialized browser session data (cookies, localStorage) saved via session_manager",
+      mimeType: "application/json",
+    },
+    {
+      uriTemplate: "openweb://logs/{toolName}/{timestamp}",
+      name: "Tool Call Log",
+      description: "Detailed log of a specific tool call including request/response",
+      mimeType: "text/plain",
+    },
+  ],
+}));
+
+server.setRequestHandler(SubscribeRequestSchema, async (request) => {
+  logInfo("Resource subscribe request", { uri: request.params.uri });
+  return {};
+});
+
+const PROMPTS = [
+  {
+    name: "summarize_page",
+    description: "Get a structured summary of the current page content",
+    arguments: [
+      { name: "detail", description: "Summary detail level: 'brief', 'normal', 'detailed'", required: false },
+    ],
+  },
+  {
+    name: "extract_data",
+    description: "Extract structured data from the current page (tables, lists, key-value pairs)",
+    arguments: [
+      { name: "target", description: "What to extract: 'tables', 'lists', 'all'", required: false },
+    ],
+  },
+  {
+    name: "analyze_form",
+    description: "Analyze forms on the current page and suggest fill values",
+    arguments: [],
+  },
+  {
+    name: "check_accessibility",
+    description: "Run a quick accessibility check on the current page and report issues",
+    arguments: [
+      { name: "severity", description: "Minimum severity level: 'error', 'warning', 'notice'", required: false },
+    ],
+  },
+];
+
+server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+  prompts: PROMPTS,
+}));
+
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  const prompt = PROMPTS.find(p => p.name === name);
+  if (!prompt) throw new Error(`Prompt not found: ${name}`);
+
+  switch (name) {
+    case "summarize_page": {
+      const detail = args?.detail || "normal";
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please summarize the current page. First call get_markdown() to get the page content, then provide a ${detail} summary covering: main topic, key points, structure, and any actionable items.`,
+            },
+          },
+        ],
+      };
+    }
+    case "extract_data": {
+      const target = args?.target || "all";
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Extract structured data from the current page. Target: ${target}. Use table_extract() for tables, get_text() for lists, and organize the results in a structured JSON format.`,
+            },
+          },
+        ],
+      };
+    }
+    case "analyze_form": {
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Analyze all forms on the current page. Call snapshot() to find form elements, then describe: number of fields, field types, expected values, and validation rules. Suggest appropriate fill values for each field.`,
+            },
+          },
+        ],
+      };
+    }
+    case "check_accessibility": {
+      const severity = args?.severity || "error";
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Run an accessibility audit on the current page using audit(type: "accessibility"). Report all issues with severity >= ${severity}. For each issue include: element, WCAG criterion, suggested fix.`,
+            },
+          },
+        ],
+      };
+    }
+    default:
+      throw new Error(`Prompt not implemented: ${name}`);
+  }
+});
+
+server.setRequestHandler(CompleteRequestSchema, async (request) => {
+  const { ref, argument, context } = request.params;
+
+  if (ref.type === "ref/prompt") {
+    const prompt = PROMPTS.find(p => p.name === ref.name);
+    if (!prompt) throw new Error(`Prompt not found: ${ref.name}`);
+
+    if (argument.name === "detail") {
+      const options = ["brief", "normal", "detailed"];
+      const values = options.filter(o => o.startsWith(argument.value));
+      return { completion: { values, hasMore: false } };
+    }
+
+    if (argument.name === "target") {
+      const options = ["tables", "lists", "all"];
+      const values = options.filter(o => o.startsWith(argument.value));
+      return { completion: { values, hasMore: false } };
+    }
+
+    if (argument.name === "severity") {
+      const options = ["error", "warning", "notice"];
+      const values = options.filter(o => o.startsWith(argument.value));
+      return { completion: { values, hasMore: false } };
+    }
+  }
+
+  if (ref.type === "ref/resource") {
+    const templates = [
+      "openweb://session/",
+      "openweb://logs/",
+    ];
+    const values = templates.filter(t => t.startsWith(argument.value));
+    return { completion: { values, hasMore: false } };
+  }
+
+  return { completion: { values: [], hasMore: false } };
+});
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   logInfo("MCP tool call received", { name, args });
@@ -1334,11 +1503,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === "discover_tools") {
     const category = args.category || "all";
-    const sessionTools = ["session_manager", "cookie", "session", "local_storage"];
+    const sessionTools = ["session_manager", "session"];
     const networkTools = ["network", "intercept", "websocket_monitor", "har_export", "redirect_chain"];
-    const diagnosticsTools = ["console", "dialog", "viewport", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations", "history"];
+    const diagnosticsTools = ["console", "dialog", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations", "history"];
     const auditsTools = ["audit", "security_scan", "coverage"];
-    const advancedTools = ["get_element_bounds", "humanize", "key_type", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "api_discovery", "swagger_parser", "color_palette", "table_extract", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text"];
+    const advancedTools = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "api_discovery", "swagger_parser", "color_palette", "table_extract", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab"];
 
     const categories = {
       session: sessionTools,
@@ -1348,16 +1517,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       advanced: advancedTools
     };
 
-    // Compact mode for "all" — saves ~9000 tokens vs full schemas
     if (category === "all") {
-      let responseMarkdown = `### 📂 All Specialized Tools (compact index)\n\nCall \`discover_tools(category: "<name>")\` for full schemas of a specific category.\n\n`;
+      let responseMarkdown = `## All Available Tools by Category\n\nCall \`discover_tools(category: "<name>")\` for full schemas of a specific category.\n\n`;
       
       for (const [catName, catTools] of Object.entries(categories)) {
-        responseMarkdown += `#### ${catName}\n`;
+        responseMarkdown += `### ${catName}\n`;
         for (const toolName of catTools) {
           const toolDef = TOOLS.find(t => t.name === toolName);
           if (toolDef) {
-            // Extract first sentence of description only
             const shortDesc = toolDef.description.split(/\.\s/)[0] + '.';
             responseMarkdown += `- \`${toolDef.name}\` — ${shortDesc}\n`;
           }
@@ -1370,11 +1537,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
-    // Full schema mode for specific categories
     let targetTools = categories[category] || [];
 
-    let responseMarkdown = `### 📂 Exposed Specialized Tools - Category: ${category.toUpperCase()}\n\n`;
-    responseMarkdown += `You can directly invoke any of these tools by name using standard CallTool JSON parameters. Their detailed schemas and instructions are outlined below:\n\n`;
+    let responseMarkdown = `## Tools — Category: ${category.toUpperCase()}\n\nFull schemas:\n\n`;
 
     for (const toolName of targetTools) {
       const toolDef = TOOLS.find(t => t.name === toolName);
@@ -1467,9 +1632,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       ? JSON.stringify(data, null, 2)
       : String(data ?? "");
 
-  return {
-    content: [{ type: "text", text }],
-  };
+  const STRUCTURED_RESULT_TOOLS = new Set([
+    "table_extract", "audit", "security_scan", "coverage",
+    "design_clone", "color_palette", "get_element_bounds",
+    "form_fill", "responsive_test",
+  ]);
+
+  const output = { content: [{ type: "text", text }] };
+
+  if (STRUCTURED_RESULT_TOOLS.has(name) && typeof data === "object" && data !== null) {
+    output.structuredContent = data;
+  }
+
+  return output;
 });
 
 const transport = process.argv.includes("--transport")
