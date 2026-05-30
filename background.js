@@ -269,7 +269,6 @@ if (chrome.offscreen) {
 }
 
 // ── Reconnect WebSocket on service worker wake-up ───────────────────────────
-if (chrome.offscreen) ensureOffscreen();
 wsClient.reconnectIfNeeded();
 
 // ── Alarm-based reconnection fallback ───────────────────────────────────────
