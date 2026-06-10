@@ -924,6 +924,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return successResult(snap.data?.tree || snap.tree || "", snap.data || snap);
   }
 
+  if (name === "close_tab" && !args.force) {
+    if (server && typeof server.createMessage === 'function') {
+      try {
+        const response = await server.createMessage({
+          messages: [{
+            role: "user",
+            content: { type: "text", text: `Are you sure you want to close tab ${args.tabId || "all"}? Reply 'yes' to confirm.` }
+          }]
+        });
+        const reply = response?.content?.text || "";
+        if (!reply.toLowerCase().includes("yes")) {
+          return errorResult("User rejected destructive action close_tab.", nextStep);
+        }
+      } catch (e) {
+        return errorResult("Destructive action close_tab requires { force: true } parameter.", nextStep);
+      }
+    } else {
+      return errorResult("Destructive action close_tab requires { force: true } parameter. Your MCP client does not support interactive prompts.", nextStep);
+    }
+  }
+
   if (name === "discover_tools") {
     const category = args.category || "all";
 

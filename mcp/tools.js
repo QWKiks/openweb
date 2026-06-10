@@ -159,6 +159,7 @@ export const TOOLS = [
       properties: {
         tabId: { type: "number", description: "Tab ID to close (optional if closing all)" },
         all: { type: "boolean", description: "Close all tabs in the current session (default: false)" },
+        force: { type: "boolean", description: "Must be true to bypass safety confirmation (mandatory if SDK lacks elicitation)" },
       },
     },
   },
