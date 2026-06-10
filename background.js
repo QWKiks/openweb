@@ -56,6 +56,7 @@ import { ClickAndVerifyTool } from "./tools/click-and-verify.js";
 import { DiscoverToolsTool } from "./tools/discover-tools.js";
 import { SpeechToTextTool } from "./tools/speech-to-text.js";
 import { TranslateTool } from "./tools/translate.js";
+import { SolveCaptchaTool } from "./tools/solve-captcha.js";
 
 register(new NavigateTool());
 register(new FindTabTool());
@@ -116,6 +117,7 @@ register(new ClickAndVerifyTool());
 register(new DiscoverToolsTool());
 register(new SpeechToTextTool());
 register(new TranslateTool());
+register(new SolveCaptchaTool());
 
 const RATE_LIMIT_KEY = "OpenWeb_rate_limit";
 const DEFAULT_RATE_LIMIT = 0; 

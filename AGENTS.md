@@ -36,6 +36,7 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 | Set value via JS (last resort) | `evaluate` | JS that sets `.value` and dispatches event | `evaluate` reads back value | May not trigger site's listeners |
 | Select `<select>` option | `select` | `{selector, value}` | `evaluate` checks `.value` | — |
 | Upload file | `upload` | `{selector, files}` | `snapshot` shows filename | — |
+| Solve captcha | `solve_captcha` | `{apiKey}` or auto-detect | `captchas[].solved` is true | **Hidden** until `discover_tools("advanced")`. Uses 2Captcha API |
 
 ### Clicking & Pointing
 
@@ -106,7 +107,7 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 | List all categories | `discover_tools` | `{category: "all"}` | Returns compact overview |
 | — diagnostics | `discover_tools("diagnostics")` | unlocks: `drag_drop, design_clone, dom_mutations` | — |
 | — audits | `discover_tools("audits")` | unlocks: `audit, security_scan, coverage` | — |
-| — advanced | `discover_tools("advanced")` | unlocks: `bookmark, extension, speech_to_text, translate, shadow_dom, iframe_list, service_worker, select_autocomplete, ...` | — |
+| — advanced | `discover_tools("advanced")` | unlocks: `bookmark, extension, speech_to_text, translate, shadow_dom, iframe_list, service_worker, select_autocomplete, solve_captcha, ...` | — |
 
 ---
 

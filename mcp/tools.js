@@ -645,6 +645,21 @@ export const TOOLS = [
     },
   },
   {
+    name: "solve_captcha",
+    description: "Detect and solve captchas (reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile) using 2Captcha API. When called without params, auto-detects all captchas on the current page. Requires an apiKey from 2captcha.com. Returns the solved token and auto-injects it into the page when possible.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", description: "Captcha type (optional — auto-detected if omitted): recaptcha_v2, recaptcha_v3, hcaptcha, turnstile", enum: ["recaptcha_v2", "recaptcha_v3", "hcaptcha", "turnstile"] },
+        sitekey: { type: "string", description: "Captcha sitekey (optional — auto-detected if omitted)" },
+        action: { type: "string", description: "reCAPTCHA v3 action name (default: 'verify')" },
+        minScore: { type: "string", description: "reCAPTCHA v3 minimum score (default: '0.3')" },
+        apiKey: { type: "string", description: "2Captcha API key. Required for solving. If omitted, only detection is performed." },
+        timeout: { type: "number", description: "Maximum wait time in ms for captcha solution (default: 120000)", default: 120000 },
+      },
+    },
+  },
+  {
     name: "discover_tools",
     description: "Browse and get full usage documentation for all specialized tools by category. Use this to find the right tool for your task and get its complete schema with examples.",
     inputSchema: {
