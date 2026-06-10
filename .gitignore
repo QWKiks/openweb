@@ -11,3 +11,4 @@ _tmp.*
 dist/
 .venv 
 .DS_Store
+GEMINI.md
