@@ -263,6 +263,12 @@ if (chrome.offscreen) {
   setInterval(() => { ensureOffscreen(); }, KEEPALIVE_INTERVAL_MS);
 }
 
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && wsClient.isConnected()) {
+    wsClient.send({ type: "page_changed", url: tab.url, title: tab.title });
+  }
+});
+
 wsClient.reconnectIfNeeded();
 
 chrome.alarms.onAlarm.addListener((alarm) => {

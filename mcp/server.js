@@ -235,6 +235,16 @@ function connectToDaemon() {
         return;
       }
 
+      if (msg.type === "page_changed") {
+        if (subscribers.has("openweb://status")) {
+          server.notification({
+            method: "notifications/resources/updated",
+            params: { uri: "openweb://status" }
+          }).catch(() => {});
+        }
+        return;
+      }
+
       if (msg.type === "register_nack") {
         logError("Registration failed", msg.error);
         reject(new Error(msg.error || "Auth failed"));
@@ -748,8 +758,11 @@ server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
   ],
 }));
 
+const subscribers = new Set();
+
 server.setRequestHandler(SubscribeRequestSchema, async (request) => {
   logInfo("Resource subscribe request", { uri: request.params.uri });
+  subscribers.add(request.params.uri);
   return {};
 });
 
