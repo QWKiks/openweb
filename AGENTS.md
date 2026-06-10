@@ -21,6 +21,7 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 | Intent | Tool | Key Params | Quick Verify | Context |
 |---|---|---|---|---|
 | Open a page | `navigate` | `{url, waitUntil: "domcontentloaded"}` | read `tab.url` | `newTab: true` after errors or cross-origin |
+| Navigate + dismiss overlays | `navigate_smart` | `{url, dismissOverlays: true}` | `snapshot()` shows clean page | Reduces roundtrips vs navigate + dismiss_overlay |
 | Discover URL pattern | execute search via form | — | read `tab.url` after submit — URL now encodes state | Edge: SPAs may use hash fragments |
 | Reuse known URL pattern | `navigate` | direct constructed URL | `snapshot()` shows results | **Preferred** over form interaction |
 
@@ -29,8 +30,9 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 | Intent | Tool | Key Params | Quick Verify | Context |
 |---|---|---|---|---|
 | Fill plain text input | `fill` | `{selector: "@eN", value}` | `actualValue` matches input | Date fields: YYYY-MM-DD |
-| Fill combobox / autocomplete | `select_autocomplete` | `{selector: "@eN", text, delay: 100}` | `selectedValue` not empty | If empty → Degradation (c) |
+| Fill combobox / autocomplete | `select_autocomplete` | `{selector: "@eN", text, delay: 100}` | `selectedValue` not empty | **Hidden** until `discover_tools("advanced")`. If empty → Degradation (c) |
 | Manual keystroke entry | `click(@eN)` → `send_keys` perChar | `{text, perChar: true}` → ArrowDown → Enter | `snapshot()` | When autocomplete dropdown won't appear |
+| Natural humanized typing | `humanize` | `{selector: "@eN", text}` | `snapshot()` | For React/Vue fields that reject `fill` |
 | Set value via JS (last resort) | `evaluate` | JS that sets `.value` and dispatches event | `evaluate` reads back value | May not trigger site's listeners |
 | Select `<select>` option | `select` | `{selector, value}` | `evaluate` checks `.value` | — |
 | Upload file | `upload` | `{selector, files}` | `snapshot` shows filename | — |
@@ -39,8 +41,9 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 
 | Intent | Tool | Key Params | Quick Verify | Context |
 |---|---|---|---|---|
-| Standard DOM click | `click` | `{selector: "@eN"}` | `snapshot()` shows new state | If JS blocks → add `physical: true` |
-| Physical OS-level click | `click` | `{selector: "@eN", physical: true}` | `snapshot()` shows new state | Circumvents JS event interceptors |
+| Standard DOM click | `click` | `{selector: "@eN"}` | `snapshot()` shows new state | If JS blocks → add `mode: "physical"` |
+| Physical OS-level click | `click` | `{selector: "@eN", mode: "physical"}` | `snapshot()` shows new state | Circumvents JS event interceptors |
+| Humanized cursor click | `click` | `{selector: "@eN", mode: "humanized"}` | `snapshot()` shows new state | For telemetry-heavy or highly interactive elements |
 | Hover to reveal | `hover` | `{selector: "@eN"}` | snapshot shows new elements | Triggers mouseover/enter |
 
 ### Reading Content
@@ -70,23 +73,40 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 | Screenshot (for human only) | `screenshot` | `{format: "jpeg"}` | NEVER for data extraction |
 | Export PDF | `save_as_pdf` | `{paper_format: "a4"}` | — |
 | Scroll page / element | `scroll` | `{direction, amount}` | — |
-| Send key combination | `send_keys` | `{keys: "Enter"}` | For Unicode text, use `key_type` |
-| Type into focused element | `key_type` | `{text}` | Prefer over `send_keys` for non-latin |
+| Send key combination | `send_keys` | `{keys: "Enter"}` | For Unicode text, use `send_keys({text})` with `text` param |
+| Type Unicode into focused element | `send_keys` | `{text}` | Prefer over `keys` for non-latin |
 | Get element coordinates | `get_element_bounds` | `{selector: "@eN"}` | — |
-| Drag & drop | `drag_drop` | `{source, target}` | — |
+| Drag & drop | `drag_drop` | `{source, target}` | **Hidden** until `discover_tools("diagnostics")` |
+| Emulate mobile device | `emulate` | `{cmd: "device", device: "iphone_14"}` | Also supports geolocation & UA overrides |
 
-### Tool & Session Management
+### Session & Storage (via `state` tool)
+
+| Intent | Tool | Params | Context |
+|---|---|---|---|
+| Save/restore open tabs | `state` | `{scope: "tabs", cmd: "save"\|"restore"}` | — |
+| Manage cookies | `state` | `{scope: "cookies", cmd: "get"\|"set"\|"delete"}` | — |
+| Read/write localStorage | `state` | `{scope: "local_storage", cmd: "read"\|"write"\|"delete"}` | — |
+| Save/restore full auth state | `state` | `{scope: "all", cmd: "save"\|"restore"}` | Cookies + storage in one call |
+
+### Network (via `network` tool)
+
+| Intent | Tool | Params | Context |
+|---|---|---|---|
+| Capture HTTP requests | `network` | `{cmd: "start"}` then `{cmd: "list"}` | — |
+| Intercept / block / mock requests | `network` | `{cmd: "intercept", action: "add_rule", pattern, ruleAction}` | — |
+| Export HAR | `network` | `{cmd: "har_export"}` | — |
+| Monitor WebSockets | `network` | `{cmd: "websocket_monitor"}` | — |
+| Trace redirect chain | `network` | `{cmd: "redirect_chain", url}` | — |
+
+### Tool Management
 
 | Intent | Tool | Key Params | Context |
 |---|---|---|---|
-| Unlock specialized tools | `discover_tools` | `{category}` | **Must call before** session_manager, intercept, cookie, etc. |
-| Manage cookies / storage | `discover_tools("session")` then `session_manager` / `cookie` / `local_storage` | — | — |
-| Capture network requests | `discover_tools("network")` then `intercept` / `network` | — | — |
-| Read console | `discover_tools("diagnostics")` then `console` | — | — |
-| Handle JS dialogs | `discover_tools("diagnostics")` then `dialog` | — | — |
-| Emulate device / geo / UA | `discover_tools("diagnostics")` then `emulate` | — | — |
-| Run audit (SEO/a11y/perf) | `discover_tools("audits")` then `audit` | `{type: "seo"|"accessibility"|"performance"|"links"}` | — |
-| Security scan | `discover_tools("audits")` then `security_scan` | `{detailed: true}` | — |
+| Unlock hidden tools | `discover_tools` | `{category}` | **Must call before** using hidden tools |
+| List all categories | `discover_tools` | `{category: "all"}` | Returns compact overview |
+| — diagnostics | `discover_tools("diagnostics")` | unlocks: `drag_drop, design_clone, dom_mutations` | — |
+| — audits | `discover_tools("audits")` | unlocks: `audit, security_scan, coverage` | — |
+| — advanced | `discover_tools("advanced")` | unlocks: `bookmark, extension, speech_to_text, translate, shadow_dom, iframe_list, service_worker, select_autocomplete, ...` | — |
 
 ---
 
@@ -110,9 +130,9 @@ If @e ref goes stale → `snapshot()` first, then continue descent.
 | Error | Cause | Fix |
 |---|---|---|
 | `element not found: @eN` | SPA re-render, ref invalid | `snapshot()` again |
-| `element has no layout box` | Element hidden / zero-size | `click({physical: false})` or hover parent |
+| `element has no layout box` | Element hidden / zero-size | `click({mode: "synthetic"})` or hover parent |
 | `Unknown tool: X` | Tool not unlocked | `discover_tools({category})` first |
-| `send_keys: unknown key` | Unicode via `keys` param | Use `key_type({text})` |
+| `send_keys: unknown key` | Unicode via `keys` param | Use `send_keys({text})` instead |
 | `fill()` → `comboboxDetected: true` | Autocomplete field | Degradation Level (b): `select_autocomplete` |
 | `select_autocomplete` → empty `selectedValue` | Dropdown not appearing | Increase delay → `snapshot()` → Level (c) |
 | `wait()` → timeout | Wrong selector or page not ready | Re-snapshot → pick real selector → retry |
