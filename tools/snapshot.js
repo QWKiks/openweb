@@ -1,6 +1,6 @@
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab } from "../lib/tab-manager.js";
-import { clearRefs, createRef, INTERACTIVE_ROLES, saveRefs } from "../lib/snapshot-refs.js";
+import { clearRefs, createRef, INTERACTIVE_ROLES, saveRefs, beginSnapshot } from "../lib/snapshot-refs.js";
 
 export class SnapshotTool {
   name = "snapshot";
@@ -15,7 +15,7 @@ export class SnapshotTool {
 
     const tab = await getActiveTab();
     await attach(tab.id);
-    clearRefs();
+    beginSnapshot();
 
     let result = null;
     if (selector) {
