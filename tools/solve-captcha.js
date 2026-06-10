@@ -28,6 +28,8 @@ export class SolveCaptchaTool {
         challenge: args.challenge,
         body: args.body,
         question: args.question,
+        selector: args.selector,
+        inputSelector: args.inputSelector,
       }];
     } else {
       const detections = await sendCommand("Runtime.evaluate", {
@@ -61,7 +63,32 @@ export class SolveCaptchaTool {
         })).result.value;
 
         let sitekey = c.sitekey;
-        if (c.type === "image" && c.body) {
+        let elemX = 0, elemY = 0;
+        
+        if ((c.type === "image" || c.type === "coordinate") && c.selector) {
+          const { resolveRef } = await import("../lib/snapshot-refs.js");
+          const refData = resolveRef(c.selector);
+          if (!refData || !refData.backendDOMNodeId) throw new Error(`Invalid or stale ref: ${c.selector}`);
+          
+          const backendNodeId = refData.backendDOMNodeId;
+          const boxModel = await sendCommand("DOM.getBoxModel", { backendNodeId });
+          const quad = boxModel.model.border;
+          const x = Math.min(quad[0], quad[2], quad[4], quad[6]);
+          const y = Math.min(quad[1], quad[3], quad[5], quad[7]);
+          const width = Math.max(quad[0], quad[2], quad[4], quad[6]) - x;
+          const height = Math.max(quad[1], quad[3], quad[5], quad[7]) - y;
+          
+          elemX = x;
+          elemY = y;
+          
+          await sendCommand("Page.getLayoutMetrics");
+          const screenshot = await sendCommand("Page.captureScreenshot", {
+            format: "jpeg",
+            quality: 90,
+            clip: { x, y, width, height, scale: 1 }
+          });
+          sitekey = screenshot.data;
+        } else if (c.type === "image" && c.body) {
           sitekey = c.body;
         } else if (c.type === "text" && c.question) {
           sitekey = c.question;
@@ -78,7 +105,32 @@ export class SolveCaptchaTool {
 
         const injectScript = injectTokenScript(c.type, token);
         let injected = false;
-        if (injectScript) {
+        
+        if (c.type === "coordinate" && typeof token === "string") {
+          // Token is likely a JSON string: [{"x":"84","y":"155"}]
+          let coords;
+          try { coords = JSON.parse(token); } catch(e) {}
+          if (Array.isArray(coords) && coords.length > 0) {
+            const clickX = elemX + parseInt(coords[0].x, 10);
+            const clickY = elemY + parseInt(coords[0].y, 10);
+            await sendCommand("Input.dispatchMouseEvent", { type: "mousePressed", x: clickX, y: clickY, button: "left", clickCount: 1 });
+            await new Promise(r => setTimeout(r, 50));
+            await sendCommand("Input.dispatchMouseEvent", { type: "mouseReleased", x: clickX, y: clickY, button: "left", clickCount: 1 });
+            injected = true;
+          }
+        } else if (c.type === "image" && c.inputSelector) {
+          const { resolveRef } = await import("../lib/snapshot-refs.js");
+          const refData = resolveRef(c.inputSelector);
+          if (refData && refData.backendDOMNodeId) {
+            const obj = await sendCommand("DOM.resolveNode", { backendNodeId: refData.backendDOMNodeId });
+            await sendCommand("Runtime.callFunctionOn", {
+              objectId: obj.object.objectId,
+              functionDeclaration: `function(val) { this.value = val; this.dispatchEvent(new Event('input', {bubbles: true})); this.dispatchEvent(new Event('change', {bubbles: true})); }`,
+              arguments: [{ value: token }]
+            });
+            injected = true;
+          }
+        } else if (injectScript) {
           await sendCommand("Runtime.evaluate", {
             expression: injectScript,
             returnByValue: true,
