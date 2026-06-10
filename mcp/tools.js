@@ -1,5 +1,17 @@
 export const TOOLS = [
   {
+    name: "navigate_smart",
+    description: "Navigate, dismiss overlays, and return snapshot in one call. Use instead of navigate+dismiss_overlay+snapshot sequence. Reduces roundtrips significantly.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string" },
+        dismissOverlays: { type: "boolean", default: true },
+      },
+      required: ["url"]
+    }
+  },
+  {
     name: "navigate",
     description: "Navigate to a URL in the browser. RECOMMENDATION: Set 'newTab: true' (default) to start a clean session or isolate the page context. Set 'newTab: false' when continuing a search chain, submitting multiple steps, or navigating deep within the active domain.",
     inputSchema: {

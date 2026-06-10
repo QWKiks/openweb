@@ -153,7 +153,7 @@ const AUDITS_TOOLS = ["audit", "security_scan", "coverage"];
 const ADVANCED_TOOLS = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "swagger_parser", "color_palette", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab", "select_autocomplete"];
 
 const CORE_TOOL_NAMES = new Set([
-  "navigate", "snapshot", "screenshot", "click", "fill",
+  "navigate", "navigate_smart", "snapshot", "screenshot", "click", "fill",
   "send_keys", "evaluate", "list_tabs", "close_tab", "network",
   "hover", "select", "get_text", "get_markdown", "get_element_bounds",
   "humanize", "state", "console", "dialog", "emulate",
@@ -905,6 +905,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (args) {
     healSnapshotRefs(args);
+  }
+
+  if (name === "navigate_smart") {
+    logInfo("Executing navigate_smart workflow");
+    const navResult = await sendToolCall("navigate", { url: args.url });
+    if (navResult.error) return errorResult(navResult.error, nextStep);
+    
+    if (args.dismissOverlays !== false) {
+      logInfo("Dismissing overlays as part of navigate_smart");
+      await sendToolCall("dismiss_overlay", {}).catch(() => {});
+    }
+    
+    logInfo("Taking snapshot as part of navigate_smart");
+    const snap = await sendToolCall("snapshot", { interactiveOnly: true });
+    if (snap.error) return errorResult(snap.error, nextStep);
+    
+    return successResult(snap.data?.tree || snap.tree || "", snap.data || snap);
   }
 
   if (name === "discover_tools") {
