@@ -10,6 +10,7 @@ import {
   SubscribeRequestSchema,
   ListResourceTemplatesRequestSchema,
   CompleteRequestSchema,
+  SetLevelRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import WebSocket from "ws";
 import { appendFileSync, writeFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from "fs";
@@ -36,10 +37,25 @@ process.on('unhandledRejection', (err) => { startupLog('UNHANDLED REJECTION:', e
 const DAEMON_URL = process.env.OPENWEB_WS_URL || "ws://127.0.0.1:10086/ws";
 const DEBUG = process.env.OPENWEB_DEBUG === "1" || process.env.OPENWEB_DEBUG === "true";
 
-function log(level, ...args) {
-  // MCP stdio: entire output should go to stderr
+let currentLogLevel = "info";
+
+async function mcpLog(level, ...args) {
   if (level === "debug" && !DEBUG) return;
-  console.error(`[mcp:${level}] ${new Date().toISOString()}`, ...args);
+  const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  try {
+    if (typeof server !== "undefined" && server) {
+      await server.sendLoggingMessage({ level, logger: "openweb", data: { message } });
+    }
+  } catch {
+    console.error(`[mcp:${level}]`, message);
+  }
+}
+
+function log(level, ...args) {
+  mcpLog(level, ...args).catch(() => {});
+  if (level === "error" || DEBUG) {
+    console.error(`[mcp:${level}] ${new Date().toISOString()}`, ...args);
+  }
 }
 
 function logDebug(...args) {
@@ -653,6 +669,11 @@ for (const toolName of CORE_TOOL_NAMES) {
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools: Array.from(registeredTools.values()) };
+});
+
+server.setRequestHandler(SetLevelRequestSchema, async (req) => {
+  currentLogLevel = req.params.level;
+  return {};
 });
 
 async function notifyToolsChanged() {
