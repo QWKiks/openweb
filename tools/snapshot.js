@@ -66,6 +66,25 @@ export class SnapshotTool {
       }
     }
 
+    const currentHash = this.simpleHash(treeStr);
+    let lastHash = null;
+    try {
+      const data = await chrome.storage.session.get("lastSnapshotHash");
+      lastHash = data.lastSnapshotHash;
+    } catch (e) {}
+
+    if (currentHash === lastHash && args.force !== true) {
+      return {
+        unchanged: true,
+        hint: "Page tree unchanged since last snapshot. Use existing @e refs.",
+        url: tab.url
+      };
+    }
+
+    try {
+      await chrome.storage.session.set({ lastSnapshotHash: currentHash });
+    } catch (e) {}
+
     return { 
       url: tab.url, 
       title: tab.title, 
@@ -74,6 +93,15 @@ export class SnapshotTool {
       estimatedTokens: Math.round(treeStr.length / 4),
       suggestedNextTool: "click or fill using @e refs from tree"
     };
+  }
+
+  simpleHash(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0;
+    }
+    return (h >>> 0).toString(36).slice(0, 8);
   }
 
   buildTree(nodes, allowedBackendIds, interactiveOnly) {
