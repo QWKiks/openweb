@@ -31,6 +31,19 @@ export const TOOLS = [
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
+    outputSchema: {
+      type: "object",
+      properties: {
+        tree: { type: "string", description: "Indented accessibility tree with @e refs" },
+        truncated: { type: "boolean" },
+        url: { type: "string" },
+        title: { type: "string" },
+        estimatedTokens: { type: "integer" },
+        unchanged: { type: "boolean" },
+        hint: { type: "string" },
+        suggestedNextTool: { type: "string" }
+      }
+    }
   },
   {
     name: "screenshot",
@@ -56,6 +69,15 @@ export const TOOLS = [
         tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
       },
     },
+    outputSchema: {
+      type: "object",
+      properties: {
+        format: { type: "string" },
+        width: { type: "integer" },
+        height: { type: "integer" },
+        pageTitle: { type: "string" }
+      }
+    }
   },
   {
     name: "click",
