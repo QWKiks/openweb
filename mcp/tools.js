@@ -646,15 +646,18 @@ export const TOOLS = [
   },
   {
     name: "solve_captcha",
-    description: "Detect and solve captchas (reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile) using 2Captcha API. When called without params, auto-detects all captchas on the current page. Requires an apiKey from 2captcha.com. Returns the solved token and auto-injects it into the page when possible.",
+    description: "Detect and solve ALL captcha types using 2Captcha API: reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile, FunCaptcha, Geetest (slide/drag), Yandex SmartCaptcha, KeyCaptcha, image captchas, and text captchas. When called without params, auto-detects all captchas on the current page. CAPTCHA_API_KEY from .env is auto-injected — no need to pass apiKey manually. Returns the solved token and auto-injects it into the page when possible.",
     inputSchema: {
       type: "object",
       properties: {
-        type: { type: "string", description: "Captcha type (optional — auto-detected if omitted): recaptcha_v2, recaptcha_v3, hcaptcha, turnstile", enum: ["recaptcha_v2", "recaptcha_v3", "hcaptcha", "turnstile"] },
-        sitekey: { type: "string", description: "Captcha sitekey (optional — auto-detected if omitted)" },
+        type: { type: "string", description: "Captcha type (optional — auto-detected if omitted). For non-standard captchas (image, text), specify manually.", enum: ["recaptcha_v2", "recaptcha_v3", "hcaptcha", "turnstile", "funcaptcha", "geetest", "geetest_v4", "yandex", "keycaptcha", "image", "text"] },
+        sitekey: { type: "string", description: "Captcha sitekey / public key (optional — auto-detected if omitted). For image captchas, pass the base64 image data or image URL here. For text captchas, pass the question text here." },
+        url: { type: "string", description: "Page URL where the captcha appears (optional — auto-detected)" },
         action: { type: "string", description: "reCAPTCHA v3 action name (default: 'verify')" },
-        minScore: { type: "string", description: "reCAPTCHA v3 minimum score (default: '0.3')" },
-        apiKey: { type: "string", description: "2Captcha API key. Required for solving. If omitted, only detection is performed." },
+        minScore: { type: "number", description: "reCAPTCHA v3 minimum score (default: 0.3)" },
+        surl: { type: "string", description: "FunCaptcha SURL (optional — auto-detected)" },
+        challenge: { type: "string", description: "Geetest challenge value (optional — auto-detected)" },
+        apiKey: { type: "string", description: "2Captcha API key. If omitted, reads from CAPTCHA_API_KEY env var automatically." },
         timeout: { type: "number", description: "Maximum wait time in ms for captcha solution (default: 120000)", default: 120000 },
       },
     },

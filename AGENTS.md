@@ -36,7 +36,7 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 | Set value via JS (last resort) | `evaluate` | JS that sets `.value` and dispatches event | `evaluate` reads back value | May not trigger site's listeners |
 | Select `<select>` option | `select` | `{selector, value}` | `evaluate` checks `.value` | — |
 | Upload file | `upload` | `{selector, files}` | `snapshot` shows filename | — |
-| Solve captcha | `solve_captcha` | `{apiKey}` or auto-detect | `captchas[].solved` is true | **Hidden** until `discover_tools("advanced")`. Uses 2Captcha API |
+| Solve captcha | `solve_captcha` | `{apiKey}` or auto-detect | `captchas[].solved` is true | **Hidden** until `discover_tools("advanced")`. Uses 2Captcha API. Supports reCAPTCHA v2/v3, hCaptcha, FunCaptcha, Geetest, Turnstile, Yandex, KeyCaptcha, image, text. `CAPTCHA_API_KEY` from `.env` is auto-injected |
 
 ### Clicking & Pointing
 
@@ -137,6 +137,8 @@ If @e ref goes stale → `snapshot()` first, then continue descent.
 | `send_keys: unknown key` | Unicode via `keys` param | Use `send_keys({text})` instead |
 | `fill()` → `comboboxDetected: true` | Autocomplete field | Degradation Level (b): `select_autocomplete` |
 | `select_autocomplete` → empty `selectedValue` | Dropdown not appearing | Increase delay → `snapshot()` → Level (c) |
+| `solve_captcha` → no captcha detected | Non-standard captcha or already solved | Specify type manually: `solve_captcha({type: "image", body: imgSrc})` for images, or `{type: "text", sitekey: question}` for text captchas |
+| `solve_captcha` → `no apiKey` | `CAPTCHA_API_KEY` not set | Add `CAPTCHA_API_KEY=your-key` to `.env` file and restart daemon |
 | `wait()` → timeout | Wrong selector or page not ready | Re-snapshot → pick real selector → retry |
 | Page shows error / gibberish | Invalid URL or blocked request | Level (b) or `navigate({newTab: true})` |
 

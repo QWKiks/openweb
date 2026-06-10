@@ -331,6 +331,7 @@ function sendToolCall(name, args, progressToken) {
       security_scan: 60000,
       audit: 60000,
       design_clone: 60000,
+      solve_captcha: 150000,
       screenshot: 30000,
       save_as_pdf: 30000,
       network: 30000,
@@ -1039,6 +1040,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   
 
   const progressToken = request.params?.meta?.progressToken || null;
+
+  if (name === "solve_captcha" && (!args?.apiKey)) {
+    const envKey = process.env.CAPTCHA_API_KEY;
+    if (envKey) {
+      args = { ...(args || {}), apiKey: envKey };
+    }
+  }
 
   const result = await sendToolCall(name, args || {}, progressToken);
 
