@@ -3,6 +3,7 @@ import { timingSafeEqual, randomBytes } from "crypto";
 import { createServer } from "http";
 import { log, debug, metrics } from "./lib/logger.js";
 import { isRecording, startSession, recordToolCall, recordToolResult, stopSession } from "./lib/recorder.js";
+import { validateIncomingMessage } from "./lib/message-validator.js";
 
 const PORT = 10086;
 const PATH = "/ws";
@@ -161,37 +162,7 @@ setInterval(() => {
   }
 }, 15000);
 
-function validateIncomingMessage(msg) {
-  if (!msg || typeof msg !== "object") return false;
-  if (typeof msg.type !== "string") return false;
-  
-  switch (msg.type) {
-    case "hello":
-      if (msg.payload && typeof msg.payload !== "object") return false;
-      break;
-    case "register":
-      if (msg.token && typeof msg.token !== "string") return false;
-      if (msg.nonce && typeof msg.nonce !== "string") return false;
-      if (msg.timestamp && typeof msg.timestamp !== "string" && typeof msg.timestamp !== "number") return false;
-      break;
-    case "heartbeat":
-    case "pong":
-      break;
-    case "tool_call":
-      if (msg.requestId === undefined || msg.requestId === null) return false;
-      if (!msg.payload || typeof msg.payload !== "object") return false;
-      if (typeof msg.payload.name !== "string") return false;
-      if (msg.payload.args && typeof msg.payload.args !== "object") return false;
-      break;
-    case "tool_result":
-      if (msg.responseToRequestId === undefined || msg.responseToRequestId === null) return false;
-      if (!msg.payload || typeof msg.payload !== "object") return false;
-      break;
-    default:
-      return false;
-  }
-  return true;
-}
+
 
 wss.on("connection", (ws, req) => {
   const ip = req.socket.remoteAddress || "unknown";
@@ -758,6 +729,12 @@ const healthServer = createServer((req, res) => {
     });
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(body);
+  } else if (req.url === "/metrics") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(metrics));
+  } else if (req.url === "/tools") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ note: "Tools are handled by MCP server and registry." }));
   } else {
     res.writeHead(404);
     res.end("Not found");
@@ -789,7 +766,7 @@ function gracefulShutdown(signal) {
 
   wss.close(() => {
     healthServer.close(() => {
-      rl.close();
+      if (rl) rl.close();
       process.exit(0);
     });
   });

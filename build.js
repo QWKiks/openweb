@@ -50,6 +50,13 @@ cpSync(SRC, OUT, { recursive: true, filter: (src) => {
 const manifestSrc = TARGET === "firefox"
   ? "manifest.firefox.json"
   : "manifest.chrome.json";
+
+const pkgVersion = JSON.parse(readFileSync('package.json')).version;
+const manifestVersion = JSON.parse(readFileSync(manifestSrc)).version;
+if (pkgVersion !== manifestVersion) {
+  console.warn(`  ⚠ Warning: Version mismatch! package.json=${pkgVersion}, ${manifestSrc}=${manifestVersion}`);
+}
+
 const manifestOut = join(OUT, "manifest.json");
 writeFileSync(manifestOut, readFileSync(manifestSrc, "utf-8"));
 

@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node daemon.js",
     "daemon": "node daemon.js",
-    "mcp": "node mcp-server.js",
+    "mcp": "node mcp/server.js",
     "setup-mcp": "node setup-mcp.js",
     "build:chrome": "node build.js chrome",
     "build:firefox": "node build.js firefox",
@@ -20,6 +20,10 @@
     "test:e2e": "node test/e2e/test-all-tools.js",
     "test:e2e:simple": "node test/e2e/test-e2e.js",
     "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

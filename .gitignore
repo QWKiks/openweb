@@ -1,6 +1,6 @@
 node_modules/
-package-lock.json
-.cursor/
+.cursor/*
+!.cursor/mcp.json
 .windsurf/
 *.png.bak
 _tmp.*
