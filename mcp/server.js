@@ -635,8 +635,14 @@ You are connected to a browser via OpenWeb. Follow this workflow for reliable au
   }
 );
 
+const registeredTools = new Map();
+for (const toolName of CORE_TOOL_NAMES) {
+  const t = TOOLS.find(x => x.name === toolName);
+  if (t) registeredTools.set(toolName, t);
+}
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools: TOOLS };
+  return { tools: Array.from(registeredTools.values()) };
 });
 
 async function notifyToolsChanged() {
@@ -897,16 +903,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     let targetTools = categories[category] || [];
+    let addedCount = 0;
 
     let responseMarkdown = `## Tools — Category: ${category.toUpperCase()}\n\nFull schemas:\n\n`;
 
     for (const toolName of targetTools) {
       const toolDef = TOOLS.find(t => t.name === toolName);
       if (toolDef) {
+        if (!registeredTools.has(toolName)) {
+          registeredTools.set(toolName, toolDef);
+          addedCount++;
+        }
         responseMarkdown += `#### 🛠️ Tool: \`${toolDef.name}\`\n`;
         responseMarkdown += `* **Description**: ${toolDef.description}\n`;
         responseMarkdown += `* **Input Schema**:\n\`\`\`json\n${JSON.stringify(toolDef.inputSchema, null, 2)}\n\`\`\`\n\n`;
       }
+    }
+
+    if (addedCount > 0) {
+      notifyToolsChanged();
     }
 
     return successResult(responseMarkdown);
