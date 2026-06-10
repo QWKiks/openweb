@@ -106,9 +106,9 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 |---|---|---|---|
 | Unlock hidden tools | `discover_tools` | `{category}` | **Must call before** using hidden tools |
 | List all categories | `discover_tools` | `{category: "all"}` | Returns compact overview |
-| — diagnostics | `discover_tools("diagnostics")` | unlocks: `drag_drop, design_clone, dom_mutations` | — |
+| — diagnostics | `discover_tools("diagnostics")` | unlocks: `console, dialog, emulate, scroll, wait, drag_drop, design_clone, dom_mutations, history` | — |
 | — audits | `discover_tools("audits")` | unlocks: `audit, security_scan, coverage` | — |
-| — advanced | `discover_tools("advanced")` | unlocks: `bookmark, extension, speech_to_text, translate, shadow_dom, iframe_list, service_worker, select_autocomplete, solve_captcha, stealth, ...` | — |
+| — advanced | `discover_tools("advanced")` | unlocks: `bookmark, extension, speech_to_text, translate, shadow_dom, iframe_list, service_worker, swagger_parser, color_palette, form_fill, dismiss_overlay, wait_stale, find_by_text, select_autocomplete, solve_captcha, stealth, extract_page, click_and_verify, ...` | — |
 
 ---
 
