@@ -646,24 +646,104 @@ export const TOOLS = [
   },
   {
     name: "solve_captcha",
-    description: "Detect and solve ALL captcha types using 2Captcha API: reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile, FunCaptcha, Geetest (slide/drag), Yandex SmartCaptcha, KeyCaptcha, image captchas, and text captchas. When called without params, auto-detects all captchas on the current page. CAPTCHA_API_KEY from .env is auto-injected — no need to pass apiKey manually. Returns the solved token and auto-injects it into the page when possible.",
-    description: "Solve captchas automatically using 2Captcha API. Supports completely autonomous solving of image captchas and coordinate/click captchas by passing the element selector.",
+    description: "Detect and solve ALL captcha types using 2Captcha API: reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile, FunCaptcha, Geetest, Yandex SmartCaptcha, KeyCaptcha, image captchas, and text captchas. When called without params, auto-detects all captchas on the current page. CAPTCHA_API_KEY from .env is auto-injected. Returns the solved token and auto-injects it into the page when possible.",
     inputSchema: {
       type: "object",
       properties: {
-        type: { type: "string", description: "Optional. Type of captcha: recaptcha_v2, recaptcha_v3, hcaptcha, turnstile, funcaptcha, geetest, yandex, keycaptcha, image, coordinate, text. If omitted, will auto-detect from page." },
-        sitekey: { type: "string", description: "Required for text types, or if auto-detect fails." },
-        selector: { type: "string", description: "Optional. For 'image' or 'coordinate' types, pass the @e ref of the captcha image element. The system will automatically screenshot it and solve it." },
-        inputSelector: { type: "string", description: "Optional. For 'image' types, pass the @e ref of the input field. The system will automatically fill the solved text into this field." },
-        action: { type: "string", description: "Optional. Action parameter for recaptcha_v3." },
-        minScore: { type: "number", description: "Optional. Minimum score for recaptcha_v3 (default 0.3)." },
-        surl: { type: "string", description: "Optional. surl parameter for funcaptcha." },
-        challenge: { type: "string", description: "Optional. challenge parameter for geetest." },
-        body: { type: "string", description: "Optional. Base64 image data for image captchas (if not using selector)." },
-        question: { type: "string", description: "Optional. Text question for text captchas." },
-        apiKey: { type: "string", description: "Optional. 2Captcha API key. If omitted, uses CAPTCHA_API_KEY from .env." },
-        url: { type: "string", description: "Optional. Page URL if overriding detection." },
+        type: { type: "string", description: "Captcha type (optional — auto-detected if omitted): recaptcha_v2, recaptcha_v3, hcaptcha, turnstile, funcaptcha, geetest, geetest_v4, yandex, keycaptcha, image, text" },
+        sitekey: { type: "string", description: "Captcha sitekey / public key (optional — auto-detected). For image captchas, pass base64 data. For text captchas, pass the question." },
+        url: { type: "string", description: "Page URL (optional — auto-detected)" },
+        action: { type: "string", description: "reCAPTCHA v3 action (default: 'verify')" },
+        minScore: { type: "number", description: "reCAPTCHA v3 minimum score (default: 0.3)" },
+        surl: { type: "string", description: "FunCaptcha SURL (optional)" },
+        challenge: { type: "string", description: "Geetest challenge (optional)" },
+        apiKey: { type: "string", description: "2Captcha API key (optional — uses CAPTCHA_API_KEY from .env)" },
+        timeout: { type: "number", description: "Max wait in ms (default: 120000)" },
       },
+    },
+  },
+  {
+    name: "history",
+    description: "Navigate browser history: go back, go forward, or refresh the current page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: { type: "string", description: "Action: back, forward, or refresh", enum: ["back", "forward", "refresh"] },
+        ignoreCache: { type: "boolean", description: "Bypass cache on refresh (default: false)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["cmd"],
+    },
+  },
+  {
+    name: "swagger_parser",
+    description: "Parse a Swagger/OpenAPI specification from the current page. Finds swagger.json or fetches from common endpoints and returns the parsed API spec.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "color_palette",
+    description: "Extract the dominant color palette from the current page. Scans all computed styles on the page and returns the top colors used (text, background, borders).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "form_fill",
+    description: "Fill an entire form at once by passing field name/value pairs. Automatically finds form fields by name, id, aria-label, or placeholder.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector for the form (default: 'form')" },
+        fields: { type: "object", description: "Field name/value pairs. Example: { email: 'user@example.com', password: 'secret' }" },
+        submit: { type: "boolean", description: "Submit form after filling (default: true)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "dismiss_overlay",
+    description: "Dismiss overlays, cookie banners, popups, and modals on the current page. Uses a large set of selectors for cookie consent banners, modals, and overlays.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+    },
+  },
+  {
+    name: "wait_stale",
+    description: "Wait for a DOM element to become stale (detached/removed from the DOM). Useful for confirming that a loading spinner has disappeared before proceeding.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector or @e ref of the element to wait for (to disappear)" },
+        timeout: { type: "number", description: "Max wait in ms (default: 10000)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["selector"],
+    },
+  },
+  {
+    name: "find_by_text",
+    description: "Find a page element by its visible text content, aria-label, or placeholder. Returns CSS selectors for matched elements. Supports exact and partial matching.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Text to search for" },
+        tag: { type: "string", description: "Optional: restrict to a specific HTML tag (e.g. 'button', 'a')" },
+        exact: { type: "boolean", description: "Require exact match (default: false)" },
+        returnMultiple: { type: "boolean", description: "Return up to 10 results (default: false)" },
+        tabId: { type: "number", description: "Tab ID to target (default: active tab)" },
+      },
+      required: ["text"],
     },
   },
   {

@@ -150,7 +150,7 @@ const SESSION_TOOLS = ["state"];
 const NETWORK_TOOLS = ["network"];
 const DIAGNOSTICS_TOOLS = ["console", "dialog", "emulate", "scroll", "wait", "drag_drop", "design_clone", "dom_mutations", "history"];
 const AUDITS_TOOLS = ["audit", "security_scan", "coverage"];
-const ADVANCED_TOOLS = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "swagger_parser", "color_palette", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab", "select_autocomplete", "solve_captcha", "stealth"];
+const ADVANCED_TOOLS = ["get_element_bounds", "humanize", "send_keys", "evaluate", "list_tabs", "close_tab", "hover", "select", "get_text", "save_as_pdf", "upload", "bookmark", "extension", "speech_to_text", "translate", "shadow_dom", "iframe_list", "service_worker", "swagger_parser", "color_palette", "form_fill", "dismiss_overlay", "wait_stale", "find_by_text", "find_tab", "select_autocomplete", "solve_captcha", "stealth", "extract_page", "click_and_verify"];
 
 const CORE_TOOL_NAMES = new Set([
   "navigate", "navigate_smart", "snapshot", "screenshot", "click", "fill",
@@ -158,6 +158,7 @@ const CORE_TOOL_NAMES = new Set([
   "hover", "select", "get_text", "get_markdown", "get_element_bounds",
   "humanize", "state", "console", "dialog", "emulate",
   "scroll", "wait", "save_as_pdf", "upload", "find_tab",
+  "discover_tools",
 ]);
 
 let ws = null;
