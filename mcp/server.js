@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -204,7 +204,7 @@ function connectToDaemon() {
       logInfo("WebSocket connected to daemon");
       resetReconnect();
       const registerMsg = { type: "register", timestamp: Date.now() };
-      registerMsg.nonce = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, "0")).join("");
+      registerMsg.nonce = randomBytes(16).toString('hex');
       const token = process.env.OPENWEB_TOKEN;
       if (token) {
         registerMsg.token = token;
