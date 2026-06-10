@@ -79,6 +79,7 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 | Get element coordinates | `get_element_bounds` | `{selector: "@eN"}` | — |
 | Drag & drop | `drag_drop` | `{source, target}` | **Hidden** until `discover_tools("diagnostics")` |
 | Emulate mobile device | `emulate` | `{cmd: "device", device: "iphone_14"}` | Also supports geolocation & UA overrides |
+| Configure stealth | `stealth` | `{cmd: "enable"\|"disable"\|"status"\|"configure"\|"inject"}` | **Hidden** until `discover_tools("advanced")`. Patches navigator.webdriver, plugins, WebGL, canvas fingerprint |
 
 ### Session & Storage (via `state` tool)
 
@@ -107,7 +108,7 @@ navigate(url) → snapshot() → click/fill(@eN) → snapshot()/get_text()/evalu
 | List all categories | `discover_tools` | `{category: "all"}` | Returns compact overview |
 | — diagnostics | `discover_tools("diagnostics")` | unlocks: `drag_drop, design_clone, dom_mutations` | — |
 | — audits | `discover_tools("audits")` | unlocks: `audit, security_scan, coverage` | — |
-| — advanced | `discover_tools("advanced")` | unlocks: `bookmark, extension, speech_to_text, translate, shadow_dom, iframe_list, service_worker, select_autocomplete, solve_captcha, ...` | — |
+| — advanced | `discover_tools("advanced")` | unlocks: `bookmark, extension, speech_to_text, translate, shadow_dom, iframe_list, service_worker, select_autocomplete, solve_captcha, stealth, ...` | — |
 
 ---
 

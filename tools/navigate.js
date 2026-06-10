@@ -1,5 +1,6 @@
 import { attach, sendCommand } from "../lib/cdp.js";
 import { getActiveTab, setLastReferencedTab, addToTabGroup } from "../lib/tab-manager.js";
+import { getStealthScript, isStealthEnabled } from "../tools/stealth.js";
 
 export class NavigateTool {
   name = "navigate";
@@ -22,6 +23,7 @@ export class NavigateTool {
       if (session) await addToTabGroup(tab.id, session, groupTitle);
       await attach(tab.id);
       try { await sendCommand("Page.enable"); } catch {}
+      await this.injectStealth();
       await this.waitForLoad(tab.id, waitUntil);
       return { success: true, url, tabId: tab.id, suggestedNextTool: "snapshot" };
     }
@@ -35,6 +37,7 @@ export class NavigateTool {
       setLastReferencedTab(tab.id);
       await attach(tab.id);
       try { await sendCommand("Page.enable"); } catch {}
+      await this.injectStealth();
       await this.waitForLoad(tab.id, waitUntil);
       return { success: true, url, tabId: tab.id, suggestedNextTool: "snapshot" };
     }
@@ -42,6 +45,7 @@ export class NavigateTool {
     await attach(tab.id);
     setLastReferencedTab(tab.id);
     try { await sendCommand("Page.enable"); } catch {}
+    await this.injectStealth();
 
     const isSameUrl = tab.url === url || tab.url === url + "/";
     let frameId;
@@ -62,6 +66,26 @@ export class NavigateTool {
                           
                               
      
+  async injectStealth() {
+    if (!isStealthEnabled()) return;
+    const source = getStealthScript();
+    if (!source) return;
+    try {
+      await sendCommand("Page.addScriptToEvaluateOnNewDocument", {
+        source,
+        world: "MAIN",
+      });
+    } catch {
+      try { await sendCommand("Page.enable"); } catch {}
+      try {
+        await sendCommand("Page.addScriptToEvaluateOnNewDocument", {
+          source,
+          world: "MAIN",
+        });
+      } catch {}
+    }
+  }
+
   waitForLoad(tabId, waitUntil) {
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {

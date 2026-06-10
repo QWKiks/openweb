@@ -660,6 +660,29 @@ export const TOOLS = [
     },
   },
   {
+    name: "stealth",
+    description: "Configure and manage browser stealth settings to avoid automation detection. Patches navigator.webdriver, plugins, WebGL, canvas fingerprint, and more. Injected before page JS on every navigation.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cmd: {
+          type: "string",
+          description: "Command: 'enable' (turn on stealth), 'disable' (turn off), 'status' (show current state), 'configure' (set custom config), 'inject' (manually inject into current page)",
+          enum: ["enable", "disable", "status", "configure", "inject"],
+          default: "status",
+        },
+        config: {
+          type: "object",
+          description: "Stealth configuration object with patch toggles. Example: { webdriver: true, plugins: true, webgl: true, canvas: true, chrome: true }",
+        },
+        languages: { type: "string", description: "Custom navigator.languages (e.g. 'en-US,en')" },
+        userAgent: { type: "string", description: "Override navigator.userAgent" },
+        platform: { type: "string", description: "Override navigator.platform (e.g. 'MacIntel', 'Win32')" },
+        hardwareConcurrency: { type: "number", description: "Override navigator.hardwareConcurrency (e.g. 4, 8)" },
+      },
+    },
+  },
+  {
     name: "discover_tools",
     description: "Browse and get full usage documentation for all specialized tools by category. Use this to find the right tool for your task and get its complete schema with examples.",
     inputSchema: {
